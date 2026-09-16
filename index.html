@@ -231,50 +231,132 @@ function notify(msg){
 }
 function openModal(){document.getElementById('modal').classList.add('show')}
 function closeModal(){document.getElementById('modal').classList.remove('show')}
-const STORAGE_KEY='servisium_restaurants_v1';
-
 function escapeHtml(value){
- return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[ch]));
 }
-function getSavedRestaurants(){
- try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return []}
+
+async function getRestaurants(){
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if(error){
+    console.error('Supabase error:', error);
+    notify('Помилка завантаження закладів');
+    return [];
+  }
+
+  return data || [];
 }
-function saveRestaurants(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list))}
+
 function renderRestaurant(r){
- const grid=document.getElementById('restaurants');
- const add=grid.querySelector('.add-card');
- const article=document.createElement('article');
- article.className='rest-card photo';
- article.dataset.name=(r.name+' '+r.city+' '+r.type).toLowerCase();
- const name=escapeHtml(r.name), city=escapeHtml(r.city), type=escapeHtml(r.type||'Ресторан');
- article.innerHTML=`<div class="rest-content"><div><span class="active"><i></i> Активний</span></div><div><div class="rest-name">${name}</div><div class="rest-meta">${type} &nbsp;|&nbsp; ${city}</div><div class="rest-numbers"><div><b>0</b><span>Позицій</span></div><div><b>0</b><span>Працівників</span></div><div><b>0</b><span>Столів</span></div></div><button class="primary" onclick="notify('Відкрито заклад')">Відкрити заклад →</button></div></div>`;
- grid.insertBefore(article,add);
+  const grid = document.getElementById('restaurants');
+  const add = grid.querySelector('.add-card');
+
+  const article = document.createElement('article');
+  article.className = 'rest-card photo';
+
+  article.dataset.name = (
+    (r.name || '') + ' ' +
+    (r.city || '') + ' ' +
+    (r.type || 'Ресторан')
+  ).toLowerCase();
+
+  const name = escapeHtml(r.name || 'Без назви');
+  const city = escapeHtml(r.city || 'Не вказано');
+  const type = escapeHtml(r.type || 'Ресторан');
+
+  article.innerHTML = `
+    <div class="rest-content">
+      <div>
+        <span class="active">
+          <i></i> Активний
+        </span>
+      </div>
+
+      <div>
+        <div class="rest-name">${name}</div>
+        <div class="rest-meta">${city} · ${type}</div>
+      </div>
+    </div>
+  `;
+
+  grid.insertBefore(article, add);
 }
-function renderSavedRestaurants(){
- getSavedRestaurants().forEach(renderRestaurant);
- updateRestaurantCount();
+
+async function renderSavedRestaurants(){
+  const grid = document.getElementById('restaurants');
+
+  if(!grid) return;
+
+  grid.querySelectorAll('.rest-card.photo').forEach(card => card.remove());
+
+  const restaurants = await getRestaurants();
+
+  restaurants.forEach(renderRestaurant);
+
+  updateRestaurantCount();
 }
+
 function updateRestaurantCount(){
- const el=document.getElementById('statRestaurants');
- if(el) el.textContent=document.querySelectorAll('.rest-card').length;
+  const el = document.getElementById('statRestaurants');
+
+  if(el){
+    el.textContent = document.querySelectorAll('.rest-card.photo').length;
+  }
 }
-function addRestaurant(){
- const n=document.getElementById('name').value.trim()||'Новий заклад';
- const c=document.getElementById('city').value.trim()||'Не вказано';
- const type=document.getElementById('type').value.trim()||'Ресторан';
- const list=getSavedRestaurants();
- const restaurant={name:n,city:c,type:type};
- list.push(restaurant);
- saveRestaurants(list);
- renderRestaurant(restaurant);
- updateRestaurantCount();
- closeModal();notify('Заклад створено та збережено');
- ['name','city','type'].forEach(id=>document.getElementById(id).value='');
+
+async function addRestaurant(){
+  const n = document.getElementById('name').value.trim() || 'Новий заклад';
+  const c = document.getElementById('city').value.trim() || 'Не вказано';
+  const type = document.getElementById('type').value.trim() || 'Ресторан';
+
+  const { error } = await supabase
+    .from('restaurants')
+    .insert({
+      name: n,
+      city: c,
+      type: type,
+      status: 'active'
+    });
+
+  if(error){
+    console.error('Supabase insert error:', error);
+    notify('Не вдалося створити заклад');
+    return;
+  }
+
+  closeModal();
+  notify('Заклад створено та збережено');
+
+  document.getElementById('name').value = '';
+  document.getElementById('city').value = '';
+  document.getElementById('type').value = '';
+
+  await renderSavedRestaurants();
 }
+
 function searchRestaurants(){
- const q=document.getElementById('search').value.toLowerCase();
- document.querySelectorAll('.rest-card').forEach(c=>c.style.display=c.dataset.name.includes(q)?'block':'none');
+  const q = document
+    .getElementById('search')
+    .value
+    .toLowerCase();
+
+  document.querySelectorAll('.rest-card.photo').forEach(card => {
+    card.style.display =
+      card.dataset.name.includes(q)
+        ? 'block'
+        : 'none';
+  });
 }
+
 renderSavedRestaurants();
 </script>
 </body>
