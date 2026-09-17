@@ -274,19 +274,16 @@ function escapeHtml(value){
 }
 
 async function getRestaurants(){
-  const { data, error } = await supabase
-    .from('restaurants')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if(error){
+  try {
+    return await supabaseRequest(
+      'restaurants?select=*&order=created_at.desc'
+    );
+  } catch(error) {
     console.error('Supabase error:', error);
-    notify('Помилка завантаження закладів');
+    notify('Помилка завантаження: ' + error.message);
     return [];
   }
 
-  return data || [];
-}
 
 function renderRestaurant(r){
   const grid = document.getElementById('restaurants');
@@ -350,30 +347,34 @@ async function addRestaurant(){
   const c = document.getElementById('city').value.trim() || 'Не вказано';
   const type = document.getElementById('type').value.trim() || 'Ресторан';
 
-  const { error } = await supabase
-    .from('restaurants')
-    .insert({
-      name: n,
-      city: c,
-      type: type,
-      status: 'active'
+  try {
+    await supabaseRequest('restaurants', {
+      method: 'POST',
+      headers: {
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        name: n,
+        city: c,
+        type: type,
+        status: 'active'
+      })
     });
 
-  if(error){
+    closeModal();
+    notify('Заклад створено та збережено');
+
+    document.getElementById('name').value = '';
+    document.getElementById('city').value = '';
+    document.getElementById('type').value = '';
+
+    await renderSavedRestaurants();
+
+  } catch(error) {
     console.error('Supabase insert error:', error);
-    notify('Помилка: ' + (error.message || 'невідома помилка'));
+    notify('Помилка: ' + error.message);
   }
-
-  closeModal();
-  notify('Заклад створено та збережено');
-
-  document.getElementById('name').value = '';
-  document.getElementById('city').value = '';
-  document.getElementById('type').value = '';
-
-  await renderSavedRestaurants();
 }
-
 function searchRestaurants(){
   const q = document
     .getElementById('search')
