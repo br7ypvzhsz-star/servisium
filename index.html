@@ -98,15 +98,48 @@ radial-gradient(circle at 70% 20%,#555 0,#252525 28%,#101012 68%)}
  .restaurants,.stats{grid-template-columns:1fr}.top{flex-direction:column}
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const SUPABASE_URL = "https://thswpihmhjychjjcybmf.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cekGEtlU7SfIT7cdlqGizQ_c3ZAd4DC";
+const SUPABASE_URL = "https://thswpihmhjychjjcybmf.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_cekGEtlU7SfIT7cdlqGizQ_c3ZAd4DC";
 
-  const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
+async function supabaseRequest(path, options = {}) {
+
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${path}`,
+    {
+      ...options,
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    }
   );
+
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.hint ||
+      data?.details ||
+      `HTTP ${response.status}`
+    );
+  }
+
+  return data;
+}
+</script>
+</head>
 </script> </head>
 <body>
 <div class="app">
