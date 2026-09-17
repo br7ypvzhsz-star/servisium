@@ -2,790 +2,1071 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <title>SERVISIUM | Art of Service</title>
 
 <style>
 :root{
-  --bg:#080809;
-  --panel:#111114;
-  --panel2:#19191d;
-  --line:#2d2d32;
-  --text:#f5f2ec;
-  --muted:#a3a0a0;
-  --wine:#74182f;
-  --wine2:#a52a47;
-  --gold:#d6b98b;
-  --green:#63b77f;
-  --danger:#bd3349;
+  --bg:#070708;
+  --surface:#101012;
+  --surface2:#151518;
+  --surface3:#1b1b1f;
+  --line:#2b2b30;
+  --line2:#3a3a40;
+  --text:#f5f1eb;
+  --muted:#918d90;
+  --muted2:#666368;
+  --wine:#8d1738;
+  --wine2:#b3204b;
+  --wine3:#47121f;
+  --gold:#d7b987;
+  --green:#4fbd78;
+  --red:#d33b57;
+  --blue:#7595d9;
+  --shadow:0 25px 80px rgba(0,0,0,.35);
 }
 
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+}
 
-html{scroll-behavior:smooth}
-
-body{
+html,body{
   margin:0;
+  min-height:100%;
   background:var(--bg);
   color:var(--text);
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-button,input,select{font:inherit}
-button{cursor:pointer}
+body{
+  overflow-x:hidden;
+}
+
+button,
+input,
+select,
+textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
 
 .app{
   min-height:100vh;
-  display:flex
+  display:flex;
+  width:100%;
 }
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
 
 .sidebar{
   position:fixed;
-  z-index:20;
+  z-index:100;
   left:0;
   top:0;
   bottom:0;
-  width:250px;
-  padding:30px 18px;
+  width:260px;
+  background:#080809;
   border-right:1px solid var(--line);
-  background:rgba(8,8,9,.98)
-}
-
-.brand-mark{
-  text-align:center;
-  color:var(--gold);
-  font-size:24px;
-  margin-bottom:7px
+  padding:28px 16px 20px;
+  display:flex;
+  flex-direction:column;
 }
 
 .brand{
-  font-family:Georgia,serif;
-  letter-spacing:4px;
-  font-size:25px;
-  text-align:center
+  text-align:center;
+  flex:none;
 }
 
-.brand small{
-  display:block;
-  font-family:Georgia,serif;
-  letter-spacing:1px;
-  font-size:12px;
+.brand-crown{
+  color:var(--gold);
+  font-size:22px;
+  margin-bottom:10px;
+}
+
+.brand-name{
+  font:27px Georgia,serif;
+  letter-spacing:4px;
+}
+
+.brand-sub{
   margin-top:7px;
   color:var(--gold);
-  font-style:italic
+  font:italic 14px Georgia,serif;
+  letter-spacing:1px;
 }
 
 .nav{
-  margin-top:52px;
+  margin-top:46px;
   display:grid;
-  gap:6px
+  gap:5px;
 }
 
-.nav button{
+.nav-btn{
+  position:relative;
   width:100%;
+  min-height:46px;
   border:0;
+  border-radius:10px;
   background:transparent;
-  color:#aaa6a7;
+  color:#aaa5a7;
   text-align:left;
-  border-radius:9px;
-  padding:13px 14px;
-  transition:.2s
-}
-
-.nav button:hover,
-.nav button.active{
-  background:linear-gradient(90deg,#46121f,#241015);
-  color:#fff
-}
-
-.nav button.active{
-  box-shadow:inset 3px 0 0 var(--wine2)
-}
-
-.nav span{margin-left:10px}
-
-.side-quote{
-  position:absolute;
-  left:25px;
-  right:25px;
-  bottom:88px;
-  color:#827e80;
-  font:italic 14px/1.55 Georgia,serif
-}
-
-.side-foot{
-  position:absolute;
-  bottom:25px;
-  left:25px;
-  color:#555;
-  font-size:9px;
-  letter-spacing:1px
-}
-
-.main{
-  margin-left:250px;
-  width:calc(100% - 250px);
-  min-height:100vh;
-  padding:34px 44px 70px
-}
-
-.top{
+  padding:0 15px;
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:25px
+  gap:13px;
+  transition:.2s;
 }
 
-.greeting h1{
-  font:34px Georgia,serif;
-  margin:5px 0
+.nav-btn:hover{
+  background:#171116;
+  color:#fff;
 }
 
-.greeting p{
-  margin:0;
-  color:var(--muted)
+.nav-btn.active{
+  background:linear-gradient(90deg,#42121f,#281017);
+  color:#fff;
+  box-shadow:inset 3px 0 0 var(--wine2);
 }
 
-.kicker{
-  font-size:9px;
-  letter-spacing:2px;
+.nav-icon{
+  width:20px;
+  text-align:center;
+  font-size:16px;
   color:var(--gold);
-  font-weight:700
+  flex:none;
+}
+
+.nav-label{
+  font-size:13px;
+}
+
+.sidebar-bottom{
+  margin-top:auto;
+}
+
+.side-quote{
+  padding:0 15px 24px;
+  color:#777277;
+  font:italic 14px/1.55 Georgia,serif;
+}
+
+.side-version{
+  color:#555257;
+  font-size:9px;
+  letter-spacing:1.2px;
+  padding:0 15px;
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main{
+  margin-left:260px;
+  width:calc(100% - 260px);
+  min-height:100vh;
+  padding:34px clamp(24px,4vw,64px) 70px;
+}
+
+.view{
+  width:100%;
+  max-width:1500px;
+  margin:0 auto;
+}
+
+.hidden{
+  display:none!important;
+}
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.topbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:30px;
+}
+
+.eyebrow{
+  color:var(--gold);
+  font-size:10px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:2.5px;
+}
+
+.page-title{
+  margin:9px 0 4px;
+  font:clamp(30px,3vw,43px)/1.05 Georgia,serif;
+  letter-spacing:-.5px;
+}
+
+.page-subtitle{
+  color:var(--muted);
+  margin:0;
+  font-size:13px;
 }
 
 .top-actions{
   display:flex;
   align-items:center;
-  gap:12px
+  gap:10px;
 }
 
-.search{
-  width:245px;
-  background:var(--panel);
+.global-search{
+  width:min(280px,25vw);
+  min-width:200px;
+  height:48px;
   border:1px solid var(--line);
-  border-radius:9px;
-  padding:11px 14px;
-  color:white;
-  outline:none
+  background:var(--surface);
+  color:#fff;
+  border-radius:11px;
+  padding:0 15px;
+  outline:none;
 }
 
-.search:focus{border-color:var(--wine2)}
+.global-search:focus{
+  border-color:var(--wine2);
+}
 
-.iconbtn,
-.profile{
+.icon-btn{
+  width:48px;
+  height:48px;
   border:1px solid var(--line);
-  background:var(--panel);
-  color:white;
-  border-radius:9px;
-  padding:10px 12px
+  background:var(--surface);
+  color:#fff;
+  border-radius:11px;
+  transition:.2s;
 }
 
-.profile{
+.icon-btn:hover{
+  border-color:var(--wine2);
+  background:var(--surface2);
+}
+
+.profile-btn{
+  height:48px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:#fff;
+  border-radius:11px;
+  padding:5px 13px 5px 7px;
   display:flex;
   align-items:center;
-  gap:10px
+  gap:10px;
 }
 
-.avatar{
-  width:32px;
-  height:32px;
+.profile-avatar{
+  width:34px;
+  height:34px;
   border-radius:50%;
-  background:linear-gradient(145deg,#3a3030,#17171a);
+  background:linear-gradient(145deg,#352127,#171519);
+  color:var(--gold);
   display:grid;
   place-items:center;
-  color:var(--gold);
-  font-weight:700
+  font-weight:700;
 }
+
+/* =========================================================
+   STATS
+========================================================= */
 
 .stats{
+  margin-top:34px;
   display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:14px;
-  margin-top:32px
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:15px;
 }
 
-.stat{
-  background:linear-gradient(145deg,#141416,#0f0f11);
+.stat-card{
+  min-width:0;
+  background:linear-gradient(145deg,#121214,#0e0e10);
   border:1px solid var(--line);
-  border-radius:13px;
-  padding:20px
+  border-radius:15px;
+  padding:21px 23px;
+  min-height:145px;
+  box-shadow:var(--shadow);
 }
 
-.stat .num{
-  font-size:28px;
-  margin-top:8px
+.stat-number{
+  margin-top:18px;
+  font:36px Georgia,serif;
 }
 
-.stat .change{
-  font-size:10px;
+.stat-note{
+  margin-top:7px;
   color:var(--green);
-  margin-top:6px
+  font-size:11px;
+}
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+.section{
+  margin-top:43px;
 }
 
 .section-head{
   display:flex;
-  align-items:end;
+  align-items:flex-end;
   justify-content:space-between;
-  margin:38px 0 16px
+  gap:20px;
+  margin-bottom:17px;
 }
 
-.section-head h2{
-  font:27px Georgia,serif;
-  margin:0
+.section-title{
+  margin:0;
+  font:30px Georgia,serif;
 }
+
+.section-count{
+  margin-left:8px;
+  color:var(--muted2);
+  font-size:12px;
+  font-family:Inter,sans-serif;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .primary{
   border:0;
-  background:var(--wine);
-  color:white;
-  border-radius:8px;
-  padding:11px 15px;
-  font-weight:650
+  color:#fff;
+  background:linear-gradient(135deg,var(--wine2),#86132f);
+  border-radius:9px;
+  padding:12px 17px;
+  font-size:12px;
+  font-weight:750;
+  transition:.2s;
 }
 
-.primary:hover{background:var(--wine2)}
-.primary:disabled{opacity:.5;cursor:not-allowed}
+.primary:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.12);
+}
 
-.restaurants{
+.secondary{
+  border:1px solid var(--line2);
+  color:#ddd;
+  background:var(--surface);
+  border-radius:9px;
+  padding:11px 16px;
+  font-size:12px;
+}
+
+.secondary:hover{
+  border-color:var(--wine2);
+  background:var(--surface2);
+}
+
+.danger-btn{
+  border:1px solid #54212c;
+  color:#e58a9b;
+  background:#211015;
+  border-radius:9px;
+  padding:11px 16px;
+}
+
+/* =========================================================
+   RESTAURANTS
+========================================================= */
+
+.restaurant-grid{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:16px
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:17px;
 }
 
-.rest-card{
+.restaurant-card{
   position:relative;
   overflow:hidden;
-  min-height:255px;
+  min-height:300px;
   border:1px solid var(--line);
-  border-radius:15px;
+  border-radius:16px;
   background:
-    linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.82)),
-    radial-gradient(circle at 75% 25%,#58352c 0,#201817 30%,#101012 65%)
+    radial-gradient(circle at 75% 12%,rgba(137,53,37,.52),transparent 33%),
+    linear-gradient(180deg,#181011,#0d0d0f 75%);
+  transition:.25s;
 }
 
-.rest-card.archive{
-  background:
-    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.88)),
-    radial-gradient(circle at 70% 20%,#555 0,#252525 28%,#101012 68%)
+.restaurant-card:hover{
+  transform:translateY(-3px);
+  border-color:#57323c;
+  box-shadow:0 20px 50px rgba(0,0,0,.3);
 }
 
-.rest-content{
+.restaurant-card.archive{
+  background:
+    radial-gradient(circle at 75% 12%,rgba(100,100,100,.35),transparent 34%),
+    linear-gradient(180deg,#171617,#0d0d0f 75%);
+}
+
+.restaurant-inner{
   position:absolute;
   inset:0;
   padding:19px;
   display:flex;
   flex-direction:column;
-  justify-content:space-between
+  justify-content:space-between;
 }
 
-.active{
-  display:inline-flex;
+.status{
+  width:max-content;
+  display:flex;
   align-items:center;
   gap:7px;
+  background:rgba(5,5,6,.66);
+  border:1px solid rgba(255,255,255,.04);
+  border-radius:30px;
+  padding:6px 10px;
   font-size:10px;
-  background:rgba(10,10,10,.65);
-  padding:6px 9px;
-  border-radius:20px;
-  width:max-content
 }
 
-.active i{
+.status-dot{
   width:7px;
   height:7px;
   border-radius:50%;
-  background:var(--green)
+  background:var(--green);
 }
 
-.rest-name{
-  font:25px Georgia,serif;
-  letter-spacing:1px
+.restaurant-name{
+  margin-top:auto;
+  font:31px Georgia,serif;
 }
 
-.rest-meta{
-  color:#bbb7b7;
+.restaurant-meta{
+  margin-top:5px;
+  color:#a8a2a5;
   font-size:12px;
-  margin-top:4px
 }
 
-.rest-numbers{
-  display:flex;
-  gap:25px;
-  margin-top:18px
+.restaurant-metrics{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:22px;
 }
 
-.rest-numbers b{
+.metric-value{
   display:block;
-  font-size:16px
+  font:20px Georgia,serif;
 }
 
-.rest-numbers span{
+.metric-label{
+  display:block;
+  color:#6f6a6d;
   font-size:9px;
-  color:#aaa
+  margin-top:4px;
 }
 
-.open-btn{
+.open-restaurant{
   width:100%;
-  margin-top:15px
+  margin-top:17px;
 }
 
 .add-card{
-  min-height:255px;
-  border:1px dashed #55565b;
-  border-radius:15px;
-  background:transparent;
-  color:#bbb;
+  min-height:300px;
+  border:1px dashed #3b3b40;
+  border-radius:16px;
+  background:rgba(10,10,11,.4);
+  color:#aaa;
   display:grid;
   place-items:center;
-  text-align:center
+  text-align:center;
+  transition:.2s;
 }
 
 .add-card:hover{
   border-color:var(--wine2);
-  color:white
+  background:#110d10;
+  color:#fff;
 }
 
-.plus{
-  font-size:48px;
-  font-weight:200;
+.add-symbol{
   color:var(--gold);
-  line-height:1
+  font-size:45px;
+  line-height:1;
+  margin-bottom:15px;
 }
 
-.lower{
+.add-card strong{
+  display:block;
+  color:#ddd;
+  font-size:13px;
+}
+
+.add-card p{
+  color:#666;
+  font-size:11px;
+  line-height:1.5;
+}
+
+/* =========================================================
+   LOWER DASHBOARD
+========================================================= */
+
+.dashboard-lower{
   display:grid;
-  grid-template-columns:1.2fr 1fr .8fr;
+  grid-template-columns:1.25fr 1fr .9fr;
   gap:16px;
-  margin-top:18px
+  margin-top:17px;
 }
 
-.box{
-  background:var(--panel);
+.panel{
+  background:linear-gradient(145deg,#121214,#0e0e10);
   border:1px solid var(--line);
-  border-radius:14px;
-  padding:18px
+  border-radius:15px;
+  padding:20px;
 }
 
-.box h3{
-  font:20px Georgia,serif;
-  margin:0 0 13px
+.panel-title{
+  margin:0 0 15px;
+  font:21px Georgia,serif;
 }
 
-.event{
+.activity{
   display:flex;
-  gap:11px;
-  padding:11px 0;
+  gap:12px;
+  padding:12px 0;
   border-top:1px solid #252529;
-  font-size:11px
 }
 
-.event:first-of-type{border-top:0}
+.activity:first-of-type{
+  border-top:0;
+}
 
-.badge{
-  width:25px;
-  height:25px;
+.activity-icon{
+  width:29px;
+  height:29px;
   border-radius:50%;
+  background:#27151b;
+  color:var(--gold);
   display:grid;
   place-items:center;
-  background:#27171b;
-  color:var(--wine2);
-  flex:none
+  flex:none;
 }
 
-.event small{
+.activity-text{
+  font-size:11px;
+}
+
+.activity-text small{
   display:block;
-  color:#777;
-  margin-top:3px
+  color:#666;
+  margin-top:4px;
 }
 
-.quick{
+.quick-grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:8px
+  gap:8px;
 }
 
-.quick button{
-  min-height:66px;
+.quick-btn{
+  min-height:68px;
   border:1px solid transparent;
-  background:#17171b;
-  color:#d7d2cf;
+  background:#18181b;
+  color:#bbb;
   border-radius:9px;
-  font-size:10px
+  font-size:10px;
+  transition:.2s;
 }
 
-.quick button:hover{
+.quick-btn:hover{
   border-color:var(--wine2);
-  background:#211116
+  color:#fff;
+  background:#211117;
 }
 
-.quote{
+.quick-icon{
+  display:block;
+  color:var(--gold);
+  font-size:18px;
+  margin-bottom:6px;
+}
+
+.system-panel{
   min-height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font:italic 18px/1.5 Georgia,serif;
-  color:#d9d0ca
+  background:
+    radial-gradient(circle at 100% 0%,rgba(116,24,47,.18),transparent 45%),
+    linear-gradient(145deg,#131114,#0e0e10);
 }
 
-.toast{
-  position:fixed;
-  right:22px;
-  bottom:22px;
-  background:#17171b;
-  border:1px solid #45454a;
-  padding:13px 16px;
-  border-radius:9px;
-  display:none;
-  z-index:500;
-  font-size:12px;
-  max-width:520px
+.system-number{
+  margin-top:22px;
+  font:35px Georgia,serif;
 }
 
-.toast.show{display:block}
+.system-note{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.55;
+  margin-top:8px;
+}
 
-/* =========================
+/* =========================================================
    RESTAURANT PANEL
-========================= */
-
-#restaurantView,
-#menuView{
-  display:none
-}
+========================================================= */
 
 .restaurant-header{
   display:flex;
   align-items:center;
   gap:16px;
-  margin-bottom:28px
+  margin-bottom:25px;
 }
 
 .back-btn{
+  width:46px;
+  height:46px;
   border:1px solid var(--line);
-  background:var(--panel);
+  background:var(--surface);
   color:#fff;
-  border-radius:9px;
-  padding:11px 15px
+  border-radius:10px;
 }
 
-.back-btn:hover{border-color:var(--wine2)}
-
-.restaurant-title h1{
-  margin:5px 0;
-  font:34px Georgia,serif
-}
-
-.restaurant-title p{
-  margin:0;
-  color:var(--muted)
-}
-
-.restaurant-actions{
-  display:flex;
-  gap:10px;
-  margin-bottom:24px
-}
-
-.secondary-btn{
-  border:1px solid var(--line);
-  background:var(--panel);
-  color:#fff;
-  border-radius:9px;
-  padding:11px 16px
-}
-
-.secondary-btn:hover{border-color:var(--wine2)}
-
-.restaurant-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:16px
-}
-
-.module{
-  min-height:175px;
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:22px;
-  transition:.2s;
-  cursor:pointer
-}
-
-.module:hover{
+.back-btn:hover{
   border-color:var(--wine2);
-  transform:translateY(-2px)
+}
+
+.restaurant-header-info h1{
+  margin:7px 0 4px;
+  font:35px Georgia,serif;
+}
+
+.restaurant-header-info p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.restaurant-panel-actions{
+  display:flex;
+  gap:9px;
+  margin-bottom:18px;
+}
+
+.module-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.module-card{
+  position:relative;
+  min-height:190px;
+  padding:21px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:linear-gradient(145deg,#121214,#0e0e10);
+  cursor:pointer;
+  transition:.22s;
+}
+
+.module-card:hover{
+  border-color:#653442;
+  background:linear-gradient(145deg,#171216,#101012);
+  transform:translateY(-3px);
 }
 
 .module-icon{
-  font-size:28px;
   color:var(--gold);
-  margin-bottom:14px
+  font-size:27px;
+  margin-bottom:18px;
 }
 
-.module h3{
-  font:22px Georgia,serif;
-  margin:0 0 8px
+.module-card h3{
+  margin:0 0 7px;
+  font:23px Georgia,serif;
 }
 
-.module p{
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-  margin:0
+.module-card p{
+  color:#716d70;
+  font-size:11px;
+  line-height:1.55;
+  margin:0;
 }
 
-/* =========================
+.module-arrow{
+  position:absolute;
+  right:18px;
+  bottom:17px;
+  color:#575257;
+}
+
+.module-card:hover .module-arrow{
+  color:var(--wine2);
+}
+
+/* =========================================================
    MENU
-========================= */
+========================================================= */
 
-.menu-top{
+.menu-header{
   display:flex;
-  align-items:center;
   justify-content:space-between;
+  align-items:flex-end;
   gap:20px;
-  margin-bottom:24px
+  margin-bottom:20px;
 }
 
-.menu-title{
+.menu-header-left{
   display:flex;
   align-items:center;
-  gap:15px
+  gap:14px;
 }
 
-.menu-title h1{
-  margin:4px 0;
-  font:34px Georgia,serif
+.menu-header h1{
+  margin:7px 0 3px;
+  font:36px Georgia,serif;
 }
 
-.menu-title p{
+.menu-header p{
   margin:0;
   color:var(--muted);
-  font-size:12px
+  font-size:12px;
 }
 
 .menu-actions{
   display:flex;
-  gap:10px
+  gap:9px;
+}
+
+.menu-search-wrap{
+  position:relative;
+  margin-bottom:14px;
 }
 
 .menu-search{
   width:100%;
-  background:var(--panel);
+  height:49px;
   border:1px solid var(--line);
+  background:var(--surface);
   color:#fff;
-  border-radius:9px;
-  padding:13px 15px;
+  border-radius:10px;
   outline:none;
-  margin-bottom:16px
+  padding:0 15px;
 }
 
-.menu-search:focus{border-color:var(--wine2)}
+.menu-search:focus{
+  border-color:var(--wine2);
+}
 
 .menu-tabs{
   display:flex;
-  gap:8px;
   flex-wrap:wrap;
-  margin-bottom:20px
+  gap:7px;
+  margin-bottom:18px;
 }
 
 .menu-tab{
   border:1px solid var(--line);
-  background:var(--panel);
-  color:#aaa;
-  border-radius:20px;
+  background:var(--surface);
+  color:#858084;
+  border-radius:30px;
   padding:9px 14px;
-  font-size:11px
+  font-size:10px;
 }
 
-.menu-tab.active,
-.menu-tab:hover{
-  background:#35121d;
+.menu-tab:hover,
+.menu-tab.active{
+  border-color:var(--wine2);
   color:#fff;
-  border-color:var(--wine2)
+  background:#311019;
 }
 
 .menu-grid{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:14px
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
 }
 
 .menu-item{
-  background:var(--panel);
+  min-width:0;
+  background:linear-gradient(145deg,#121214,#0e0e10);
   border:1px solid var(--line);
-  border-radius:13px;
+  border-radius:14px;
   padding:18px;
-  transition:.2s
+  transition:.2s;
 }
 
 .menu-item:hover{
-  border-color:#4b3038;
-  transform:translateY(-1px)
+  border-color:#50313a;
+  transform:translateY(-2px);
 }
 
-.menu-item-top{
+.menu-item-head{
   display:flex;
-  align-items:flex-start;
   justify-content:space-between;
-  gap:10px
+  gap:10px;
 }
 
 .menu-item h3{
+  margin:0;
   font:20px Georgia,serif;
-  margin:0
 }
 
 .menu-category{
   display:inline-block;
   margin-top:7px;
-  font-size:9px;
   color:var(--gold);
+  font-size:9px;
   letter-spacing:1px;
-  text-transform:uppercase
 }
 
 .menu-description{
-  color:var(--muted);
+  color:#777276;
   font-size:11px;
-  line-height:1.5;
-  margin:14px 0
+  line-height:1.55;
+  margin:15px 0;
+  min-height:35px;
+}
+
+.menu-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
 }
 
 .menu-price{
   font-size:17px;
-  font-weight:700
+  font-weight:750;
 }
 
 .menu-weight{
-  color:#777;
+  color:#656166;
   font-size:10px;
-  margin-left:7px
+  margin-left:5px;
 }
 
 .menu-status{
-  font-size:9px;
+  font-size:8px;
+  letter-spacing:.8px;
   padding:5px 8px;
   border-radius:15px;
-  background:#142219;
   color:var(--green);
-  white-space:nowrap
+  background:#132219;
 }
 
 .menu-status.stop{
-  background:#291217;
-  color:var(--danger)
+  color:var(--red);
+  background:#291218;
 }
 
-.menu-empty{
-  border:1px dashed #444;
-  border-radius:14px;
-  padding:55px 25px;
-  text-align:center;
-  color:var(--muted);
-  grid-column:1/-1
-}
-
-.menu-empty strong{
-  display:block;
-  color:#fff;
-  font:22px Georgia,serif;
-  margin-bottom:10px
-}
-
-.menu-loading{
+.empty-state{
   grid-column:1/-1;
-  padding:60px;
+  min-height:260px;
+  border:1px dashed #39393e;
+  border-radius:15px;
+  display:grid;
+  place-items:center;
   text-align:center;
-  color:var(--muted)
+  color:#777;
+  padding:30px;
 }
 
-/* =========================
-   IMPORT MENU MODAL
-========================= */
+.empty-state strong{
+  display:block;
+  color:#ddd;
+  font:22px Georgia,serif;
+  margin-bottom:9px;
+}
 
-.import-modal{
+.empty-state p{
+  margin:0 0 18px;
+  font-size:11px;
+}
+
+/* =========================================================
+   GENERIC MODULE VIEW
+========================================================= */
+
+.module-view-header{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  margin-bottom:22px;
+}
+
+.module-view-header h1{
+  margin:6px 0 3px;
+  font:34px Georgia,serif;
+}
+
+.module-view-header p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.module-content-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.feature-card{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface);
+  padding:21px;
+  min-height:170px;
+}
+
+.feature-card .big-icon{
+  color:var(--gold);
+  font-size:27px;
+  margin-bottom:17px;
+}
+
+.feature-card h3{
+  margin:0 0 7px;
+  font:21px Georgia,serif;
+}
+
+.feature-card p{
+  color:#777;
+  font-size:11px;
+  line-height:1.55;
+  margin:0;
+}
+
+.placeholder-message{
+  margin-top:17px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:28px;
+  color:var(--muted);
+  background:#0d0d0f;
+}
+
+/* =========================================================
+   MODALS
+========================================================= */
+
+.modal-overlay{
   position:fixed;
+  z-index:500;
   inset:0;
-  z-index:450;
   display:none;
   align-items:center;
   justify-content:center;
   padding:20px;
-  background:rgba(0,0,0,.78)
+  background:rgba(0,0,0,.78);
+  backdrop-filter:blur(5px);
 }
 
-.import-modal.show{display:flex}
+.modal-overlay.show{
+  display:flex;
+}
 
-.import-card{
-  width:min(650px,100%);
+.modal-card{
+  width:min(620px,100%);
   max-height:90vh;
   overflow:auto;
-  background:var(--panel);
-  border:1px solid var(--line);
+  background:#111113;
+  border:1px solid #35353a;
   border-radius:16px;
-  padding:26px
+  padding:27px;
+  box-shadow:0 30px 100px rgba(0,0,0,.55);
 }
 
-.import-card h2{
-  font:27px Georgia,serif;
-  margin:6px 0 8px
+.modal-card h2{
+  margin:8px 0 8px;
+  font:28px Georgia,serif;
 }
 
-.import-card p{
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.55
+.modal-description{
+  color:#817d80;
+  font-size:11px;
+  line-height:1.6;
+  margin:0 0 22px;
 }
 
-.import-input{
+.field{
+  margin:13px 0;
+}
+
+.field label{
+  display:block;
+  color:#888387;
+  font-size:9px;
+  letter-spacing:1.5px;
+  margin-bottom:6px;
+}
+
+.field input,
+.field select,
+.field textarea{
   width:100%;
-  background:var(--panel2);
+  background:#19191c;
+  color:#fff;
   border:1px solid var(--line);
-  color:white;
-  padding:14px;
   border-radius:9px;
+  padding:12px;
   outline:none;
-  margin-top:10px
 }
 
-.import-input:focus{border-color:var(--wine2)}
-
-.import-example{
-  color:#666;
-  font-size:10px;
-  margin-top:8px
+.field input:focus,
+.field select:focus,
+.field textarea:focus{
+  border-color:var(--wine2);
 }
 
-.import-progress{
+.modal-actions{
+  display:flex;
+  gap:9px;
+  margin-top:22px;
+}
+
+.modal-actions>*{
+  flex:1;
+}
+
+.progress{
   display:none;
-  margin-top:20px;
-  border:1px solid var(--line);
-  border-radius:10px;
+  margin-top:18px;
   padding:15px;
-  background:#0c0c0f
+  border:1px solid var(--line);
+  background:#0b0b0d;
+  border-radius:10px;
 }
 
-.import-progress.show{display:block}
+.progress.show{
+  display:block;
+}
 
-.progress-title{
-  font-size:12px;
-  margin-bottom:9px
+.progress-text{
+  font-size:11px;
+  margin-bottom:9px;
+}
+
+.progress-track{
+  height:5px;
+  background:#29292e;
+  border-radius:20px;
+  overflow:hidden;
 }
 
 .progress-bar{
-  height:5px;
-  border-radius:10px;
-  overflow:hidden;
-  background:#29292e
-}
-
-.progress-bar span{
-  display:block;
-  width:0;
   height:100%;
+  width:0;
   background:var(--wine2);
-  transition:.3s
+  transition:.3s;
 }
 
 .import-result{
@@ -793,225 +1074,227 @@ button{cursor:pointer}
   margin-top:15px;
   padding:13px;
   border-radius:9px;
-  border:1px solid #303035;
-  background:#0d0d10;
+  background:#0b0b0d;
+  border:1px solid var(--line);
   font-size:11px;
-  line-height:1.6
+  line-height:1.55;
 }
 
-.import-result.show{display:block}
-.import-result.success{border-color:#285536}
-.import-result.error{border-color:#59212d}
-
-.import-actions{
-  display:flex;
-  gap:9px;
-  margin-top:20px
-}
-
-.import-actions button{flex:1}
-
-.small-note{
-  font-size:10px;
-  color:#777;
-  margin-top:15px;
-  line-height:1.5
-}
-
-/* =========================
-   ADD RESTAURANT MODAL
-========================= */
-
-.modal{
-  position:fixed;
-  z-index:400;
-  inset:0;
-  background:rgba(0,0,0,.76);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:20px
-}
-
-.modal.show{display:flex}
-
-.modal-card{
-  width:min(510px,100%);
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:15px;
-  padding:25px
-}
-
-.modal-card h2{
-  font:25px Georgia,serif;
-  margin:0 0 20px
-}
-
-.field{margin:12px 0}
-
-.field label{
+.import-result.show{
   display:block;
-  color:var(--muted);
-  font-size:9px;
-  letter-spacing:1px;
-  margin-bottom:6px
 }
 
-.field input{
-  width:100%;
-  background:var(--panel2);
-  border:1px solid var(--line);
-  color:#fff;
-  border-radius:8px;
-  padding:11px;
-  outline:none
+.import-result.success{
+  border-color:#285537;
 }
 
-.actions{
-  display:flex;
-  gap:8px;
-  margin-top:20px
+.import-result.error{
+  border-color:#5b2330;
 }
 
-.actions button{
-  flex:1;
-  padding:11px;
-  border-radius:8px;
-  border:1px solid var(--line);
-  background:transparent;
-  color:#fff
+/* =========================================================
+   TOAST
+========================================================= */
+
+.toast{
+  position:fixed;
+  z-index:1000;
+  right:22px;
+  bottom:22px;
+  max-width:460px;
+  padding:13px 16px;
+  border:1px solid #424247;
+  border-radius:10px;
+  background:#18181b;
+  color:#eee;
+  font-size:11px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+  transform:translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  transition:.25s;
 }
 
-.actions .primary{border:0}
+.toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
 
-/* =========================
+/* =========================================================
+   LOADING
+========================================================= */
+
+.loading{
+  min-height:180px;
+  display:grid;
+  place-items:center;
+  color:#777;
+  grid-column:1/-1;
+}
+
+/* =========================================================
    RESPONSIVE
-========================= */
+========================================================= */
 
-@media(max-width:1100px){
+@media(max-width:1250px){
 
-  .restaurants{
-    grid-template-columns:1fr 1fr
+  .main{
+    padding-left:28px;
+    padding-right:28px;
   }
 
-  .restaurant-grid,
+  .restaurant-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .dashboard-lower{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .system-panel{
+    grid-column:1/-1;
+  }
+
   .menu-grid{
-    grid-template-columns:1fr 1fr
-  }
-
-  .lower{
-    grid-template-columns:1fr
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
 }
 
-@media(max-width:900px){
+@media(max-width:1000px){
+
+  .sidebar{
+    width:220px;
+  }
+
+  .main{
+    margin-left:220px;
+    width:calc(100% - 220px);
+  }
 
   .stats{
-    grid-template-columns:1fr 1fr
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
-  .top{
-    align-items:flex-start
+  .module-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
-  .top-actions{
-    flex-wrap:wrap
+  .global-search{
+    width:210px;
   }
 
 }
 
-@media(max-width:720px){
+@media(max-width:760px){
 
   .sidebar{
     position:relative;
     width:100%;
     height:auto;
-    padding:18px
+    min-height:auto;
+    border-right:0;
+    border-bottom:1px solid var(--line);
+    padding:18px;
   }
 
   .app{
-    display:block
+    display:block;
   }
 
   .main{
     margin-left:0;
     width:100%;
-    padding:24px 16px 50px
+    padding:24px 16px 50px;
   }
 
   .brand{
     text-align:left;
-    font-size:21px
   }
 
-  .brand-mark{
-    display:none
+  .brand-crown{
+    display:none;
   }
 
-  .brand small{
+  .brand-name{
+    font-size:21px;
+  }
+
+  .brand-sub{
     display:inline;
-    margin-left:8px
+    margin-left:8px;
   }
 
   .nav{
     display:flex;
     overflow:auto;
-    margin-top:18px
+    margin-top:18px;
+    padding-bottom:2px;
   }
 
-  .nav button{
-    white-space:nowrap
+  .nav-btn{
+    width:auto;
+    min-width:max-content;
   }
 
-  .side-quote,
-  .side-foot{
-    display:none
+  .sidebar-bottom{
+    display:none;
   }
 
-  .top{
-    flex-direction:column
+  .topbar{
+    flex-direction:column;
   }
 
   .top-actions{
-    width:100%
+    width:100%;
   }
 
-  .search{
-    width:100%
+  .global-search{
+    width:100%;
+    min-width:0;
   }
 
   .stats{
-    grid-template-columns:1fr
+    grid-template-columns:1fr;
   }
 
-  .restaurants,
   .restaurant-grid,
+  .module-grid,
   .menu-grid{
-    grid-template-columns:1fr
+    grid-template-columns:1fr;
+  }
+
+  .dashboard-lower{
+    grid-template-columns:1fr;
+  }
+
+  .section-head,
+  .menu-header{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .menu-actions,
+  .restaurant-panel-actions{
+    width:100%;
+    flex-direction:column;
+  }
+
+  .menu-actions>*,
+  .restaurant-panel-actions>*{
+    width:100%;
   }
 
   .restaurant-header{
     align-items:flex-start;
-    flex-direction:column
   }
 
-  .restaurant-actions,
-  .menu-actions{
-    flex-direction:column
-  }
-
-  .menu-top{
-    align-items:flex-start;
-    flex-direction:column
-  }
-
-  .import-actions{
-    flex-direction:column
+  .top-actions{
+    flex-wrap:wrap;
   }
 
 }
+
 </style>
 </head>
 
@@ -1019,448 +1302,467 @@ button{cursor:pointer}
 
 <div class="app">
 
+<!-- =======================================================
+     SIDEBAR
+======================================================== -->
+
 <aside class="sidebar">
 
-  <div class="brand-mark">♜</div>
-
   <div class="brand">
-    SERVISIUM
-    <small>Art of Service</small>
+
+    <div class="brand-crown">♜</div>
+
+    <div class="brand-name">
+      SERVISIUM
+    </div>
+
+    <div class="brand-sub">
+      Art of Service
+    </div>
+
   </div>
 
   <nav class="nav">
 
     <button
-      class="active"
-      onclick="showMaster();setActive(this)"
+      class="nav-btn active"
+      data-view="master"
+      onclick="navigate('master',this)"
     >
-      ⌂ <span>Головна</span>
+      <span class="nav-icon">⌂</span>
+      <span class="nav-label">Головна</span>
     </button>
 
     <button
-      onclick="showMaster();scrollToRestaurants();setActive(this)"
+      class="nav-btn"
+      data-view="restaurants"
+      onclick="navigate('master',this);scrollToRestaurants()"
     >
-      ▥ <span>Мої заклади</span>
+      <span class="nav-icon">▥</span>
+      <span class="nav-label">Мої заклади</span>
     </button>
 
-    <button onclick="notify('Журнал змін')">
-      ↻ <span>Зміни</span>
+    <button
+      class="nav-btn"
+      onclick="openGlobalModule('changes',this)"
+    >
+      <span class="nav-icon">↻</span>
+      <span class="nav-label">Зміни</span>
     </button>
 
-    <button onclick="notify('Сповіщення')">
-      ♧ <span>Сповіщення</span>
+    <button
+      class="nav-btn"
+      onclick="openGlobalModule('notifications',this)"
+    >
+      <span class="nav-icon">♧</span>
+      <span class="nav-label">Сповіщення</span>
     </button>
 
-    <button onclick="notify('Аналітика')">
-      ▥ <span>Аналітика</span>
+    <button
+      class="nav-btn"
+      onclick="openGlobalModule('analytics',this)"
+    >
+      <span class="nav-icon">▥</span>
+      <span class="nav-label">Аналітика</span>
     </button>
 
-    <button onclick="notify('Профіль адміністратора')">
-      ♙ <span>Профіль</span>
+    <button
+      class="nav-btn"
+      onclick="openGlobalModule('profile',this)"
+    >
+      <span class="nav-icon">♙</span>
+      <span class="nav-label">Профіль</span>
     </button>
 
-    <button onclick="notify('Налаштування')">
-      ⚙ <span>Налаштування</span>
+    <button
+      class="nav-btn"
+      onclick="openGlobalModule('settings',this)"
+    >
+      <span class="nav-icon">⚙</span>
+      <span class="nav-label">Налаштування</span>
     </button>
 
   </nav>
 
-  <div class="side-quote">
-    “Люди створюють враження.<br>
-    Ми даємо їм силу.”
-  </div>
+  <div class="sidebar-bottom">
 
-  <div class="side-foot">
-    v 0.7.0 · © 2026 SERVISIUM
+    <div class="side-quote">
+      “Люди створюють враження.<br>
+      Ми даємо їм силу.”
+    </div>
+
+    <div class="side-version">
+      v 1.0.0 · © 2026 SERVISIUM
+    </div>
+
   </div>
 
 </aside>
 
+
+<!-- =======================================================
+     MAIN
+======================================================== -->
+
 <main class="main">
 
-<section id="masterView">
-
-<header class="top">
-
-  <div class="greeting">
-
-    <div class="kicker">
-      MASTER PANEL
-    </div>
-
-    <h1>
-      Ласкаво просимо, Ян!
-    </h1>
-
-    <p>
-      Керуйте своїми закладами. Розвивайте сервіс.
-    </p>
-
-  </div>
-
-  <div class="top-actions">
-
-    <input
-      class="search"
-      id="search"
-      placeholder="⌕  Пошук закладу..."
-      oninput="searchRestaurants()"
-    >
-
-    <button
-      class="iconbtn"
-      onclick="notify('Тема: Dark Cinematic')"
-    >
-      ☼
-    </button>
-
-    <button
-      class="profile"
-      onclick="notify('Ян Мур · Адміністратор')"
-    >
-      <span class="avatar">Я</span>
-      Ян Мур⌄
-    </button>
-
-  </div>
-
-</header>
-
-<section class="stats">
-
-  <div class="stat">
-
-    <div class="kicker">
-      ЗАКЛАДИ
-    </div>
-
-    <div
-      class="num"
-      id="statRestaurants"
-    >
-      0
-    </div>
-
-    <div class="change">
-      Дані з Supabase
-    </div>
-
-  </div>
-
-  <div class="stat">
-
-    <div class="kicker">
-      ПРАЦІВНИКИ
-    </div>
-
-    <div class="num">
-      20
-    </div>
-
-    <div class="change">
-      +3 за місяць
-    </div>
-
-  </div>
-
-  <div class="stat">
-
-    <div class="kicker">
-      МЕНЮ
-    </div>
-
-    <div
-      class="num"
-      id="statMenu"
-    >
-      0
-    </div>
-
-    <div class="change">
-      Дані з меню
-    </div>
-
-  </div>
-
-  <div class="stat">
-
-    <div class="kicker">
-      ЗАДОВОЛЕНІСТЬ
-    </div>
-
-    <div class="num">
-      +40%
-    </div>
-
-    <div class="change">
-      +12% за місяць
-    </div>
-
-  </div>
-
-</section>
-
-<div
-  class="section-head"
-  id="restaurantsSection"
->
-
-  <div>
-
-    <h2>
-
-      Мої заклади
-
-      <span
-        id="restaurantLabel"
-        style="
-          font:12px -apple-system;
-          color:#777;
-          margin-left:6px
-        "
-      >
-        0 закладів
-      </span>
-
-    </h2>
-
-  </div>
-
-  <button
-    class="primary"
-    onclick="openModal()"
-  >
-    ＋ Додати заклад
-  </button>
-
-</div>
+<!-- =======================================================
+     MASTER PANEL
+======================================================== -->
 
 <section
-  class="restaurants"
-  id="restaurants"
+  id="masterView"
+  class="view"
 >
 
-  <button
-    class="add-card"
-    onclick="openModal()"
-  >
+  <header class="topbar">
 
     <div>
 
-      <div class="plus">
-        ＋
+      <div class="eyebrow">
+        MASTER PANEL
       </div>
 
-      <strong>
-        Додати новий заклад
-      </strong>
+      <h1 class="page-title">
+        Ласкаво просимо, Ян!
+      </h1>
 
-      <p style="color:#777">
-        Створіть ресторан та налаштуйте<br>
-        його під свій сервіс.
+      <p class="page-subtitle">
+        Керуйте своїми закладами. Розвивайте сервіс.
       </p>
 
     </div>
 
-  </button>
+    <div class="top-actions">
 
-</section>
+      <input
+        id="globalSearch"
+        class="global-search"
+        placeholder="⌕  Пошук закладу..."
+        oninput="searchRestaurants()"
+      >
 
-<section class="lower">
+      <button
+        class="icon-btn"
+        onclick="toggleThemeMessage()"
+        title="Тема"
+      >
+        ☼
+      </button>
 
-<div class="box">
+      <button
+        class="profile-btn"
+        onclick="openGlobalModule('profile')"
+      >
 
-  <h3>
-    Останні зміни
-  </h3>
+        <span class="profile-avatar">
+          Я
+        </span>
 
-  <div class="event">
+        <span>
+          Ян Мур⌄
+        </span>
 
-    <span class="badge">
-      ＋
-    </span>
-
-    <div>
-
-      <b>
-        Додано позицію
-      </b>
-
-      <small>
-        Піно Нуар Cantina
-      </small>
-
-    </div>
-
-  </div>
-
-  <div class="event">
-
-    <span class="badge">
-      ✎
-    </span>
-
-    <div>
-
-      <b>
-        Змінено позицію
-      </b>
-
-      <small>
-        T-bone — зміна гарніру
-      </small>
+      </button>
 
     </div>
 
-  </div>
+  </header>
 
-  <div class="event">
 
-    <span class="badge">
-      −
-    </span>
+  <section class="stats">
 
-    <div>
+    <div class="stat-card">
 
-      <b>
-        Stop-list
-      </b>
+      <div class="eyebrow">
+        ЗАКЛАДИ
+      </div>
 
-      <small>
-        Локшина з рагу дичини
-      </small>
+      <div
+        class="stat-number"
+        id="statRestaurants"
+      >
+        0
+      </div>
 
-    </div>
-
-  </div>
-
-</div>
-
-<div class="box">
-
-  <h3>
-    Сповіщення
-  </h3>
-
-  <div class="event">
-
-    <span class="badge">
-      ●
-    </span>
-
-    <div>
-
-      <b>
-        T-bone в стоп-листі
-      </b>
-
-      <small>
-        LUGOSH
-      </small>
+      <div class="stat-note">
+        Дані з Supabase
+      </div>
 
     </div>
 
-  </div>
+    <div class="stat-card">
 
-  <div class="event">
+      <div class="eyebrow">
+        ПРАЦІВНИКИ
+      </div>
 
-    <span class="badge">
-      ●
-    </span>
+      <div class="stat-number">
+        20
+      </div>
 
-    <div>
-
-      <b>
-        Новий працівник
-      </b>
-
-      <small>
-        Катя приєдналась до LUGOSH
-      </small>
+      <div class="stat-note">
+        +3 за місяць
+      </div>
 
     </div>
 
-  </div>
+    <div class="stat-card">
 
-</div>
+      <div class="eyebrow">
+        МЕНЮ
+      </div>
 
-<div class="box">
+      <div
+        class="stat-number"
+        id="statMenu"
+      >
+        0
+      </div>
 
-  <h3>
-    Швидкий доступ
-  </h3>
+      <div class="stat-note">
+        Позиції бази
+      </div>
 
-  <div class="quick">
-
-    <button onclick="notify('Меню')">
-      ▤<br>Меню
-    </button>
-
-    <button onclick="notify('Персонал')">
-      ♙<br>Персонал
-    </button>
-
-    <button onclick="notify('Stop-list')">
-      ⊘<br>Stop-list
-    </button>
-
-    <button onclick="notify('Навчання')">
-      ◇<br>Навчання
-    </button>
-
-    <button onclick="notify('AI-помічник')">
-      ✦<br>AI-помічник
-    </button>
-
-    <button onclick="notify('Замовлення')">
-      ▣<br>Замовлення
-    </button>
-
-  </div>
-
-</div>
-
-</section>
-
-<section
-  class="box"
-  style="
-    margin-top:18px;
-    min-height:125px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:20px;
-    background:linear-gradient(90deg,#171014,#0f0f11)
-  "
->
-
-  <div>
-
-    <div class="kicker">
-      SERVISIUM
     </div>
+
+    <div class="stat-card">
+
+      <div class="eyebrow">
+        ЗАДОВОЛЕНІСТЬ
+      </div>
+
+      <div class="stat-number">
+        +40%
+      </div>
+
+      <div class="stat-note">
+        +12% за місяць
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section
+    class="section"
+    id="restaurantsSection"
+  >
+
+    <div class="section-head">
+
+      <h2 class="section-title">
+
+        Мої заклади
+
+        <span
+          id="restaurantLabel"
+          class="section-count"
+        >
+          0 закладів
+        </span>
+
+      </h2>
+
+      <button
+        class="primary"
+        onclick="openRestaurantModal()"
+      >
+        ＋ Додати заклад
+      </button>
+
+    </div>
+
 
     <div
-      style="
-        font:27px Georgia,serif;
-        margin-top:8px
-      "
+      class="restaurant-grid"
+      id="restaurantsGrid"
     >
-      Кращий сервіс починається тут
+
+      <div class="loading">
+        Завантаження...
+      </div>
+
     </div>
 
-  </div>
+  </section>
 
-  <div class="quote">
-    Art of Service
-  </div>
+
+  <section class="dashboard-lower">
+
+    <div class="panel">
+
+      <h3 class="panel-title">
+        Останні зміни
+      </h3>
+
+      <div class="activity">
+
+        <span class="activity-icon">
+          ＋
+        </span>
+
+        <div class="activity-text">
+
+          <b>
+            Додано позицію
+          </b>
+
+          <small>
+            Піно Нуар Cantina
+          </small>
+
+        </div>
+
+      </div>
+
+      <div class="activity">
+
+        <span class="activity-icon">
+          ✎
+        </span>
+
+        <div class="activity-text">
+
+          <b>
+            Змінено позицію
+          </b>
+
+          <small>
+            T-bone — зміна гарніру
+          </small>
+
+        </div>
+
+      </div>
+
+      <div class="activity">
+
+        <span class="activity-icon">
+          −
+        </span>
+
+        <div class="activity-text">
+
+          <b>
+            Stop-list
+          </b>
+
+          <small>
+            Локшина з рагу дичини
+          </small>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="panel">
+
+      <h3 class="panel-title">
+        Швидкий доступ
+      </h3>
+
+      <div class="quick-grid">
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('menu')"
+        >
+          <span class="quick-icon">▤</span>
+          Меню
+        </button>
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('personnel')"
+        >
+          <span class="quick-icon">♙</span>
+          Персонал
+        </button>
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('stoplist')"
+        >
+          <span class="quick-icon">⊘</span>
+          Stop-list
+        </button>
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('training')"
+        >
+          <span class="quick-icon">◇</span>
+          Навчання
+        </button>
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('ai')"
+        >
+          <span class="quick-icon">✦</span>
+          AI
+        </button>
+
+        <button
+          class="quick-btn"
+          onclick="openGlobalModule('orders')"
+        >
+          <span class="quick-icon">▣</span>
+          Замовлення
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="panel system-panel">
+
+      <div class="eyebrow">
+        SERVISIUM SYSTEM
+      </div>
+
+      <h3 class="panel-title">
+        Ізольована система
+      </h3>
+
+      <div class="system-note">
+        Дані кожного закладу працюють окремо.
+        Меню, персонал, Stop-list, Knowledge Base
+        та AI не змішуються між закладами.
+      </div>
+
+      <div
+        class="system-number"
+        id="systemRestaurantCount"
+      >
+        0
+      </div>
+
+      <div class="system-note">
+        активних закладів
+      </div>
+
+    </div>
+
+  </section>
 
 </section>
 
-</section>
 
-<section id="restaurantView">
+<!-- =======================================================
+     RESTAURANT PANEL
+======================================================== -->
+
+<section
+  id="restaurantView"
+  class="view hidden"
+>
 
   <div class="restaurant-header">
 
@@ -1468,12 +1770,12 @@ button{cursor:pointer}
       class="back-btn"
       onclick="showMaster()"
     >
-      ← Назад
+      ←
     </button>
 
-    <div class="restaurant-title">
+    <div class="restaurant-header-info">
 
-      <div class="kicker">
+      <div class="eyebrow">
         RESTAURANT PANEL
       </div>
 
@@ -1489,195 +1791,207 @@ button{cursor:pointer}
 
   </div>
 
-  <div class="restaurant-actions">
+
+  <div class="restaurant-panel-actions">
 
     <button
       class="primary"
-      style="width:auto;margin:0"
+      onclick="openMenu()"
+    >
+      🍽 Відкрити меню
+    </button>
+
+    <button
+      class="secondary"
       onclick="openImportModal()"
     >
       ＋ Імпортувати меню
     </button>
 
     <button
-      class="secondary-btn"
-      onclick="notify('Налаштування закладу')"
+      class="secondary"
+      onclick="openRestaurantModule('settings')"
     >
       ⚙ Налаштування
     </button>
 
   </div>
 
-  <div class="restaurant-grid">
+
+  <div
+    class="module-grid"
+    id="restaurantModules"
+  >
 
     <div
-      class="module"
+      class="module-card"
       onclick="openMenu()"
     >
 
-      <div class="module-icon">
-        🍽
-      </div>
+      <div class="module-icon">🍽</div>
 
-      <h3>
-        Меню
-      </h3>
+      <h3>Меню</h3>
 
       <p>
-        Кухня, бар, категорії, позиції, ціни та склад.
+        Кухня, бар, категорії, позиції,
+        ціни, описи та вага.
       </p>
+
+      <span class="module-arrow">
+        →
+      </span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Stop-list буде відкритий наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('stoplist')"
     >
 
-      <div class="module-icon">
-        ⊘
-      </div>
+      <div class="module-icon">⊘</div>
 
-      <h3>
-        Stop-list
-      </h3>
+      <h3>Stop-list</h3>
 
       <p>
-        Контроль недоступних позицій та внутрішні причини.
+        Контроль недоступних позицій
+        та внутрішні причини.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Персонал буде відкритий наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('personnel')"
     >
 
-      <div class="module-icon">
-        ♙
-      </div>
+      <div class="module-icon">♙</div>
 
-      <h3>
-        Персонал
-      </h3>
+      <h3>Персонал</h3>
 
       <p>
-        Працівники, ролі, доступи та старший офіціант.
+        Працівники, ролі, доступи
+        та старший офіціант.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Навчання буде відкрито наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('training')"
     >
 
-      <div class="module-icon">
-        ◇
-      </div>
+      <div class="module-icon">◇</div>
 
-      <h3>
-        Навчання
-      </h3>
+      <h3>Навчання</h3>
 
       <p>
-        Тести, прогрес працівників та знання меню.
+        Тести, прогрес працівників
+        та знання меню.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('AI буде відкритий наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('ai')"
     >
 
-      <div class="module-icon">
-        ✦
-      </div>
+      <div class="module-icon">✦</div>
 
-      <h3>
-        AI Assistant
-      </h3>
+      <h3>AI Assistant</h3>
 
       <p>
-        AI на основі підтвердженої бази знань цього закладу.
+        AI на основі підтвердженої
+        бази знань цього закладу.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Замовлення будуть відкриті наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('orders')"
     >
 
-      <div class="module-icon">
-        ▣
-      </div>
+      <div class="module-icon">▣</div>
 
-      <h3>
-        Замовлення
-      </h3>
+      <h3>Замовлення</h3>
 
       <p>
-        Столи, замовлення та контроль роботи офіціантів.
+        Столи, замовлення та контроль
+        роботи офіціантів.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('База знань буде відкрита наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('knowledge')"
     >
 
-      <div class="module-icon">
-        🧠
-      </div>
+      <div class="module-icon">🧠</div>
 
-      <h3>
-        База знань
-      </h3>
+      <h3>Knowledge Base</h3>
 
       <p>
-        Рецептури, алергени, технології та правила закладу.
+        Рецептури, алергени,
+        технології та правила.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Версії меню будуть відкриті наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('versions')"
     >
 
-      <div class="module-icon">
-        ↻
-      </div>
+      <div class="module-icon">↻</div>
 
-      <h3>
-        Версії
-      </h3>
+      <h3>Версії меню</h3>
 
       <p>
-        Історія змін меню та порівняння версій.
+        Історія змін та
+        порівняння версій.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
+
     <div
-      class="module"
-      onclick="notify('Налаштування будуть відкриті наступним етапом')"
+      class="module-card"
+      onclick="openRestaurantModule('settings')"
     >
 
-      <div class="module-icon">
-        ⚙
-      </div>
+      <div class="module-icon">⚙</div>
 
-      <h3>
-        Налаштування
-      </h3>
+      <h3>Налаштування</h3>
 
       <p>
-        Основна інформація, доступи та параметри закладу.
+        Основна інформація,
+        доступи та параметри.
       </p>
+
+      <span class="module-arrow">→</span>
 
     </div>
 
@@ -1685,23 +1999,31 @@ button{cursor:pointer}
 
 </section>
 
-<section id="menuView">
 
-  <div class="menu-top">
+<!-- =======================================================
+     MENU VIEW
+======================================================== -->
 
-    <div class="menu-title">
+<section
+  id="menuView"
+  class="view hidden"
+>
+
+  <div class="menu-header">
+
+    <div class="menu-header-left">
 
       <button
         class="back-btn"
         onclick="showRestaurant()"
       >
-        ← Назад
+        ←
       </button>
 
       <div>
 
-        <div class="kicker">
-          MENU
+        <div class="eyebrow">
+          MENU ENGINE
         </div>
 
         <h1>
@@ -1716,10 +2038,11 @@ button{cursor:pointer}
 
     </div>
 
+
     <div class="menu-actions">
 
       <button
-        class="secondary-btn"
+        class="secondary"
         onclick="openImportModal()"
       >
         ＋ Імпортувати меню
@@ -1727,7 +2050,7 @@ button{cursor:pointer}
 
       <button
         class="primary"
-        onclick="notify('Ручне додавання буде наступним кроком')"
+        onclick="openManualMenuModal()"
       >
         ＋ Додати позицію
       </button>
@@ -1736,12 +2059,18 @@ button{cursor:pointer}
 
   </div>
 
-  <input
-    class="menu-search"
-    id="menuSearch"
-    placeholder="⌕  Пошук страви, напою або категорії..."
-    oninput="filterMenu()"
-  >
+
+  <div class="menu-search-wrap">
+
+    <input
+      id="menuSearch"
+      class="menu-search"
+      placeholder="⌕  Пошук страви, напою або категорії..."
+      oninput="filterMenu()"
+    >
+
+  </div>
+
 
   <div
     class="menu-tabs"
@@ -1750,15 +2079,13 @@ button{cursor:pointer}
 
     <button
       class="menu-tab active"
-      data-category="all"
       onclick="setMenuCategory('all',this)"
     >
-      Все меню
+      Усі
     </button>
 
     <button
       class="menu-tab"
-      data-category="Кухня"
       onclick="setMenuCategory('Кухня',this)"
     >
       🍽 Кухня
@@ -1766,7 +2093,6 @@ button{cursor:pointer}
 
     <button
       class="menu-tab"
-      data-category="Бар"
       onclick="setMenuCategory('Бар',this)"
     >
       🍷 Бар
@@ -1774,12 +2100,13 @@ button{cursor:pointer}
 
   </div>
 
+
   <div
     class="menu-grid"
     id="menuGrid"
   >
 
-    <div class="menu-loading">
+    <div class="loading">
       Завантаження меню...
     </div>
 
@@ -1787,29 +2114,84 @@ button{cursor:pointer}
 
 </section>
 
-</main>
 
+<!-- =======================================================
+     GENERIC MODULE VIEW
+======================================================== -->
+
+<section
+  id="genericView"
+  class="view hidden"
+>
+
+  <div class="module-view-header">
+
+    <button
+      class="back-btn"
+      onclick="returnFromGeneric()"
+    >
+      ←
+    </button>
+
+    <div>
+
+      <div
+        class="eyebrow"
+        id="genericEyebrow"
+      >
+        SERVISIUM
+      </div>
+
+      <h1 id="genericTitle">
+        Розділ
+      </h1>
+
+      <p id="genericSubtitle">
+        —
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div
+    class="module-content-grid"
+    id="genericContent"
+  >
+  </div>
+
+</section>
+
+</main>
 </div>
 
-<div
-  class="toast"
-  id="toast"
-></div>
+
+<!-- =======================================================
+     ADD RESTAURANT MODAL
+======================================================== -->
 
 <div
-  class="modal"
-  id="modal"
+  class="modal-overlay"
+  id="restaurantModal"
 >
 
   <div class="modal-card">
 
-    <div class="kicker">
+    <div class="eyebrow">
       NEW RESTAURANT
     </div>
 
     <h2>
       Додати заклад
     </h2>
+
+    <p class="modal-description">
+      Створіть окремий простір SERVISIUM.
+      Дані нового закладу будуть ізольовані
+      від інших ресторанів.
+    </p>
+
 
     <div class="field">
 
@@ -1818,11 +2200,12 @@ button{cursor:pointer}
       </label>
 
       <input
-        id="name"
-        placeholder="Назва ресторану"
+        id="restaurantNameInput"
+        placeholder="Наприклад LUGOSH"
       >
 
     </div>
+
 
     <div class="field">
 
@@ -1831,36 +2214,73 @@ button{cursor:pointer}
       </label>
 
       <input
-        id="city"
-        placeholder="Місто"
+        id="restaurantCityInput"
+        placeholder="Наприклад Хуст"
       >
 
     </div>
+
 
     <div class="field">
 
       <label>
-        ТИП
+        ТИП ЗАКЛАДУ
+      </label>
+
+      <select
+        id="restaurantTypeInput"
+      >
+
+        <option value="Ресторан">
+          Ресторан
+        </option>
+
+        <option value="Resto-Bar">
+          Resto-Bar
+        </option>
+
+        <option value="Бар">
+          Бар
+        </option>
+
+        <option value="Кафе">
+          Кафе
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        АДРЕСА
       </label>
 
       <input
-        id="type"
-        placeholder="Ресторан / Resto-Bar / Кафе"
+        id="restaurantAddressInput"
+        placeholder="Необов'язково"
       >
 
     </div>
 
-    <div class="actions">
 
-      <button onclick="closeModal()">
+    <div class="modal-actions">
+
+      <button
+        class="secondary"
+        onclick="closeRestaurantModal()"
+      >
         Скасувати
       </button>
 
       <button
         class="primary"
-        onclick="addRestaurant()"
+        id="createRestaurantButton"
+        onclick="createRestaurant()"
       >
-        Створити
+        Створити заклад
       </button>
 
     </div>
@@ -1869,78 +2289,83 @@ button{cursor:pointer}
 
 </div>
 
+
+<!-- =======================================================
+     IMPORT MENU MODAL
+======================================================== -->
+
 <div
-  class="import-modal"
+  class="modal-overlay"
   id="importModal"
 >
 
-  <div class="import-card">
+  <div class="modal-card">
 
-    <div class="kicker">
-      MENU IMPORT
+    <div class="eyebrow">
+      MENU IMPORT ENGINE
     </div>
 
     <h2>
       Імпорт меню
     </h2>
 
-    <p>
-      Встав посилання на меню ресторану.
-      SERVISIUM спробує отримати сторінку,
-      розпізнати назви, категорії, опис, ціну
-      та вагу і зберегти позиції в базу.
+    <p class="modal-description">
+      Встав посилання на онлайн-меню.
+      SERVISIUM спробує отримати HTML сторінки,
+      знайти позиції, ціни, описи, вагу та категорії
+      і прив'язати їх до поточного закладу.
     </p>
 
-    <label
-      style="
-        display:block;
-        color:#aaa;
-        font-size:10px;
-        letter-spacing:1px;
-        margin-top:20px
-      "
-    >
-      ПОСИЛАННЯ НА МЕНЮ
-    </label>
 
-    <input
-      class="import-input"
-      id="menuUrl"
-      type="url"
-      placeholder="https://..."
-    >
+    <div class="field">
 
-    <div class="import-example">
-      Наприклад: посилання на онлайн-меню ресторану
+      <label>
+        ПОСИЛАННЯ НА МЕНЮ
+      </label>
+
+      <input
+        id="menuUrl"
+        type="url"
+        placeholder="https://..."
+      >
+
     </div>
 
+
     <div
-      class="import-progress"
+      class="progress"
       id="importProgress"
     >
 
       <div
-        class="progress-title"
-        id="progressTitle"
+        class="progress-text"
+        id="progressText"
       >
         Підготовка...
       </div>
 
-      <div class="progress-bar">
-        <span id="progressBar"></span>
+      <div class="progress-track">
+
+        <div
+          class="progress-bar"
+          id="progressBar"
+        ></div>
+
       </div>
 
     </div>
+
 
     <div
       class="import-result"
       id="importResult"
     ></div>
 
-    <div class="import-actions">
+
+    <div class="modal-actions">
 
       <button
-        class="secondary-btn"
+        class="secondary"
         onclick="closeImportModal()"
       >
         Скасувати
@@ -1951,19 +2376,162 @@ button{cursor:pointer}
         id="importButton"
         onclick="importMenuFromUrl()"
       >
-        Імпортувати меню
+        Імпортувати
       </button>
 
-    </div>
-
-    <div class="small-note">
-      Після імпорту позиції прив'язуються до поточного закладу.
-      Дані інших закладів не використовуються.
     </div>
 
   </div>
 
 </div>
+
+
+<!-- =======================================================
+     MANUAL MENU MODAL
+======================================================== -->
+
+<div
+  class="modal-overlay"
+  id="manualMenuModal"
+>
+
+  <div class="modal-card">
+
+    <div class="eyebrow">
+      MENU ITEM
+    </div>
+
+    <h2>
+      Додати позицію
+    </h2>
+
+    <p class="modal-description">
+      Додай позицію вручну до меню поточного закладу.
+    </p>
+
+
+    <div class="field">
+
+      <label>
+        НАЗВА
+      </label>
+
+      <input
+        id="manualName"
+        placeholder="Назва страви або напою"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        ТИП
+      </label>
+
+      <select id="manualType">
+
+        <option value="Кухня">
+          Кухня
+        </option>
+
+        <option value="Бар">
+          Бар
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        КАТЕГОРІЯ
+      </label>
+
+      <input
+        id="manualCategory"
+        placeholder="Наприклад М'ясо"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        ОПИС
+      </label>
+
+      <textarea
+        id="manualDescription"
+        rows="3"
+        placeholder="Опис позиції"
+      ></textarea>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        ЦІНА
+      </label>
+
+      <input
+        id="manualPrice"
+        type="number"
+        step="0.01"
+        placeholder="0"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        ВАГА / ОБ'ЄМ
+      </label>
+
+      <input
+        id="manualWeight"
+        placeholder="300 г / 150 мл"
+      >
+
+    </div>
+
+
+    <div class="modal-actions">
+
+      <button
+        class="secondary"
+        onclick="closeManualMenuModal()"
+      >
+        Скасувати
+      </button>
+
+      <button
+        class="primary"
+        onclick="saveManualMenuItem()"
+      >
+        Зберегти
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<div
+  class="toast"
+  id="toast"
+></div>
+
 
 <script>
 
@@ -1977,15 +2545,21 @@ const SUPABASE_URL =
 const SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_cekGEtlU7SfIT7cdlqGizQ_c3ZAd4DC";
 
+
 /* =========================================================
    STATE
 ========================================================= */
 
 let currentRestaurant = null;
 
+let allRestaurants = [];
+
 let allMenuItems = [];
 
 let currentMenuCategory = "all";
+
+let genericReturnView = "master";
+
 
 /* =========================================================
    SUPABASE REQUEST
@@ -2050,6 +2624,7 @@ async function supabaseRequest(
 
 }
 
+
 /* =========================================================
    TOAST
 ========================================================= */
@@ -2057,16 +2632,12 @@ async function supabaseRequest(
 function notify(message){
 
   const toast =
-    document.getElementById(
-      "toast"
-    );
+    document.getElementById("toast");
 
   toast.textContent =
     message;
 
-  toast.classList.add(
-    "show"
-  );
+  toast.classList.add("show");
 
   clearTimeout(
     window.__servisiumToast
@@ -2075,17 +2646,16 @@ function notify(message){
   window.__servisiumToast =
     setTimeout(
       ()=>{
-        toast.classList.remove(
-          "show"
-        );
+        toast.classList.remove("show");
       },
-      3000
+      3200
     );
 
 }
 
+
 /* =========================================================
-   ESCAPE HTML
+   HTML ESCAPE
 ========================================================= */
 
 function escapeHtml(value){
@@ -2093,458 +2663,181 @@ function escapeHtml(value){
   return String(value ?? "")
     .replace(
       /[&<>"']/g,
-      ch => ({
+      char => ({
         "&":"&amp;",
         "<":"&lt;",
         ">":"&gt;",
         '"':"&quot;",
         "'":"&#39;"
-      }[ch])
+      }[char])
     );
 
 }
 
+
 /* =========================================================
-   MODAL
+   NAVIGATION
 ========================================================= */
 
-function openModal(){
+function hideAllViews(){
 
-  document
-    .getElementById("modal")
-    .classList.add("show");
+  [
+    "masterView",
+    "restaurantView",
+    "menuView",
+    "genericView"
+  ].forEach(
+    id=>{
+      document
+        .getElementById(id)
+        .classList.add("hidden");
+    }
+  );
 
 }
 
-function closeModal(){
 
-  document
-    .getElementById("modal")
-    .classList.remove("show");
+function navigate(
+  view,
+  button
+){
+
+  if(view === "master"){
+
+    showMaster();
+
+  }
+
+  if(button){
+
+    document
+      .querySelectorAll(".nav-btn")
+      .forEach(
+        item =>
+          item.classList.remove("active")
+      );
+
+    button.classList.add("active");
+
+  }
 
 }
 
-/* =========================================================
-   IMPORT MODAL
-========================================================= */
 
-function openImportModal(){
+function showMaster(){
+
+  hideAllViews();
+
+  document
+    .getElementById("masterView")
+    .classList.remove("hidden");
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+}
+
+
+function showRestaurant(){
 
   if(!currentRestaurant){
 
-    notify(
-      "Спочатку відкрий заклад"
-    );
+    showMaster();
 
     return;
 
   }
 
+  hideAllViews();
+
   document
-    .getElementById(
-      "importModal"
-    )
+    .getElementById("restaurantView")
+    .classList.remove("hidden");
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+}
+
+
+function showMenuView(){
+
+  hideAllViews();
+
+  document
+    .getElementById("menuView")
+    .classList.remove("hidden");
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+}
+
+
+/* =========================================================
+   RESTAURANT MODAL
+========================================================= */
+
+function openRestaurantModal(){
+
+  document
+    .getElementById("restaurantModal")
     .classList.add("show");
 
   document
-    .getElementById(
-      "menuUrl"
-    )
+    .getElementById("restaurantNameInput")
     .focus();
 
 }
 
-function closeImportModal(){
+
+function closeRestaurantModal(){
 
   document
-    .getElementById(
-      "importModal"
-    )
+    .getElementById("restaurantModal")
     .classList.remove("show");
 
 }
 
-/* =========================================================
-   GET RESTAURANTS
-========================================================= */
-
-async function getRestaurants(){
-
-  return await supabaseRequest(
-    "restaurants?select=id,created_at,name,city,address,phone,logo_url,status,type&order=created_at.desc"
-  );
-
-}
 
 /* =========================================================
-   LOAD RESTAURANTS
+   CREATE RESTAURANT
 ========================================================= */
 
-async function loadRestaurants(){
-
-  const grid =
-    document.getElementById(
-      "restaurants"
-    );
-
-  grid.innerHTML = `
-
-    <div class="menu-loading">
-
-      ⟳
-
-      <br><br>
-
-      Завантаження закладів...
-
-    </div>
-
-  `;
-
-  try{
-
-    const restaurants =
-      await getRestaurants();
-
-    renderRestaurants(
-      restaurants
-    );
-
-  }catch(error){
-
-    console.error(
-      error
-    );
-
-    grid.innerHTML = `
-
-      <div class="menu-empty">
-
-        <strong>
-          Не вдалося завантажити заклади
-        </strong>
-
-        <small>
-          ${escapeHtml(error.message)}
-        </small>
-
-        <br><br>
-
-        <button
-          class="primary"
-          onclick="loadRestaurants()"
-        >
-          Повторити
-        </button>
-
-      </div>
-
-    `;
-
-    updateRestaurantCount(0);
-
-  }
-
-}
-
-/* =========================================================
-   RENDER RESTAURANTS
-========================================================= */
-
-function renderRestaurants(
-  restaurants
-){
-
-  const grid =
-    document.getElementById(
-      "restaurants"
-    );
-
-  grid.innerHTML = "";
-
-  if(
-    !Array.isArray(restaurants) ||
-    restaurants.length === 0
-  ){
-
-    grid.appendChild(
-      createAddCard()
-    );
-
-    updateRestaurantCount(0);
-
-    return;
-
-  }
-
-  restaurants.forEach(
-    restaurant => {
-
-      grid.appendChild(
-        createRestaurantCard(
-          restaurant
-        )
-      );
-
-    }
-  );
-
-  grid.appendChild(
-    createAddCard()
-  );
-
-  updateRestaurantCount(
-    restaurants.length
-  );
-
-  searchRestaurants();
-
-}
-
-/* =========================================================
-   RESTAURANT CARD
-========================================================= */
-
-function createRestaurantCard(
-  restaurant
-){
-
-  const article =
-    document.createElement(
-      "article"
-    );
-
-  article.className =
-    "rest-card";
-
-  if(
-    String(
-      restaurant.name || ""
-    )
-      .toLowerCase()
-      .includes("archive")
-  ){
-
-    article.classList.add(
-      "archive"
-    );
-
-  }
-
-  article.dataset.name =
-    (
-      `${restaurant.name || ""} ` +
-      `${restaurant.city || ""} ` +
-      `${restaurant.type || ""}`
-    )
-      .toLowerCase();
-
-  article.innerHTML = `
-
-    <div class="rest-content">
-
-      <div>
-
-        <span class="active">
-
-          <i></i>
-
-          ${
-            restaurant.status === "active"
-              ? "Активний"
-              : "Неактивний"
-          }
-
-        </span>
-
-      </div>
-
-      <div>
-
-        <div class="rest-name">
-          ${escapeHtml(restaurant.name || "Без назви")}
-        </div>
-
-        <div class="rest-meta">
-          ${escapeHtml(restaurant.city || "Не вказано")}
-          &nbsp;|&nbsp;
-          ${escapeHtml(restaurant.type || "Ресторан")}
-        </div>
-
-        <div class="rest-numbers">
-
-          <div>
-            <b>—</b>
-            <span>Позицій</span>
-          </div>
-
-          <div>
-            <b>—</b>
-            <span>Працівників</span>
-          </div>
-
-          <div>
-            <b>—</b>
-            <span>Столів</span>
-          </div>
-
-        </div>
-
-        <button
-          class="primary open-btn"
-          type="button"
-        >
-          Відкрити заклад →
-        </button>
-
-      </div>
-
-    </div>
-
-  `;
-
-  article
-    .querySelector(".open-btn")
-    .addEventListener(
-      "click",
-      ()=>{
-        openRestaurant(
-          restaurant.id
-        );
-      }
-    );
-
-  return article;
-
-}
-
-/* =========================================================
-   ADD CARD
-========================================================= */
-
-function createAddCard(){
-
-  const button =
-    document.createElement(
-      "button"
-    );
-
-  button.className =
-    "add-card";
-
-  button.type =
-    "button";
-
-  button.innerHTML = `
-
-    <div>
-
-      <div class="plus">
-        ＋
-      </div>
-
-      <strong>
-        Додати новий заклад
-      </strong>
-
-      <p style="color:#777">
-        Створіть ресторан та налаштуйте<br>
-        його під свій сервіс.
-      </p>
-
-    </div>
-
-  `;
-
-  button.addEventListener(
-    "click",
-    openModal
-  );
-
-  return button;
-
-}
-
-/* =========================================================
-   COUNT
-========================================================= */
-
-function updateRestaurantCount(
-  count
-){
-
-  document
-    .getElementById(
-      "statRestaurants"
-    )
-    .textContent =
-      count;
-
-  let text;
-
-  if(count === 0){
-
-    text = "0 закладів";
-
-  }else if(count === 1){
-
-    text = "1 заклад";
-
-  }else if(count <= 4){
-
-    text = `${count} заклади`;
-
-  }else{
-
-    text = `${count} закладів`;
-
-  }
-
-  document
-    .getElementById(
-      "restaurantLabel"
-    )
-    .textContent =
-      text;
-
-}
-
-/* =========================================================
-   ADD RESTAURANT
-========================================================= */
-
-async function addRestaurant(){
-
-  const nameInput =
-    document.getElementById(
-      "name"
-    );
-
-  const cityInput =
-    document.getElementById(
-      "city"
-    );
-
-  const typeInput =
-    document.getElementById(
-      "type"
-    );
+async function createRestaurant(){
 
   const name =
-    nameInput.value.trim();
+    document
+      .getElementById("restaurantNameInput")
+      .value
+      .trim();
 
   const city =
-    cityInput.value.trim();
+    document
+      .getElementById("restaurantCityInput")
+      .value
+      .trim();
 
   const type =
-    typeInput.value.trim() ||
-    "Ресторан";
+    document
+      .getElementById("restaurantTypeInput")
+      .value;
+
+  const address =
+    document
+      .getElementById("restaurantAddressInput")
+      .value
+      .trim();
 
   if(!name){
 
-    notify(
-      "Введи назву закладу"
-    );
+    notify("Введи назву закладу");
 
     return;
 
@@ -2552,21 +2845,18 @@ async function addRestaurant(){
 
   if(!city){
 
-    notify(
-      "Введи місто"
-    );
+    notify("Введи місто");
 
     return;
 
   }
 
   const button =
-    document.querySelector(
-      "#modal .primary"
+    document.getElementById(
+      "createRestaurantButton"
     );
 
-  button.disabled =
-    true;
+  button.disabled = true;
 
   try{
 
@@ -2582,36 +2872,39 @@ async function addRestaurant(){
 
         body:
           JSON.stringify({
-
-            name:name,
-
-            city:city,
-
-            type:type,
-
+            name,
+            city,
+            type,
+            address:
+              address || null,
             status:"active"
-
           })
       }
     );
 
-    nameInput.value = "";
-    cityInput.value = "";
-    typeInput.value = "";
+    document
+      .getElementById("restaurantNameInput")
+      .value = "";
 
-    closeModal();
+    document
+      .getElementById("restaurantCityInput")
+      .value = "";
+
+    document
+      .getElementById("restaurantAddressInput")
+      .value = "";
+
+    closeRestaurantModal();
 
     notify(
-      "Заклад створено та збережено"
+      "Заклад створено"
     );
 
     await loadRestaurants();
 
   }catch(error){
 
-    console.error(
-      error
-    );
+    console.error(error);
 
     notify(
       "Помилка: " +
@@ -2620,147 +2913,555 @@ async function addRestaurant(){
 
   }finally{
 
-    button.disabled =
-      false;
+    button.disabled = false;
 
   }
 
 }
 
+
 /* =========================================================
-   OPEN RESTAURANT
+   LOAD RESTAURANTS
 ========================================================= */
 
-async function openRestaurant(
-  id
+async function loadRestaurants(){
+
+  const grid =
+    document.getElementById(
+      "restaurantsGrid"
+    );
+
+  grid.innerHTML = `
+    <div class="loading">
+      Завантаження закладів...
+    </div>
+  `;
+
+  try{
+
+    const data =
+      await supabaseRequest(
+        "restaurants?select=id,created_at,name,city,address,phone,logo_url,status,type&order=created_at.desc"
+      );
+
+    allRestaurants =
+      Array.isArray(data)
+        ? data
+        : [];
+
+    renderRestaurants();
+
+    updateRestaurantStats();
+
+  }catch(error){
+
+    console.error(error);
+
+    grid.innerHTML = `
+
+      <div class="empty-state">
+
+        <div>
+
+          <strong>
+            Не вдалося завантажити заклади
+          </strong>
+
+          <p>
+            ${escapeHtml(error.message)}
+          </p>
+
+          <button
+            class="primary"
+            onclick="loadRestaurants()"
+          >
+            Повторити
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER RESTAURANTS
+========================================================= */
+
+function renderRestaurants(){
+
+  const grid =
+    document.getElementById(
+      "restaurantsGrid"
+    );
+
+  grid.innerHTML = "";
+
+  if(
+    allRestaurants.length === 0
+  ){
+
+    grid.appendChild(
+      createAddRestaurantCard()
+    );
+
+    return;
+
+  }
+
+  allRestaurants.forEach(
+    restaurant => {
+
+      grid.appendChild(
+        createRestaurantCard(
+          restaurant
+        )
+      );
+
+    }
+  );
+
+  grid.appendChild(
+    createAddRestaurantCard()
+  );
+
+  searchRestaurants();
+
+}
+
+
+/* =========================================================
+   RESTAURANT CARD
+========================================================= */
+
+function createRestaurantCard(
+  restaurant
+){
+
+  const article =
+    document.createElement("article");
+
+  article.className =
+    "restaurant-card";
+
+  if(
+    String(restaurant.name || "")
+      .toLowerCase()
+      .includes("archive")
+  ){
+
+    article.classList.add("archive");
+
+  }
+
+  article.dataset.search =
+    [
+      restaurant.name,
+      restaurant.city,
+      restaurant.type
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+  article.innerHTML = `
+
+    <div class="restaurant-inner">
+
+      <div>
+
+        <span class="status">
+
+          <span class="status-dot"></span>
+
+          ${
+            restaurant.status === "active"
+              ? "Активний"
+              : "Неактивний"
+          }
+
+        </span>
+
+      </div>
+
+      <div>
+
+        <div class="restaurant-name">
+          ${escapeHtml(
+            restaurant.name ||
+            "Без назви"
+          )}
+        </div>
+
+        <div class="restaurant-meta">
+          ${escapeHtml(
+            restaurant.city ||
+            "Місто не вказано"
+          )}
+          &nbsp; | &nbsp;
+          ${escapeHtml(
+            restaurant.type ||
+            "Ресторан"
+          )}
+        </div>
+
+        <div class="restaurant-metrics">
+
+          <div>
+            <span
+              class="metric-value"
+              data-restaurant-menu-count="${restaurant.id}"
+            >
+              —
+            </span>
+            <span class="metric-label">
+              Позицій
+            </span>
+          </div>
+
+          <div>
+            <span class="metric-value">
+              —
+            </span>
+            <span class="metric-label">
+              Працівників
+            </span>
+          </div>
+
+          <div>
+            <span class="metric-value">
+              —
+            </span>
+            <span class="metric-label">
+              Столів
+            </span>
+          </div>
+
+        </div>
+
+        <button
+          class="primary open-restaurant"
+          type="button"
+        >
+          Відкрити заклад →
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+  article
+    .querySelector(".open-restaurant")
+    .addEventListener(
+      "click",
+      ()=>{
+        openRestaurant(
+          restaurant.id
+        );
+      }
+    );
+
+  loadRestaurantMenuCount(
+    restaurant.id
+  );
+
+  return article;
+
+}
+
+
+/* =========================================================
+   ADD CARD
+========================================================= */
+
+function createAddRestaurantCard(){
+
+  const button =
+    document.createElement("button");
+
+  button.className =
+    "add-card";
+
+  button.type = "button";
+
+  button.innerHTML = `
+
+    <div>
+
+      <div class="add-symbol">
+        ＋
+      </div>
+
+      <strong>
+        Додати новий заклад
+      </strong>
+
+      <p>
+        Створіть ресторан та<br>
+        налаштуйте його під свій сервіс.
+      </p>
+
+    </div>
+
+  `;
+
+  button.onclick =
+    openRestaurantModal;
+
+  return button;
+
+}
+
+
+/* =========================================================
+   RESTAURANT STATS
+========================================================= */
+
+function updateRestaurantStats(){
+
+  const count =
+    allRestaurants.length;
+
+  document
+    .getElementById("statRestaurants")
+    .textContent =
+      count;
+
+  document
+    .getElementById("systemRestaurantCount")
+    .textContent =
+      count;
+
+  let text;
+
+  if(count === 0){
+
+    text = "0 закладів";
+
+  }else if(count === 1){
+
+    text = "1 заклад";
+
+  }else if(count < 5){
+
+    text = `${count} заклади`;
+
+  }else{
+
+    text = `${count} закладів`;
+
+  }
+
+  document
+    .getElementById("restaurantLabel")
+    .textContent =
+      text;
+
+}
+
+
+/* =========================================================
+   MENU COUNT PER RESTAURANT
+========================================================= */
+
+async function loadRestaurantMenuCount(
+  restaurantId
 ){
 
   try{
 
     const data =
       await supabaseRequest(
-        `restaurants?select=id,name,city,type,status,address,phone,logo_url,created_at&id=eq.${encodeURIComponent(id)}&limit=1`
+        `menu_items?select=id&restaurant_id=eq.${encodeURIComponent(restaurantId)}`
       );
 
-    if(
-      !data ||
-      data.length === 0
-    ){
+    const count =
+      Array.isArray(data)
+        ? data.length
+        : 0;
+
+    const element =
+      document.querySelector(
+        `[data-restaurant-menu-count="${CSS.escape(String(restaurantId))}"]`
+      );
+
+    if(element){
+
+      element.textContent =
+        count;
+
+    }
+
+  }catch{
+
+    /* не блокуємо інтерфейс */
+
+  }
+
+}
+
+
+/* =========================================================
+   GLOBAL MENU COUNT
+========================================================= */
+
+async function loadGlobalMenuCount(){
+
+  try{
+
+    const data =
+      await supabaseRequest(
+        "menu_items?select=id"
+      );
+
+    const count =
+      Array.isArray(data)
+        ? data.length
+        : 0;
+
+    document
+      .getElementById("statMenu")
+      .textContent =
+        count;
+
+  }catch{
+
+    document
+      .getElementById("statMenu")
+      .textContent =
+        0;
+
+  }
+
+}
+
+
+/* =========================================================
+   SEARCH RESTAURANTS
+========================================================= */
+
+function searchRestaurants(){
+
+  const query =
+    (
+      document
+        .getElementById("globalSearch")
+        .value ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  document
+    .querySelectorAll(
+      ".restaurant-card"
+    )
+    .forEach(
+      card => {
+
+        card.style.display =
+          (
+            card.dataset.search ||
+            ""
+          ).includes(query)
+            ? ""
+            : "none";
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   OPEN RESTAURANT
+========================================================= */
+
+async function openRestaurant(
+  restaurantId
+){
+
+  const restaurant =
+    allRestaurants.find(
+      item =>
+        String(item.id) ===
+        String(restaurantId)
+    );
+
+  if(!restaurant){
+
+    try{
+
+      const data =
+        await supabaseRequest(
+          `restaurants?select=*&id=eq.${encodeURIComponent(restaurantId)}&limit=1`
+        );
+
+      if(
+        !data ||
+        !data.length
+      ){
+
+        notify(
+          "Заклад не знайдено"
+        );
+
+        return;
+
+      }
+
+      currentRestaurant =
+        data[0];
+
+    }catch(error){
 
       notify(
-        "Заклад не знайдено"
+        "Помилка: " +
+        error.message
       );
 
       return;
 
     }
 
+  }else{
+
     currentRestaurant =
-      data[0];
-
-    document
-      .getElementById(
-        "selectedRestaurantName"
-      )
-      .textContent =
-        currentRestaurant.name ||
-        "Без назви";
-
-    document
-      .getElementById(
-        "selectedRestaurantMeta"
-      )
-      .textContent =
-        `${currentRestaurant.city || "Не вказано"} | ${currentRestaurant.type || "Ресторан"}`;
-
-    showRestaurant();
-
-    notify(
-      `Відкрито: ${currentRestaurant.name}`
-    );
-
-  }catch(error){
-
-    console.error(
-      error
-    );
-
-    notify(
-      "Помилка відкриття: " +
-      error.message
-    );
+      restaurant;
 
   }
 
-}
-
-/* =========================================================
-   SHOW MASTER
-========================================================= */
-
-function showMaster(){
+  document
+    .getElementById(
+      "selectedRestaurantName"
+    )
+    .textContent =
+      currentRestaurant.name ||
+      "Заклад";
 
   document
     .getElementById(
-      "masterView"
+      "selectedRestaurantMeta"
     )
-    .style.display =
-      "block";
+    .textContent =
+      [
+        currentRestaurant.city,
+        currentRestaurant.type
+      ]
+        .filter(Boolean)
+        .join(" | ");
 
-  document
-    .getElementById(
-      "restaurantView"
-    )
-    .style.display =
-      "none";
-
-  document
-    .getElementById(
-      "menuView"
-    )
-    .style.display =
-      "none";
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
+  showRestaurant();
 
 }
 
-/* =========================================================
-   SHOW RESTAURANT
-========================================================= */
-
-function showRestaurant(){
-
-  document
-    .getElementById(
-      "masterView"
-    )
-    .style.display =
-      "none";
-
-  document
-    .getElementById(
-      "menuView"
-    )
-    .style.display =
-      "none";
-
-  document
-    .getElementById(
-      "restaurantView"
-    )
-    .style.display =
-      "block";
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-
-}
 
 /* =========================================================
    OPEN MENU
@@ -2771,7 +3472,7 @@ async function openMenu(){
   if(!currentRestaurant){
 
     notify(
-      "Спочатку відкрий заклад"
+      "Спочатку вибери заклад"
     );
 
     return;
@@ -2780,40 +3481,17 @@ async function openMenu(){
 
   document
     .getElementById(
-      "masterView"
-    )
-    .style.display =
-      "none";
-
-  document
-    .getElementById(
-      "restaurantView"
-    )
-    .style.display =
-      "none";
-
-  document
-    .getElementById(
-      "menuView"
-    )
-    .style.display =
-      "block";
-
-  document
-    .getElementById(
       "menuRestaurantName"
     )
     .textContent =
       `${currentRestaurant.name} · ${currentRestaurant.city}`;
 
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
+  showMenuView();
 
   await loadMenu();
 
 }
+
 
 /* =========================================================
    LOAD MENU
@@ -2827,19 +3505,9 @@ async function loadMenu(){
     );
 
   grid.innerHTML = `
-
-    <div class="menu-loading">
-
-      <div style="font-size:28px">
-        ⟳
-      </div>
-
-      <br>
-
+    <div class="loading">
       Завантаження меню...
-
     </div>
-
   `;
 
   try{
@@ -2855,46 +3523,31 @@ async function loadMenu(){
         : [];
 
     document
-      .getElementById(
-        "statMenu"
-      )
+      .getElementById("statMenu")
       .textContent =
-        allMenuItems.length;
+      await getGlobalMenuCountNumber();
 
     renderMenu();
 
   }catch(error){
 
-    console.error(
-      "Menu:",
-      error
-    );
-
-    document
-      .getElementById(
-        "statMenu"
-      )
-      .textContent =
-        "0";
+    console.error(error);
 
     grid.innerHTML = `
 
-      <div class="menu-empty">
-
-        <strong>
-          Меню ще не підключене
-        </strong>
+      <div class="empty-state">
 
         <div>
-          Спочатку створи таблицю
-          <b>menu_items</b> у Supabase.
+
+          <strong>
+            Не вдалося завантажити меню
+          </strong>
+
+          <p>
+            ${escapeHtml(error.message)}
+          </p>
+
         </div>
-
-        <br>
-
-        <small>
-          ${escapeHtml(error.message)}
-        </small>
 
       </div>
 
@@ -2903,6 +3556,33 @@ async function loadMenu(){
   }
 
 }
+
+
+/* =========================================================
+   GLOBAL COUNT NUMBER
+========================================================= */
+
+async function getGlobalMenuCountNumber(){
+
+  try{
+
+    const data =
+      await supabaseRequest(
+        "menu_items?select=id"
+      );
+
+    return Array.isArray(data)
+      ? data.length
+      : 0;
+
+  }catch{
+
+    return 0;
+
+  }
+
+}
+
 
 /* =========================================================
    RENDER MENU
@@ -2918,29 +3598,25 @@ function renderMenu(){
   const search =
     (
       document
-        .getElementById(
-          "menuSearch"
-        )
+        .getElementById("menuSearch")
         .value ||
       ""
     )
-      .toLowerCase()
-      .trim();
+      .trim()
+      .toLowerCase();
 
   let items =
     [...allMenuItems];
 
   if(
-    currentMenuCategory !==
-    "all"
+    currentMenuCategory !== "all"
   ){
 
     items =
       items.filter(
         item =>
           String(
-            item.type ||
-            ""
+            item.type || ""
           )
             .toLowerCase() ===
           currentMenuCategory.toLowerCase()
@@ -2959,35 +3635,43 @@ function renderMenu(){
               item.name,
               item.category,
               item.description,
-              item.type
+              item.type,
+              item.weight
             ]
               .filter(Boolean)
               .join(" ")
               .toLowerCase();
 
-          return text.includes(
-            search
-          );
+          return text.includes(search);
 
         }
       );
 
   }
 
-  if(
-    items.length === 0
-  ){
+  if(!items.length){
 
     grid.innerHTML = `
 
-      <div class="menu-empty">
-
-        <strong>
-          Позицій поки немає
-        </strong>
+      <div class="empty-state">
 
         <div>
-          Імпортуй меню або додай позицію вручну.
+
+          <strong>
+            У цьому закладі ще немає меню
+          </strong>
+
+          <p>
+            Імпортуй меню або додай першу позицію вручну.
+          </p>
+
+          <button
+            class="primary"
+            onclick="openImportModal()"
+          >
+            ＋ Імпортувати меню
+          </button>
+
         </div>
 
       </div>
@@ -3004,48 +3688,42 @@ function renderMenu(){
     item => {
 
       const card =
-        document.createElement(
-          "article"
-        );
+        document.createElement("article");
 
       card.className =
         "menu-item";
 
       const stopped =
         String(
-          item.status ||
-          ""
+          item.status || ""
         )
           .toLowerCase()
           .includes("stop");
 
       const price =
-        item.price !== undefined &&
         item.price !== null &&
+        item.price !== undefined &&
         item.price !== ""
           ? `${item.price} ₴`
           : "Ціна не вказана";
 
-      const weight =
-        item.weight
-          ? `<span class="menu-weight">${escapeHtml(item.weight)}</span>`
-          : "";
-
       card.innerHTML = `
 
-        <div class="menu-item-top">
+        <div class="menu-item-head">
 
           <div>
 
             <h3>
-              ${escapeHtml(item.name || "Без назви")}
+              ${escapeHtml(
+                item.name ||
+                "Без назви"
+              )}
             </h3>
 
             <span class="menu-category">
               ${escapeHtml(
                 item.category ||
-                item.type ||
-                "Без категорії"
+                "Інше"
               )}
             </span>
 
@@ -3053,9 +3731,7 @@ function renderMenu(){
 
           <span
             class="menu-status ${
-              stopped
-                ? "stop"
-                : ""
+              stopped ? "stop" : ""
             }"
           >
             ${
@@ -3074,30 +3750,59 @@ function renderMenu(){
           )}
         </div>
 
-        <div>
+        <div class="menu-footer">
 
-          <span class="menu-price">
-            ${escapeHtml(price)}
+          <div>
+
+            <span class="menu-price">
+              ${escapeHtml(price)}
+            </span>
+
+            ${
+              item.weight
+                ? `
+                  <span class="menu-weight">
+                    ${escapeHtml(item.weight)}
+                  </span>
+                `
+                : ""
+            }
+
+          </div>
+
+          <span
+            style="
+              color:#666;
+              font-size:9px
+            "
+          >
+            ${escapeHtml(
+              item.type || "Кухня"
+            )}
           </span>
-
-          ${weight}
 
         </div>
 
       `;
 
-      grid.appendChild(
-        card
-      );
+      grid.appendChild(card);
 
     }
   );
 
 }
 
+
 /* =========================================================
    MENU FILTER
 ========================================================= */
+
+function filterMenu(){
+
+  renderMenu();
+
+}
+
 
 function setMenuCategory(
   category,
@@ -3108,32 +3813,57 @@ function setMenuCategory(
     category;
 
   document
-    .querySelectorAll(
-      ".menu-tab"
-    )
+    .querySelectorAll(".menu-tab")
     .forEach(
       item =>
-        item.classList.remove(
-          "active"
-        )
+        item.classList.remove("active")
     );
 
-  button.classList.add(
-    "active"
-  );
+  button.classList.add("active");
 
   renderMenu();
 
 }
 
-function filterMenu(){
-
-  renderMenu();
-
-}
 
 /* =========================================================
-   MENU IMPORT
+   IMPORT MODAL
+========================================================= */
+
+function openImportModal(){
+
+  if(!currentRestaurant){
+
+    notify(
+      "Спочатку відкрий заклад"
+    );
+
+    return;
+
+  }
+
+  document
+    .getElementById("importModal")
+    .classList.add("show");
+
+  document
+    .getElementById("menuUrl")
+    .focus();
+
+}
+
+
+function closeImportModal(){
+
+  document
+    .getElementById("importModal")
+    .classList.remove("show");
+
+}
+
+
+/* =========================================================
+   IMPORT MENU
 ========================================================= */
 
 async function importMenuFromUrl(){
@@ -3162,36 +3892,31 @@ async function importMenuFromUrl(){
       "Встав посилання на меню"
     );
 
-    input.focus();
-
     return;
 
   }
-
-  let parsedUrl;
 
   try{
 
-    parsedUrl =
+    const parsed =
       new URL(url);
 
-  }catch{
+    if(
+      parsed.protocol !== "http:" &&
+      parsed.protocol !== "https:"
+    ){
+
+      throw new Error(
+        "Дозволені тільки HTTP та HTTPS посилання"
+      );
+
+    }
+
+  }catch(error){
 
     notify(
-      "Посилання має бути неправильним"
-    );
-
-    return;
-
-  }
-
-  if(
-    parsedUrl.protocol !== "http:" &&
-    parsedUrl.protocol !== "https:"
-  ){
-
-    notify(
-      "Дозволені тільки HTTP/HTTPS посилання"
+      error.message ||
+      "Некоректне посилання"
     );
 
     return;
@@ -3208,9 +3933,9 @@ async function importMenuFromUrl(){
       "importProgress"
     );
 
-  const progressTitle =
+  const progressText =
     document.getElementById(
-      "progressTitle"
+      "progressText"
     );
 
   const progressBar =
@@ -3223,21 +3948,17 @@ async function importMenuFromUrl(){
       "importResult"
     );
 
-  button.disabled =
-    true;
+  button.disabled = true;
 
-  progress.classList.add(
-    "show"
-  );
+  progress.classList.add("show");
 
   result.className =
     "import-result";
 
-  result.textContent =
-    "";
+  result.textContent = "";
 
-  progressTitle.textContent =
-    "Підключення до сторінки меню...";
+  progressText.textContent =
+    "Підключення до сторінки...";
 
   progressBar.style.width =
     "10%";
@@ -3268,19 +3989,8 @@ async function importMenuFromUrl(){
     const html =
       await response.text();
 
-    if(
-      !html ||
-      html.length < 100
-    ){
-
-      throw new Error(
-        "Сторінка не повернула дані меню"
-      );
-
-    }
-
-    progressTitle.textContent =
-      "Аналіз структури меню...";
+    progressText.textContent =
+      "Аналіз меню...";
 
     progressBar.style.width =
       "50%";
@@ -3294,17 +4004,15 @@ async function importMenuFromUrl(){
     progressBar.style.width =
       "70%";
 
-    if(
-      items.length === 0
-    ){
+    if(!items.length){
 
       throw new Error(
-        "SERVISIUM не знайшов позицій меню на цій сторінці"
+        "SERVISIUM не знайшов позицій меню на цій сторінці."
       );
 
     }
 
-    progressTitle.textContent =
+    progressText.textContent =
       `Знайдено ${items.length} позицій. Збереження...`;
 
     const saved =
@@ -3315,83 +4023,74 @@ async function importMenuFromUrl(){
     progressBar.style.width =
       "100%";
 
-    progressTitle.textContent =
+    progressText.textContent =
       "Імпорт завершено";
 
-    result.classList.add(
-      "show",
-      "success"
-    );
+    result.className =
+      "import-result show success";
 
     result.innerHTML = `
 
       <b>
-        ✓ Меню успішно імпортовано
+        ✓ Меню оброблено
       </b>
 
       <br>
 
       Знайдено:
       <b>${items.length}</b>
-      позицій
 
       <br>
 
-      Збережено:
+      Нових позицій збережено:
       <b>${saved}</b>
-      позицій
 
     `;
 
     await loadMenu();
 
     notify(
-      `Імпортовано ${saved} позицій`
+      `Збережено ${saved} позицій`
     );
 
     setTimeout(
-      ()=>{
-        closeImportModal();
-      },
-      1500
+      closeImportModal,
+      1300
     );
 
   }catch(error){
 
     console.error(
-      "MENU IMPORT ERROR:",
+      "IMPORT ERROR:",
       error
     );
 
     progressBar.style.width =
       "0";
 
-    progressTitle.textContent =
+    progressText.textContent =
       "Імпорт не виконано";
 
-    result.classList.add(
-      "show",
-      "error"
-    );
+    result.className =
+      "import-result show error";
 
     let message =
       error.message ||
       "Невідома помилка";
 
     if(
-      error.name ===
-      "TypeError"
+      error.name === "TypeError"
     ){
 
       message =
-        "Браузер не дозволив отримати сторінку. Найчастіше це CORS-обмеження сайту. Для таких сайтів потрібен серверний імпортер.";
+        "Браузер заблокував доступ до сторінки. Це зазвичай CORS або JavaScript-рендеринг сайту.";
 
     }
 
     result.innerHTML = `
 
       <b>
-        ✕ Не вдалося імпортувати меню
+        ✕ Не вдалося імпортувати
       </b>
 
       <br><br>
@@ -3399,10 +4098,6 @@ async function importMenuFromUrl(){
       ${escapeHtml(message)}
 
     `;
-
-    notify(
-      "Імпорт меню не виконано"
-    );
 
   }finally{
 
@@ -3413,8 +4108,297 @@ async function importMenuFromUrl(){
 
 }
 
+
 /* =========================================================
-   PARSE MENU HTML
+   SAVE IMPORTED MENU
+========================================================= */
+
+async function saveImportedMenu(
+  items
+){
+
+  if(
+    !currentRestaurant ||
+    !currentRestaurant.id
+  ){
+
+    throw new Error(
+      "Не вибрано заклад"
+    );
+
+  }
+
+  const existing =
+    await supabaseRequest(
+      `menu_items?select=id,name&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`
+    );
+
+  const existingNames =
+    new Set(
+      (
+        Array.isArray(existing)
+          ? existing
+          : []
+      )
+        .map(
+          item =>
+            normalizeText(
+              item.name
+            )
+              .toLowerCase()
+        )
+    );
+
+  const newItems =
+    items.filter(
+      item =>
+        !existingNames.has(
+          normalizeText(
+            item.name
+          )
+            .toLowerCase()
+        )
+    );
+
+  if(!newItems.length){
+
+    return 0;
+
+  }
+
+  const payload =
+    newItems.map(
+      item => ({
+
+        restaurant_id:
+          currentRestaurant.id,
+
+        name:
+          item.name,
+
+        type:
+          item.type || "Кухня",
+
+        category:
+          item.category || "Інше",
+
+        description:
+          item.description || null,
+
+        price:
+          item.price === "" ||
+          item.price === null ||
+          item.price === undefined
+            ? null
+            : Number(item.price),
+
+        weight:
+          item.weight || null,
+
+        status:
+          item.status || "active"
+
+      })
+    );
+
+  const response =
+    await supabaseRequest(
+      "menu_items",
+      {
+        method:"POST",
+
+        headers:{
+          Prefer:
+            "return=representation"
+        },
+
+        body:
+          JSON.stringify(payload)
+      }
+    );
+
+  return Array.isArray(response)
+    ? response.length
+    : newItems.length;
+
+}
+
+
+/* =========================================================
+   MANUAL MENU MODAL
+========================================================= */
+
+function openManualMenuModal(){
+
+  if(!currentRestaurant){
+
+    notify(
+      "Спочатку вибери заклад"
+    );
+
+    return;
+
+  }
+
+  document
+    .getElementById(
+      "manualMenuModal"
+    )
+    .classList.add("show");
+
+}
+
+
+function closeManualMenuModal(){
+
+  document
+    .getElementById(
+      "manualMenuModal"
+    )
+    .classList.remove("show");
+
+}
+
+
+async function saveManualMenuItem(){
+
+  if(!currentRestaurant){
+
+    notify(
+      "Не вибрано заклад"
+    );
+
+    return;
+
+  }
+
+  const name =
+    document
+      .getElementById("manualName")
+      .value
+      .trim();
+
+  const type =
+    document
+      .getElementById("manualType")
+      .value;
+
+  const category =
+    document
+      .getElementById("manualCategory")
+      .value
+      .trim() ||
+      "Інше";
+
+  const description =
+    document
+      .getElementById("manualDescription")
+      .value
+      .trim();
+
+  const priceValue =
+    document
+      .getElementById("manualPrice")
+      .value;
+
+  const weight =
+    document
+      .getElementById("manualWeight")
+      .value
+      .trim();
+
+  if(!name){
+
+    notify(
+      "Введи назву позиції"
+    );
+
+    return;
+
+  }
+
+  try{
+
+    await supabaseRequest(
+      "menu_items",
+      {
+        method:"POST",
+
+        headers:{
+          Prefer:
+            "return=representation"
+        },
+
+        body:
+          JSON.stringify({
+
+            restaurant_id:
+              currentRestaurant.id,
+
+            name,
+
+            type,
+
+            category,
+
+            description:
+              description || null,
+
+            price:
+              priceValue
+                ? Number(priceValue)
+                : null,
+
+            weight:
+              weight || null,
+
+            status:
+              "active"
+
+          })
+      }
+    );
+
+    [
+      "manualName",
+      "manualCategory",
+      "manualDescription",
+      "manualPrice",
+      "manualWeight"
+    ].forEach(
+      id=>{
+        document
+          .getElementById(id)
+          .value = "";
+      }
+    );
+
+    closeManualMenuModal();
+
+    notify(
+      "Позицію додано"
+    );
+
+    await loadMenu();
+
+    loadRestaurants();
+
+  }catch(error){
+
+    console.error(error);
+
+    notify(
+      "Помилка: " +
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   MENU HTML PARSER
 ========================================================= */
 
 function parseMenuHtml(
@@ -3431,92 +4415,63 @@ function parseMenuHtml(
       "text/html"
     );
 
-  const results =
-    [];
+  const results = [];
 
-  /*
-    -----------------------------------------------
-    1. JSON-LD
-    -----------------------------------------------
-  */
+  /* JSON-LD */
 
-  const scripts =
-    doc.querySelectorAll(
+  doc
+    .querySelectorAll(
       'script[type="application/ld+json"]'
-    );
+    )
+    .forEach(
+      script=>{
 
-  scripts.forEach(
-    script => {
+        try{
 
-      try{
-
-        const json =
-          JSON.parse(
-            script.textContent
-          );
-
-        const objects =
-          Array.isArray(json)
-            ? json
-            : [json];
-
-        objects.forEach(
-          object => {
-
-            extractJsonLdItems(
-              object,
-              results
+          const json =
+            JSON.parse(
+              script.textContent
             );
 
-          }
-        );
+          extractJsonLdItems(
+            json,
+            results
+          );
 
-      }catch{
+        }catch{
 
-        /* пропускаємо пошкоджений JSON-LD */
+          /* пропускаємо */
+
+        }
 
       }
+    );
 
-    }
-  );
 
-  /*
-    -----------------------------------------------
-    2. Semantic HTML
-    -----------------------------------------------
-  */
+  /* Semantic blocks */
 
   const selectors = [
 
     "[itemtype*='Product']",
-
     "[itemtype*='MenuItem']",
-
     ".menu-item",
-
     ".menu-item-card",
-
     ".product",
-
     ".dish",
-
     ".menu-card",
-
     ".food-item",
-
     ".drink-item",
-
-    ".item"
+    "article"
 
   ];
 
   selectors.forEach(
-    selector => {
+    selector=>{
 
       doc
         .querySelectorAll(selector)
         .forEach(
-          element => {
+          element=>{
 
             const item =
               parseMenuElement(
@@ -3528,9 +4483,7 @@ function parseMenuHtml(
               item.name
             ){
 
-              results.push(
-                item
-              );
+              results.push(item);
 
             }
 
@@ -3540,23 +4493,17 @@ function parseMenuHtml(
     }
   );
 
-  /*
-    -----------------------------------------------
-    3. Fallback:
-       шукаємо блоки, де є ціни.
-    -----------------------------------------------
-  */
 
-  if(
-    results.length === 0
-  ){
+  /* Price fallback */
+
+  if(!results.length){
 
     doc
       .querySelectorAll(
-        "article,li,div,tr"
+        "li,div,tr"
       )
       .forEach(
-        element => {
+        element=>{
 
           const text =
             normalizeText(
@@ -3567,7 +4514,7 @@ function parseMenuHtml(
 
           if(
             !text ||
-            text.length > 500
+            text.length > 450
           ){
 
             return;
@@ -3589,15 +4536,9 @@ function parseMenuHtml(
             text
               .split(/\n+/)
               .map(
-                x => normalizeText(x)
+                normalizeText
               )
               .filter(Boolean);
-
-          if(lines.length === 0){
-
-            return;
-
-          }
 
           const name =
             chooseLikelyName(
@@ -3612,7 +4553,7 @@ function parseMenuHtml(
 
           results.push({
 
-            name:name,
+            name,
 
             description:
               lines
@@ -3630,9 +4571,7 @@ function parseMenuHtml(
               ),
 
             weight:
-              extractWeight(
-                text
-              ),
+              extractWeight(text),
 
             type:
               detectType(
@@ -3656,43 +4595,35 @@ function parseMenuHtml(
 
   }
 
-  /*
-    -----------------------------------------------
-    4. Очистка + дедуплікація
-    -----------------------------------------------
-  */
 
-  const unique =
-    [];
+  /* Deduplicate */
+
+  const unique = [];
 
   const keys =
     new Set();
 
   results.forEach(
-    item => {
+    item=>{
 
       const clean =
         normalizeMenuItem(
           item
         );
 
-      if(
-        !clean ||
-        !clean.name
-      ){
+      if(!clean){
 
         return;
 
       }
 
       const key =
-        (
-          clean.name +
-          "|" +
-          clean.price +
-          "|" +
+        [
+          clean.name,
+          clean.price,
           clean.category
-        )
+        ]
+          .join("|")
           .toLowerCase();
 
       if(
@@ -3705,9 +4636,7 @@ function parseMenuHtml(
 
       keys.add(key);
 
-      unique.push(
-        clean
-      );
+      unique.push(clean);
 
     }
   );
@@ -3716,8 +4645,9 @@ function parseMenuHtml(
 
 }
 
+
 /* =========================================================
-   JSON-LD EXTRACTOR
+   JSON-LD
 ========================================================= */
 
 function extractJsonLdItems(
@@ -3731,14 +4661,12 @@ function extractJsonLdItems(
 
   }
 
-  if(
-    Array.isArray(object)
-  ){
+  if(Array.isArray(object)){
 
     object.forEach(
-      x =>
+      item =>
         extractJsonLdItems(
-          x,
+          item,
           results
         )
     );
@@ -3747,30 +4675,30 @@ function extractJsonLdItems(
 
   }
 
-  if(
-    object.itemListElement
-  ){
+  if(object.itemListElement){
 
-    object.itemListElement.forEach(
-      entry => {
+    const list =
+      Array.isArray(
+        object.itemListElement
+      )
+        ? object.itemListElement
+        : [object.itemListElement];
+
+    list.forEach(
+      entry=>{
 
         const item =
-          entry.item ||
+          entry?.item ||
           entry;
 
         if(
-          item &&
-          (
-            item.name ||
-            item.title
-          )
+          item?.name
         ){
 
           results.push({
 
             name:
-              item.name ||
-              item.title,
+              item.name,
 
             description:
               item.description ||
@@ -3792,7 +4720,7 @@ function extractJsonLdItems(
 
             category:
               item.category ||
-              "Без категорії",
+              "Інше",
 
             status:
               "active"
@@ -3806,23 +4734,21 @@ function extractJsonLdItems(
 
   }
 
-  if(
-    object.hasMenuItem
-  ){
 
-    const items =
+  if(object.hasMenuItem){
+
+    const list =
       Array.isArray(
         object.hasMenuItem
       )
         ? object.hasMenuItem
         : [object.hasMenuItem];
 
-    items.forEach(
-      item => {
+    list.forEach(
+      item=>{
 
         if(
-          item &&
-          item.name
+          item?.name
         ){
 
           results.push({
@@ -3850,7 +4776,7 @@ function extractJsonLdItems(
 
             category:
               item.category ||
-              "Без категорії",
+              "Інше",
 
             status:
               "active"
@@ -3864,9 +4790,12 @@ function extractJsonLdItems(
 
   }
 
+
   if(
-    object["@type"] ===
-      "Product" &&
+    (
+      object["@type"] === "Product" ||
+      object["@type"]?.includes?.("Product")
+    ) &&
     object.name
   ){
 
@@ -3895,7 +4824,7 @@ function extractJsonLdItems(
 
       category:
         object.category ||
-        "Без категорії",
+        "Інше",
 
       status:
         "active"
@@ -3906,8 +4835,9 @@ function extractJsonLdItems(
 
 }
 
+
 /* =========================================================
-   PARSE HTML ELEMENT
+   HTML ELEMENT PARSER
 ========================================================= */
 
 function parseMenuElement(
@@ -3955,18 +4885,16 @@ function parseMenuElement(
     );
 
   const priceMatch =
-    (
-      priceText.match(
-        /(\d{2,5}(?:[.,]\d{1,2})?)/
-      ) ||
-      text.match(
-        /(\d{2,5}(?:[.,]\d{1,2})?)\s*(?:₴|грн|uah)/i
-      )
+    priceText.match(
+      /(\d{2,5}(?:[.,]\d{1,2})?)/
+    ) ||
+    text.match(
+      /(\d{2,5}(?:[.,]\d{1,2})?)\s*(?:₴|грн|uah)/i
     );
 
   return {
 
-    name:name,
+    name,
 
     description:
       normalizeText(
@@ -3982,9 +4910,7 @@ function parseMenuElement(
         : "",
 
     weight:
-      extractWeight(
-        text
-      ),
+      extractWeight(text),
 
     type:
       detectType(
@@ -4005,6 +4931,7 @@ function parseMenuElement(
 
 }
 
+
 /* =========================================================
    NORMALIZE ITEM
 ========================================================= */
@@ -4021,47 +4948,10 @@ function normalizeMenuItem(
   if(
     !name ||
     name.length < 2 ||
-    name.length > 150
+    name.length > 160
   ){
 
     return null;
-
-  }
-
-  let description =
-    normalizeText(
-      item.description
-    );
-
-  if(
-    description.length > 600
-  ){
-
-    description =
-      description.slice(
-        0,
-        600
-      );
-
-  }
-
-  let category =
-    normalizeText(
-      item.category
-    );
-
-  if(
-    !category ||
-    category === "Без категорії"
-  ){
-
-    category =
-      detectCategory(
-        name +
-        " " +
-        description,
-        ""
-      );
 
   }
 
@@ -4080,10 +4970,13 @@ function normalizeMenuItem(
 
   return {
 
-    name:name,
+    name,
 
     description:
-      description,
+      normalizeText(
+        item.description
+      )
+        .slice(0,700),
 
     price:
       normalizePrice(
@@ -4095,157 +4988,25 @@ function normalizeMenuItem(
         item.weight
       ),
 
-    type:
-      type,
+    type,
 
     category:
-      category ||
+      normalizeText(
+        item.category
+      ) ||
       "Інше",
 
     status:
+      item.status ||
       "active"
 
   };
 
 }
 
-/* =========================================================
-   SAVE IMPORTED MENU
-========================================================= */
-
-async function saveImportedMenu(
-  items
-){
-
-  if(
-    !currentRestaurant ||
-    !currentRestaurant.id
-  ){
-
-    throw new Error(
-      "Не вибрано заклад"
-    );
-
-  }
-
-  /*
-    Позиції з таким самим ім'ям
-    у цьому закладі не дублюємо.
-  */
-
-  const existing =
-    await supabaseRequest(
-      `menu_items?select=id,name&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`
-    );
-
-  const existingNames =
-    new Set(
-      (
-        Array.isArray(existing)
-          ? existing
-          : []
-      )
-        .map(
-          item =>
-            normalizeText(
-              item.name
-            )
-              .toLowerCase()
-        )
-    );
-
-  const newItems =
-    items.filter(
-      item =>
-        !existingNames.has(
-          normalizeText(
-            item.name
-          )
-            .toLowerCase()
-        )
-    );
-
-  if(
-    newItems.length === 0
-  ){
-
-    return 0;
-
-  }
-
-  const payload =
-    newItems.map(
-      item => ({
-
-        restaurant_id:
-          currentRestaurant.id,
-
-        name:
-          item.name,
-
-        type:
-          item.type,
-
-        category:
-          item.category,
-
-        description:
-          item.description,
-
-        price:
-          item.price === ""
-            ? null
-            : Number(
-                item.price
-              ),
-
-        weight:
-          item.weight ||
-          null,
-
-        status:
-          item.status ||
-          "active"
-
-      })
-    );
-
-  let saved = 0;
-
-  /*
-    Supabase REST дозволяє
-    відправити масив одним POST.
-  */
-
-  const response =
-    await supabaseRequest(
-      "menu_items",
-      {
-        method:"POST",
-
-        headers:{
-          Prefer:
-            "return=representation"
-        },
-
-        body:
-          JSON.stringify(
-            payload
-          )
-      }
-    );
-
-  saved =
-    Array.isArray(response)
-      ? response.length
-      : newItems.length;
-
-  return saved;
-
-}
 
 /* =========================================================
-   NORMALIZE TEXT
+   HELPERS
 ========================================================= */
 
 function normalizeText(
@@ -4263,9 +5024,6 @@ function normalizeText(
 
 }
 
-/* =========================================================
-   PRICE
-========================================================= */
 
 function normalizePrice(
   value
@@ -4283,39 +5041,19 @@ function normalizePrice(
 
   const cleaned =
     String(value)
-      .replace(
-        /\s/g,
-        ""
-      )
-      .replace(
-        ",",
-        "."
-      )
-      .replace(
-        /[^\d.]/g,
-        ""
-      );
+      .replace(/\s/g,"")
+      .replace(",",".")
+      .replace(/[^\d.]/g,"");
 
   const number =
-    Number(
-      cleaned
-    );
+    Number(cleaned);
 
-  if(
-    !Number.isFinite(number)
-  ){
-
-    return "";
-
-  }
-
-  return number;
+  return Number.isFinite(number)
+    ? number
+    : "";
 
 }
 
-/* =========================================================
-   WEIGHT
-========================================================= */
 
 function extractWeight(
   text
@@ -4327,18 +5065,71 @@ function extractWeight(
         /(\d+(?:[.,]\d+)?)\s*(г|гр|g|kg|кг|мл|ml|л|l)\b/i
       );
 
-  if(!match){
-
-    return "";
-
-  }
-
-  return `${match[1]} ${match[2]}`;
+  return match
+    ? `${match[1]} ${match[2]}`
+    : "";
 
 }
 
+
+function chooseLikelyName(
+  lines
+){
+
+  const banned = [
+    "меню",
+    "ціна",
+    "price",
+    "грн",
+    "uah",
+    "₴",
+    "замовити",
+    "order",
+    "додати",
+    "add"
+  ];
+
+  return (
+    lines.find(
+      line=>{
+
+        const low =
+          line.toLowerCase();
+
+        if(
+          banned.some(
+            word =>
+              low.includes(word)
+          )
+        ){
+
+          return false;
+
+        }
+
+        if(
+          /^\d+$/.test(line)
+        ){
+
+          return false;
+
+        }
+
+        return (
+          line.length >= 3 &&
+          line.length <= 120
+        );
+
+      }
+    ) ||
+    ""
+  );
+
+}
+
+
 /* =========================================================
-   TYPE
+   TYPE DETECTION
 ========================================================= */
 
 function detectType(
@@ -4354,7 +5145,7 @@ function detectType(
     )
       .toLowerCase();
 
-  const barWords = [
+  const words = [
 
     "wine",
     "вино",
@@ -4363,11 +5154,11 @@ function detectType(
     "cocktail",
     "beer",
     "пиво",
-    "пив",
     "горіл",
     "vodka",
     "whisky",
     "whiskey",
+    "віскі",
     "ром",
     "rum",
     "gin",
@@ -4392,26 +5183,18 @@ function detectType(
 
   ];
 
-  for(
-    const word of barWords
-  ){
-
-    if(
+  return words.some(
+    word =>
       value.includes(word)
-    ){
-
-      return "Бар";
-
-    }
-
-  }
-
-  return "Кухня";
+  )
+    ? "Бар"
+    : "Кухня";
 
 }
 
+
 /* =========================================================
-   CATEGORY
+   CATEGORY DETECTION
 ========================================================= */
 
 function detectCategory(
@@ -4427,71 +5210,62 @@ function detectCategory(
     )
       .toLowerCase();
 
-  const categories = [
+  const groups = [
 
-    {
-      name:"Салати",
-      words:[
-        "салат",
-        "salad"
-      ]
-    },
+    [
+      "Салати",
+      ["салат","salad"]
+    ],
 
-    {
-      name:"Супи",
-      words:[
-        "суп",
-        "бограч",
-        "борщ",
-        "soup"
-      ]
-    },
+    [
+      "Супи",
+      ["суп","бограч","борщ","soup"]
+    ],
 
-    {
-      name:"Холодні закуски",
-      words:[
+    [
+      "Холодні закуски",
+      [
         "закуск",
         "тартар",
         "карпач",
         "вітело",
         "vitello",
-        "bruschetta",
-        "брускет"
+        "брускет",
+        "bruschetta"
       ]
-    },
+    ],
 
-    {
-      name:"Гарячі закуски",
-      words:[
+    [
+      "Гарячі закуски",
+      [
         "гаряч",
-        "hot appetizer",
         "крокет",
-        "фрі"
+        "hot appetizer"
       ]
-    },
+    ],
 
-    {
-      name:"Паста",
-      words:[
+    [
+      "Паста",
+      [
         "паста",
         "pasta",
         "спагет",
         "tagliatelle",
         "тальятел"
       ]
-    },
+    ],
 
-    {
-      name:"Бургери",
-      words:[
+    [
+      "Бургери",
+      [
         "бургер",
         "burger"
       ]
-    },
+    ],
 
-    {
-      name:"М'ясо",
-      words:[
+    [
+      "М'ясо",
+      [
         "t-bone",
         "tbone",
         "стейк",
@@ -4501,26 +5275,25 @@ function detectCategory(
         "ребр",
         "beef",
         "ялович",
-        "свинин",
         "свин",
         "баранин"
       ]
-    },
+    ],
 
-    {
-      name:"Птиця",
-      words:[
+    [
+      "Птиця",
+      [
         "курк",
         "куриц",
         "chicken",
         "індик",
         "turkey"
       ]
-    },
+    ],
 
-    {
-      name:"Риба та морепродукти",
-      words:[
+    [
+      "Риба та морепродукти",
+      [
         "риба",
         "fish",
         "лосос",
@@ -4532,24 +5305,24 @@ function detectCategory(
         "міді",
         "mussel"
       ]
-    },
+    ],
 
-    {
-      name:"Гарніри",
-      words:[
+    [
+      "Гарніри",
+      [
         "гарнір",
         "гарнир",
-        "potato",
         "картопл",
+        "potato",
         "рис",
         "rice",
         "овочі"
       ]
-    },
+    ],
 
-    {
-      name:"Десерти",
-      words:[
+    [
+      "Десерти",
+      [
         "десерт",
         "dessert",
         "торт",
@@ -4559,11 +5332,11 @@ function detectCategory(
         "тірамісу",
         "tiramisu"
       ]
-    },
+    ],
 
-    {
-      name:"Вина",
-      words:[
+    [
+      "Вина",
+      [
         "вино",
         "wine",
         "pinot",
@@ -4572,39 +5345,39 @@ function detectCategory(
         "совіньйон",
         "riesling",
         "рислінг",
-        "gewürztraminer",
-        "гевюрц"
+        "гевюрц",
+        "gewürztraminer"
       ]
-    },
+    ],
 
-    {
-      name:"Коктейлі",
-      words:[
+    [
+      "Коктейлі",
+      [
         "коктейл",
         "cocktail",
         "spritz",
         "мохіто",
         "mojito",
         "negroni",
-        "маргарита",
-        "margarita"
+        "margarita",
+        "маргарита"
       ]
-    },
+    ],
 
-    {
-      name:"Пиво",
-      words:[
+    [
+      "Пиво",
+      [
         "пиво",
         "beer",
         "lager",
         "ipa",
         "ale"
       ]
-    },
+    ],
 
-    {
-      name:"Міцний алкоголь",
-      words:[
+    [
+      "Міцний алкоголь",
+      [
         "горіл",
         "vodka",
         "whisky",
@@ -4620,11 +5393,11 @@ function detectCategory(
         "лікер",
         "liqueur"
       ]
-    },
+    ],
 
-    {
-      name:"Безалкогольні",
-      words:[
+    [
+      "Безалкогольні",
+      [
         "вода",
         "water",
         "лимонад",
@@ -4636,25 +5409,22 @@ function detectCategory(
         "кава",
         "coffee"
       ]
-    }
+    ]
 
   ];
 
   for(
-    const category of categories
+    const group of groups
   ){
 
-    for(
-      const word of category.words
+    if(
+      group[1].some(
+        word =>
+          value.includes(word)
+      )
     ){
 
-      if(
-        value.includes(word)
-      ){
-
-        return category.name;
-
-      }
+      return group[0];
 
     }
 
@@ -4664,113 +5434,443 @@ function detectCategory(
 
 }
 
+
 /* =========================================================
-   LIKELY NAME
+   RESTAURANT MODULES
 ========================================================= */
 
-function chooseLikelyName(
-  lines
+const moduleDefinitions = {
+
+  stoplist:{
+    icon:"⊘",
+    title:"Stop-list",
+    subtitle:"Внутрішній контроль доступності позицій",
+    cards:[
+      ["🔴","Недоступні позиції","Перегляд та керування позиціями, які тимчасово не можна замовити."],
+      ["↻","Історія","Хто встановив стоп, коли та коли його зняли."],
+      ["＋","Додати стоп","Додати позицію до внутрішнього Stop-list."]
+    ]
+  },
+
+  personnel:{
+    icon:"♙",
+    title:"Персонал",
+    subtitle:"Працівники, ролі та доступи",
+    cards:[
+      ["♙","Працівники","Офіціанти, старші офіціанти та адміністратори."],
+      ["◇","Ролі","Керування рівнями доступу."],
+      ["＋","Запросити працівника","Створення коду або запрошення до закладу."]
+    ]
+  },
+
+  training:{
+    icon:"◇",
+    title:"Навчання",
+    subtitle:"Навчання персоналу на реальному меню",
+    cards:[
+      ["◇","Тести","Питання по актуальному меню закладу."],
+      ["▥","Прогрес","Результати та прогрес кожного працівника."],
+      ["✦","AI Training","Автоматичне формування навчальних питань."]
+    ]
+  },
+
+  ai:{
+    icon:"✦",
+    title:"AI Assistant",
+    subtitle:"Розумний помічник на основі Knowledge Base",
+    cards:[
+      ["✦","Запит до AI","Пошук складу, алергенів, технології та рекомендацій."],
+      ["🧠","Knowledge Base","AI працює тільки з підтвердженими даними цього закладу."],
+      ["✓","Контроль достовірності","Підтверджено / потребує перевірки / немає даних."]
+    ]
+  },
+
+  orders:{
+    icon:"▣",
+    title:"Замовлення",
+    subtitle:"Столи, замовлення та робота офіціантів",
+    cards:[
+      ["▣","Замовлення","Створення та перегляд замовлень."],
+      ["♙","Офіціанти","Хто обслуговує кожне замовлення."],
+      ["▥","Столи","Схема залу та статус столів."]
+    ]
+  },
+
+  knowledge:{
+    icon:"🧠",
+    title:"Knowledge Base",
+    subtitle:"Підтверджена база знань ресторану",
+    cards:[
+      ["🍽","Страви","Склад, технологія, подача та гарніри."],
+      ["⚠","Алергени","Підтверджені алергени кожної позиції."],
+      ["✦","AI Knowledge","Дані, на яких працює AI цього закладу."]
+    ]
+  },
+
+  versions:{
+    icon:"↻",
+    title:"Версії меню",
+    subtitle:"Історія змін меню",
+    cards:[
+      ["v1.0","Поточна версія","Актуальна опублікована версія меню."],
+      ["↻","Порівняння","Порівняння змін між версіями."],
+      ["＋","Нова версія","Створення нової версії меню."]
+    ]
+  },
+
+  settings:{
+    icon:"⚙",
+    title:"Налаштування",
+    subtitle:"Параметри поточного закладу",
+    cards:[
+      ["🏢","Основна інформація","Назва, місто, адреса та тип закладу."],
+      ["♙","Доступи","Ролі та права користувачів."],
+      ["✦","AI Settings","Налаштування поведінки AI."]
+    ]
+  }
+
+};
+
+
+/* =========================================================
+   OPEN RESTAURANT MODULE
+========================================================= */
+
+function openRestaurantModule(
+  module
 ){
 
-  const banned = [
+  const definition =
+    moduleDefinitions[module];
 
-    "меню",
-    "ціна",
-    "price",
-    "грн",
-    "uah",
-    "₴",
-    "замовити",
-    "order",
-    "додати",
-    "add"
+  if(!definition){
 
-  ];
-
-  const candidates =
-    lines.filter(
-      line => {
-
-        const low =
-          line.toLowerCase();
-
-        if(
-          banned.some(
-            word =>
-              low.includes(word)
-          )
-        ){
-
-          return false;
-
-        }
-
-        if(
-          /^\d+$/.test(line)
-        ){
-
-          return false;
-
-        }
-
-        if(
-          line.length < 3 ||
-          line.length > 120
-        ){
-
-          return false;
-
-        }
-
-        return true;
-
-      }
+    notify(
+      "Розділ не знайдено"
     );
 
-  return candidates[0] ||
-    "";
+    return;
 
-}
+  }
 
-/* =========================================================
-   SEARCH RESTAURANTS
-========================================================= */
-
-function searchRestaurants(){
-
-  const input =
-    document.getElementById(
-      "search"
-    );
-
-  const query =
-    (
-      input.value ||
-      ""
-    )
-      .toLowerCase()
-      .trim();
+  genericReturnView =
+    "restaurant";
 
   document
-    .querySelectorAll(
-      ".rest-card"
-    )
-    .forEach(
-      card => {
+    .getElementById("genericEyebrow")
+    .textContent =
+      currentRestaurant
+        ? `${currentRestaurant.name} · SERVISIUM`
+        : "SERVISIUM";
 
-        const value =
-          card.dataset.name ||
-          "";
+  document
+    .getElementById("genericTitle")
+    .textContent =
+      definition.title;
 
-        card.style.display =
-          value.includes(query)
-            ? ""
-            : "none";
+  document
+    .getElementById("genericSubtitle")
+    .textContent =
+      definition.subtitle;
 
-      }
-    );
+  renderGenericCards(
+    definition.cards
+  );
+
+  hideAllViews();
+
+  document
+    .getElementById("genericView")
+    .classList.remove("hidden");
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 
 }
+
+
+/* =========================================================
+   GENERIC CARDS
+========================================================= */
+
+function renderGenericCards(
+  cards
+){
+
+  const container =
+    document.getElementById(
+      "genericContent"
+    );
+
+  container.innerHTML = "";
+
+  cards.forEach(
+    card=>{
+
+      const element =
+        document.createElement(
+          "div"
+        );
+
+      element.className =
+        "feature-card";
+
+      element.innerHTML = `
+
+        <div class="big-icon">
+          ${escapeHtml(card[0])}
+        </div>
+
+        <h3>
+          ${escapeHtml(card[1])}
+        </h3>
+
+        <p>
+          ${escapeHtml(card[2])}
+        </p>
+
+      `;
+
+      container.appendChild(
+        element
+      );
+
+    }
+  );
+
+  const note =
+    document.createElement("div");
+
+  note.className =
+    "placeholder-message";
+
+  note.innerHTML = `
+
+    <b style="color:#ddd">
+      SERVISIUM
+    </b>
+
+    <br><br>
+
+    Цей розділ уже підключений до навігації.
+    Функціонал модуля можна доповнювати
+    без зміни основної структури системи.
+
+  `;
+
+  container.appendChild(note);
+
+}
+
+
+/* =========================================================
+   GLOBAL MODULES
+========================================================= */
+
+function openGlobalModule(
+  module,
+  button
+){
+
+  const definitions = {
+
+    changes:{
+      title:"Зміни",
+      subtitle:"Єдиний журнал змін по закладах",
+      cards:[
+        ["↻","Історія","Усі важливі зміни системи."],
+        ["✎","Редагування","Хто та що змінював."],
+        ["◷","Час","Час та дата кожної операції."]
+      ]
+    },
+
+    notifications:{
+      title:"Сповіщення",
+      subtitle:"Події, які потребують уваги",
+      cards:[
+        ["●","Нові події","Нові працівники та зміни меню."],
+        ["⊘","Stop-list","Позиції, які стали недоступними."],
+        ["!","Важливе","Події, які потребують дії адміністратора."]
+      ]
+    },
+
+    analytics:{
+      title:"Аналітика",
+      subtitle:"Показники роботи SERVISIUM",
+      cards:[
+        ["▥","Заклади","Порівняння ключових показників."],
+        ["♙","Персонал","Навчання та активність."],
+        ["◈","Сервіс","Показники роботи та зміни."]
+      ]
+    },
+
+    profile:{
+      title:"Профіль",
+      subtitle:"Профіль адміністратора SERVISIUM",
+      cards:[
+        ["Я","Ян Мур","Головний адміністратор."],
+        ["♙","Роль","MASTER ADMIN."],
+        ["⚙","Параметри","Налаштування профілю."]
+      ]
+    },
+
+    settings:{
+      title:"Налаштування",
+      subtitle:"Глобальні параметри SERVISIUM",
+      cards:[
+        ["⚙","Система","Загальні параметри."],
+        ["🔐","Безпека","Доступи та захист."],
+        ["✦","AI","Глобальні параметри AI."]
+      ]
+    },
+
+    personnel:{
+      title:"Персонал",
+      subtitle:"Персонал усіх закладів",
+      cards:[
+        ["♙","Працівники","Єдиний список персоналу."],
+        ["◇","Ролі","Розподіл доступів."],
+        ["＋","Запрошення","Додавання нових працівників."]
+      ]
+    },
+
+    stoplist:{
+      title:"Stop-list",
+      subtitle:"Контроль доступності позицій",
+      cards:[
+        ["⊘","Активні стопи","Позиції, які недоступні."],
+        ["↻","Історія","Попередні зміни."],
+        ["＋","Керування","Додавання та зняття стопів."]
+      ]
+    },
+
+    training:{
+      title:"Навчання",
+      subtitle:"Система навчання персоналу",
+      cards:[
+        ["◇","Тести","Навчання по меню."],
+        ["▥","Прогрес","Результати працівників."],
+        ["✦","AI Training","Автоматизація навчання."]
+      ]
+    },
+
+    ai:{
+      title:"AI Assistant",
+      subtitle:"Інтелектуальний шар SERVISIUM",
+      cards:[
+        ["✦","AI","Запити до системи."],
+        ["🧠","Knowledge Base","Підтверджені дані."],
+        ["✓","Контроль","Захист від вигаданої інформації."]
+      ]
+    },
+
+    orders:{
+      title:"Замовлення",
+      subtitle:"Центр замовлень",
+      cards:[
+        ["▣","Замовлення","Усі замовлення."],
+        ["♙","Офіціанти","Робота персоналу."],
+        ["▥","Столи","Схема залу."]
+      ]
+    },
+
+    menu:{
+      title:"Меню",
+      subtitle:"Меню закладів",
+      cards:[
+        ["🍽","Кухня","Структура кухні."],
+        ["🍷","Бар","Вина, коктейлі та напої."],
+        ["✦","AI Import","Імпорт меню."]
+      ]
+    }
+
+  };
+
+  const definition =
+    definitions[module];
+
+  if(!definition){
+
+    notify(
+      "Розділ ще не налаштований"
+    );
+
+    return;
+
+  }
+
+  genericReturnView =
+    "master";
+
+  document
+    .getElementById("genericEyebrow")
+    .textContent =
+      "MASTER PANEL";
+
+  document
+    .getElementById("genericTitle")
+    .textContent =
+      definition.title;
+
+  document
+    .getElementById("genericSubtitle")
+    .textContent =
+      definition.subtitle;
+
+  renderGenericCards(
+    definition.cards
+  );
+
+  hideAllViews();
+
+  document
+    .getElementById("genericView")
+    .classList.remove("hidden");
+
+  if(button){
+
+    document
+      .querySelectorAll(".nav-btn")
+      .forEach(
+        item =>
+          item.classList.remove("active")
+      );
+
+    button.classList.add("active");
+
+  }
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+}
+
+
+/* =========================================================
+   RETURN FROM GENERIC
+========================================================= */
+
+function returnFromGeneric(){
+
+  if(
+    genericReturnView === "restaurant" &&
+    currentRestaurant
+  ){
+
+    showRestaurant();
+
+  }else{
+
+    showMaster();
+
+  }
+
+}
+
 
 /* =========================================================
    SCROLL
@@ -4793,39 +5893,26 @@ function scrollToRestaurants(){
 
 }
 
+
 /* =========================================================
-   SIDEBAR
+   THEME
 ========================================================= */
 
-function setActive(
-  button
-){
+function toggleThemeMessage(){
 
-  document
-    .querySelectorAll(
-      ".nav button"
-    )
-    .forEach(
-      item =>
-        item.classList.remove(
-          "active"
-        )
-    );
-
-  button.classList.add(
-    "active"
+  notify(
+    "SERVISIUM працює у фірмовій Dark Cinematic темі"
   );
 
 }
+
 
 /* =========================================================
    CLOSE MODALS
 ========================================================= */
 
 document
-  .getElementById(
-    "modal"
-  )
+  .getElementById("restaurantModal")
   .addEventListener(
     "click",
     function(event){
@@ -4834,17 +5921,16 @@ document
         event.target === this
       ){
 
-        closeModal();
+        closeRestaurantModal();
 
       }
 
     }
   );
 
+
 document
-  .getElementById(
-    "importModal"
-  )
+  .getElementById("importModal")
   .addEventListener(
     "click",
     function(event){
@@ -4860,55 +5946,70 @@ document
     }
   );
 
+
+document
+  .getElementById("manualMenuModal")
+  .addEventListener(
+    "click",
+    function(event){
+
+      if(
+        event.target === this
+      ){
+
+        closeManualMenuModal();
+
+      }
+
+    }
+  );
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
 document.addEventListener(
   "keydown",
-  function(event){
+  event=>{
 
     if(
       event.key === "Escape"
     ){
 
-      closeModal();
-
+      closeRestaurantModal();
       closeImportModal();
+      closeManualMenuModal();
 
     }
 
     if(
-      event.key === "Enter"
+      event.key === "Enter" &&
+      document.activeElement?.id === "menuUrl" &&
+      document
+        .getElementById("importModal")
+        .classList.contains("show")
     ){
 
-      const importModal =
-        document.getElementById(
-          "importModal"
-        );
-
-      if(
-        importModal.classList.contains(
-          "show"
-        ) &&
-        document.activeElement?.id ===
-          "menuUrl"
-      ){
-
-        importMenuFromUrl();
-
-      }
+      importMenuFromUrl();
 
     }
 
   }
 );
 
+
 /* =========================================================
-   INITIAL LOAD
+   INITIALIZE
 ========================================================= */
 
 document.addEventListener(
   "DOMContentLoaded",
-  function(){
+  async ()=>{
 
-    loadRestaurants();
+    await loadRestaurants();
+
+    await loadGlobalMenuCount();
 
   }
 );
