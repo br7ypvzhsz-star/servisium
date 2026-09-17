@@ -329,8 +329,7 @@ async function addRestaurant(){
 
   if(error){
     console.error('Supabase insert error:', error);
-    notify('Не вдалося створити заклад');
-    return;
+    notify('Помилка: ' + (error.message || 'невідома помилка'));
   }
 
   closeModal();
