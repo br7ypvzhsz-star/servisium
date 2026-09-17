@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#09090b">
+<meta name="theme-color" content="#080809">
 <title>SERVISIUM | Art of Service</title>
 
 <style>
 :root{
   --bg:#080809;
   --panel:#111114;
-  --panel2:#19191d;
+  --panel2:#18181c;
   --line:#2d2d32;
   --text:#f5f2ec;
   --muted:#a3a0a0;
@@ -20,17 +20,33 @@
   --green:#63b77f;
   --danger:#bd3349;
 }
+
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+
+html{
+  scroll-behavior:smooth;
+}
+
 body{
   margin:0;
   background:var(--bg);
   color:var(--text);
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
-button,input{font:inherit}
-button{cursor:pointer}
-.app{min-height:100vh;display:flex}
+
+button,
+input{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+.app{
+  min-height:100vh;
+  display:flex;
+}
 
 .sidebar{
   position:fixed;
@@ -41,14 +57,23 @@ button{cursor:pointer}
   width:250px;
   padding:30px 18px;
   border-right:1px solid var(--line);
-  background:rgba(8,8,9,.97)
+  background:rgba(8,8,9,.98);
 }
+
+.brand-mark{
+  text-align:center;
+  color:var(--gold);
+  font-size:24px;
+  margin-bottom:7px;
+}
+
 .brand{
   font-family:Georgia,serif;
   letter-spacing:4px;
   font-size:25px;
-  text-align:center
+  text-align:center;
 }
+
 .brand small{
   display:block;
   font-family:Georgia,serif;
@@ -56,37 +81,39 @@ button{cursor:pointer}
   font-size:12px;
   margin-top:7px;
   color:var(--gold);
-  font-style:italic
+  font-style:italic;
 }
-.brand-mark{
-  text-align:center;
-  color:var(--gold);
-  font-size:24px;
-  margin-bottom:7px
-}
+
 .nav{
   margin-top:52px;
   display:grid;
-  gap:6px
+  gap:6px;
 }
+
 .nav button{
+  width:100%;
   border:0;
   background:transparent;
   color:#aaa6a7;
   text-align:left;
   border-radius:9px;
   padding:13px 14px;
-  transition:.2s
+  transition:.2s;
 }
+
 .nav button:hover,
 .nav button.active{
   background:linear-gradient(90deg,#46121f,#241015);
-  color:#fff
+  color:#fff;
 }
+
 .nav button.active{
-  box-shadow:inset 3px 0 0 var(--wine2)
+  box-shadow:inset 3px 0 0 var(--wine2);
 }
-.nav span{margin-left:10px}
+
+.nav span{
+  margin-left:10px;
+}
 
 .side-quote{
   position:absolute;
@@ -94,43 +121,55 @@ button{cursor:pointer}
   right:25px;
   bottom:88px;
   color:#827e80;
-  font:italic 14px/1.55 Georgia,serif
+  font:italic 14px/1.55 Georgia,serif;
 }
+
 .side-foot{
   position:absolute;
   bottom:25px;
   left:25px;
   color:#555;
   font-size:9px;
-  letter-spacing:1px
+  letter-spacing:1px;
 }
 
 .main{
   margin-left:250px;
   width:calc(100% - 250px);
   min-height:100vh;
-  padding:34px 44px 70px
+  padding:34px 44px 70px;
 }
 
 .top{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:25px
+  gap:25px;
 }
+
 .greeting h1{
   font:34px Georgia,serif;
-  margin:5px 0
+  margin:5px 0;
 }
+
 .greeting p{
   margin:0;
-  color:var(--muted)
+  color:var(--muted);
 }
+
+.kicker{
+  font-size:9px;
+  letter-spacing:2px;
+  color:var(--gold);
+  font-weight:700;
+}
+
 .top-actions{
   display:flex;
   align-items:center;
-  gap:12px
+  gap:12px;
 }
+
 .search{
   width:245px;
   background:var(--panel);
@@ -138,20 +177,28 @@ button{cursor:pointer}
   border-radius:9px;
   padding:11px 14px;
   color:white;
-  outline:none
+  outline:none;
 }
-.iconbtn,.profile{
+
+.search:focus{
+  border-color:var(--wine2);
+}
+
+.iconbtn,
+.profile{
   border:1px solid var(--line);
   background:var(--panel);
   color:white;
   border-radius:9px;
-  padding:10px 12px
+  padding:10px 12px;
 }
+
 .profile{
   display:flex;
   align-items:center;
-  gap:10px
+  gap:10px;
 }
+
 .avatar{
   width:32px;
   height:32px;
@@ -160,121 +207,50 @@ button{cursor:pointer}
   display:grid;
   place-items:center;
   color:var(--gold);
-  font-weight:700
-}
-.kicker{
-  font-size:9px;
-  letter-spacing:2px;
-  color:var(--gold);
-  font-weight:700
+  font-weight:700;
 }
 
 .stats{
   display:grid;
   grid-template-columns:repeat(4,1fr);
   gap:14px;
-  margin-top:32px
+  margin-top:32px;
 }
+
 .stat{
   background:linear-gradient(145deg,#141416,#0f0f11);
   border:1px solid var(--line);
   border-radius:13px;
-  padding:20px
+  padding:20px;
 }
+
 .stat .num{
   font-size:28px;
-  margin-top:8px
+  margin-top:8px;
 }
+
 .stat .change{
   font-size:10px;
   color:var(--green);
-  margin-top:6px
+  margin-top:6px;
 }
 
 .section-head{
   display:flex;
   align-items:end;
   justify-content:space-between;
-  margin:38px 0 16px
-}
-.section-head h2{
-  font:27px Georgia,serif;
-  margin:0
-}
-.link{
-  font-size:11px;
-  color:var(--muted)
+  margin:38px 0 16px;
 }
 
-.restaurants{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:16px
+.section-head h2{
+  font:27px Georgia,serif;
+  margin:0;
 }
-.rest-card{
-  position:relative;
-  overflow:hidden;
-  min-height:255px;
-  border:1px solid var(--line);
-  border-radius:15px;
-  background:var(--panel)
-}
-.rest-card.photo{
-  background:
-    linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.82)),
-    radial-gradient(circle at 75% 25%,#58352c 0,#201817 30%,#101012 65%)
-}
-.rest-card.photo.archive{
-  background:
-    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.88)),
-    radial-gradient(circle at 70% 20%,#555 0,#252525 28%,#101012 68%)
-}
-.rest-content{
-  position:absolute;
-  inset:0;
-  padding:19px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between
-}
-.active{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  font-size:10px;
-  background:rgba(10,10,10,.65);
-  padding:6px 9px;
-  border-radius:20px;
-  width:max-content
-}
-.active i{
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:var(--green)
-}
-.rest-name{
-  font:25px Georgia,serif;
-  letter-spacing:1px
-}
-.rest-meta{
-  color:#bbb7b7;
-  font-size:12px;
-  margin-top:4px
-}
-.rest-numbers{
-  display:flex;
-  gap:25px;
-  margin-top:18px
-}
-.rest-numbers b{
-  display:block;
-  font-size:16px;
-  color:#fff
-}
-.rest-numbers span{
-  font-size:9px;
-  color:#aaa
+
+.restaurant-count{
+  font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:#777;
+  margin-left:6px;
 }
 
 .primary{
@@ -284,10 +260,94 @@ button{cursor:pointer}
   border-radius:8px;
   padding:11px 15px;
   font-weight:650;
-  width:100%;
-  margin-top:15px
 }
-.primary:hover{background:var(--wine2)}
+
+.primary:hover{
+  background:var(--wine2);
+}
+
+.restaurants{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+
+.rest-card{
+  position:relative;
+  overflow:hidden;
+  min-height:255px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.82)),
+    radial-gradient(circle at 75% 25%,#58352c 0,#201817 30%,#101012 65%);
+}
+
+.rest-card.archive{
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.88)),
+    radial-gradient(circle at 70% 20%,#555 0,#252525 28%,#101012 68%);
+}
+
+.rest-content{
+  position:absolute;
+  inset:0;
+  padding:19px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+.active{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-size:10px;
+  background:rgba(10,10,10,.65);
+  padding:6px 9px;
+  border-radius:20px;
+  width:max-content;
+}
+
+.active i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--green);
+}
+
+.rest-name{
+  font:25px Georgia,serif;
+  letter-spacing:1px;
+}
+
+.rest-meta{
+  color:#bbb7b7;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.rest-numbers{
+  display:flex;
+  gap:25px;
+  margin-top:18px;
+}
+
+.rest-numbers b{
+  display:block;
+  font-size:16px;
+  color:#fff;
+}
+
+.rest-numbers span{
+  font-size:9px;
+  color:#aaa;
+}
+
+.open-btn{
+  width:100%;
+  margin-top:15px;
+}
 
 .add-card{
   min-height:255px;
@@ -297,43 +357,52 @@ button{cursor:pointer}
   color:#bbb;
   display:grid;
   place-items:center;
-  text-align:center
+  text-align:center;
 }
+
 .add-card:hover{
   border-color:var(--wine2);
-  color:white
+  color:white;
 }
+
 .plus{
   font-size:48px;
   font-weight:200;
   color:var(--gold);
-  line-height:1
+  line-height:1;
 }
 
 .lower{
   display:grid;
   grid-template-columns:1.2fr 1fr .8fr;
   gap:16px;
-  margin-top:18px
+  margin-top:18px;
 }
+
 .box{
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:14px;
-  padding:18px
+  padding:18px;
 }
+
 .box h3{
   font:20px Georgia,serif;
-  margin:0 0 13px
+  margin:0 0 13px;
 }
+
 .event{
   display:flex;
   gap:11px;
   padding:11px 0;
   border-top:1px solid #252529;
-  font-size:11px
+  font-size:11px;
 }
-.event:first-of-type{border-top:0}
+
+.event:first-of-type{
+  border-top:0;
+}
+
 .badge{
   width:25px;
   height:25px;
@@ -342,30 +411,35 @@ button{cursor:pointer}
   place-items:center;
   background:#27171b;
   color:var(--wine2);
-  flex:none
+  flex:none;
 }
+
 .event small{
   display:block;
   color:#777;
-  margin-top:3px
+  margin-top:3px;
 }
+
 .quick{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:8px
+  gap:8px;
 }
+
 .quick button{
   min-height:66px;
   border:1px solid transparent;
   background:#17171b;
   color:#d7d2cf;
   border-radius:9px;
-  font-size:10px
+  font-size:10px;
 }
+
 .quick button:hover{
   border-color:var(--wine2);
-  background:#211116
+  background:#211116;
 }
+
 .quote{
   min-height:100%;
   display:flex;
@@ -373,7 +447,7 @@ button{cursor:pointer}
   justify-content:center;
   text-align:center;
   font:italic 18px/1.5 Georgia,serif;
-  color:#d9d0ca
+  color:#d9d0ca;
 }
 
 .toast{
@@ -386,40 +460,54 @@ button{cursor:pointer}
   border-radius:9px;
   display:none;
   z-index:100;
-  font-size:12px
+  font-size:12px;
+  max-width:420px;
 }
-.toast.show{display:block}
+
+.toast.show{
+  display:block;
+}
 
 .modal{
   position:fixed;
-  z-index:40;
+  z-index:200;
   inset:0;
   background:rgba(0,0,0,.76);
   display:none;
   align-items:center;
   justify-content:center;
-  padding:20px
+  padding:20px;
 }
-.modal.show{display:flex}
+
+.modal.show{
+  display:flex;
+}
+
 .modal-card{
   width:min(510px,100%);
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:15px;
-  padding:25px
+  padding:25px;
 }
+
 .modal-card h2{
   font:25px Georgia,serif;
-  margin:0 0 20px
+  margin:0 0 20px;
 }
-.field{margin:12px 0}
+
+.field{
+  margin:12px 0;
+}
+
 .field label{
   display:block;
   color:var(--muted);
   font-size:9px;
   letter-spacing:1px;
-  margin-bottom:6px
+  margin-bottom:6px;
 }
+
 .field input{
   width:100%;
   background:var(--panel2);
@@ -427,145 +515,280 @@ button{cursor:pointer}
   color:#fff;
   border-radius:8px;
   padding:11px;
-  outline:none
+  outline:none;
 }
+
+.field input:focus{
+  border-color:var(--wine2);
+}
+
 .actions{
   display:flex;
   gap:8px;
-  margin-top:20px
+  margin-top:20px;
 }
+
 .actions button{
   flex:1;
   padding:11px;
   border-radius:8px;
   border:1px solid var(--line);
   background:transparent;
-  color:#fff
-}
-.actions .primary{
-  margin:0;
-  border-color:var(--wine)
+  color:#fff;
 }
 
-/* RESTAURANT VIEW */
-.restaurant-view{
-  display:none
+.actions .primary{
+  border:0;
 }
+
+
+/* =========================
+   RESTAURANT VIEW
+========================= */
+
+#restaurantView{
+  display:none;
+}
+
 .restaurant-header{
   display:flex;
   align-items:center;
-  gap:15px;
-  margin-bottom:30px
+  gap:16px;
+  margin-bottom:30px;
 }
+
 .back-btn{
   border:1px solid var(--line);
   background:var(--panel);
   color:#fff;
   border-radius:9px;
-  padding:11px 15px
+  padding:11px 15px;
 }
+
 .back-btn:hover{
-  border-color:var(--wine2)
-}
-.restaurant-title h1{
-  margin:0;
-  font:34px Georgia,serif
-}
-.restaurant-title p{
-  margin:6px 0 0;
-  color:var(--muted)
-}
-.restaurant-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:16px
-}
-.module{
-  min-height:170px;
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:22px;
-  transition:.2s
-}
-.module:hover{
   border-color:var(--wine2);
-  transform:translateY(-2px)
 }
-.module-icon{
-  font-size:28px;
-  color:var(--gold);
-  margin-bottom:15px
+
+.restaurant-title h1{
+  margin:5px 0;
+  font:34px Georgia,serif;
 }
-.module h3{
-  font:22px Georgia,serif;
-  margin:0 0 7px
-}
-.module p{
+
+.restaurant-title p{
+  margin:0;
   color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-  margin:0
 }
+
 .restaurant-actions{
   display:flex;
   gap:10px;
-  margin-top:25px
+  margin-bottom:24px;
 }
-.restaurant-actions button{
+
+.secondary-btn{
   border:1px solid var(--line);
   background:var(--panel);
   color:#fff;
   border-radius:9px;
-  padding:12px 18px
-}
-.restaurant-actions button:hover{
-  border-color:var(--wine2)
+  padding:11px 16px;
 }
 
-@media(max-width:1000px){
-  .stats{grid-template-columns:1fr 1fr}
-  .restaurants{grid-template-columns:1fr 1fr}
-  .lower{grid-template-columns:1fr}
-  .restaurant-grid{grid-template-columns:1fr 1fr}
+.secondary-btn:hover{
+  border-color:var(--wine2);
+}
+
+.restaurant-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+
+.module{
+  min-height:175px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px;
+  transition:.2s;
+}
+
+.module:hover{
+  border-color:var(--wine2);
+  transform:translateY(-2px);
+}
+
+.module-icon{
+  font-size:28px;
+  color:var(--gold);
+  margin-bottom:14px;
+}
+
+.module h3{
+  font:22px Georgia,serif;
+  margin:0 0 8px;
+}
+
+.module p{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+  margin:0;
+}
+
+
+/* =========================
+   LOADING / ERROR
+========================= */
+
+.loading-card{
+  min-height:255px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--panel);
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  text-align:center;
+  padding:30px;
+}
+
+.error-card{
+  min-height:255px;
+  border:1px solid #52202c;
+  border-radius:15px;
+  background:#171014;
+  display:grid;
+  place-items:center;
+  color:#ddd;
+  text-align:center;
+  padding:30px;
+}
+
+.error-card strong{
+  color:#fff;
+  display:block;
+  margin-bottom:8px;
+}
+
+.error-card small{
+  color:#999;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:1100px){
+
+  .restaurants{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .restaurant-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .lower{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:900px){
+
+  .stats{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .top{
+    align-items:flex-start;
+  }
+
+  .top-actions{
+    flex-wrap:wrap;
+  }
 }
 
 @media(max-width:720px){
+
   .sidebar{
     position:relative;
     width:100%;
     height:auto;
-    padding:18px
+    padding:18px;
   }
-  .app{display:block}
+
+  .app{
+    display:block;
+  }
+
   .main{
     margin-left:0;
     width:100%;
-    padding:24px 16px 50px
+    padding:24px 16px 50px;
   }
+
   .brand{
     text-align:left;
-    font-size:21px
+    font-size:21px;
   }
-  .brand-mark{display:none}
+
+  .brand-mark{
+    display:none;
+  }
+
   .brand small{
     display:inline;
-    margin-left:8px
+    margin-left:8px;
   }
+
   .nav{
     display:flex;
     overflow:auto;
-    margin-top:18px
+    margin-top:18px;
   }
-  .nav button{white-space:nowrap}
-  .side-quote,.side-foot{display:none}
-  .top{align-items:flex-start}
-  .top-actions{flex-wrap:wrap}
-  .search{width:180px}
-  .restaurants,.stats{grid-template-columns:1fr}
-  .top{flex-direction:column}
-  .restaurant-grid{grid-template-columns:1fr}
-  .restaurant-header{align-items:flex-start;flex-direction:column}
+
+  .nav button{
+    white-space:nowrap;
+  }
+
+  .side-quote,
+  .side-foot{
+    display:none;
+  }
+
+  .top{
+    flex-direction:column;
+  }
+
+  .search{
+    width:100%;
+  }
+
+  .top-actions{
+    width:100%;
+  }
+
+  .stats{
+    grid-template-columns:1fr;
+  }
+
+  .restaurants{
+    grid-template-columns:1fr;
+  }
+
+  .restaurant-grid{
+    grid-template-columns:1fr;
+  }
+
+  .restaurant-header{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .restaurant-actions{
+    flex-direction:column;
+  }
 }
 </style>
 </head>
@@ -574,21 +797,49 @@ button{cursor:pointer}
 
 <div class="app">
 
+<!-- =========================
+     SIDEBAR
+========================= -->
+
 <aside class="sidebar">
+
   <div class="brand-mark">♜</div>
+
   <div class="brand">
     SERVISIUM
     <small>Art of Service</small>
   </div>
 
   <nav class="nav">
-    <button class="active" onclick="showMaster()">⌂ <span>Головна</span></button>
-    <button onclick="showMaster()">▥ <span>Мої заклади</span></button>
-    <button onclick="notify('Журнал змін відкрито')">↻ <span>Зміни</span></button>
-    <button onclick="notify('У вас 3 нових сповіщення')">♧ <span>Сповіщення</span></button>
-    <button onclick="notify('Аналітика готується до наступного етапу')">▥ <span>Аналітика</span></button>
-    <button onclick="notify('Профіль адміністратора')">♙ <span>Профіль</span></button>
-    <button onclick="notify('Налаштування')">⚙ <span>Налаштування</span></button>
+
+    <button class="active" onclick="showMaster();setActive(this)">
+      ⌂ <span>Головна</span>
+    </button>
+
+    <button onclick="showMaster();scrollToRestaurants();setActive(this)">
+      ▥ <span>Мої заклади</span>
+    </button>
+
+    <button onclick="notify('Журнал змін буде доступний у наступному модулі')">
+      ↻ <span>Зміни</span>
+    </button>
+
+    <button onclick="notify('Сповіщення будуть доступні у наступному модулі')">
+      ♧ <span>Сповіщення</span>
+    </button>
+
+    <button onclick="notify('Аналітика буде доступна у наступному модулі')">
+      ▥ <span>Аналітика</span>
+    </button>
+
+    <button onclick="notify('Профіль адміністратора')">
+      ♙ <span>Профіль</span>
+    </button>
+
+    <button onclick="notify('Налаштування')">
+      ⚙ <span>Налаштування</span>
+    </button>
+
   </nav>
 
   <div class="side-quote">
@@ -599,324 +850,799 @@ button{cursor:pointer}
   <div class="side-foot">
     v 0.5.0 · © 2026 SERVISIUM
   </div>
+
 </aside>
+
+
+<!-- =========================
+     MAIN
+========================= -->
 
 <main class="main">
 
-<!-- MASTER PANEL -->
-<div id="masterView">
 
-<header class="top">
-  <div class="greeting">
-    <div class="kicker">MASTER PANEL</div>
-    <h1>Ласкаво просимо, Ян!</h1>
-    <p>Керуйте своїми закладами. Розвивайте сервіс.</p>
-  </div>
+<!-- =========================
+     MASTER PANEL
+========================= -->
 
-  <div class="top-actions">
-    <input
-      class="search"
-      id="search"
-      placeholder="⌕  Пошук..."
-      oninput="searchRestaurants()"
-    >
-    <button class="iconbtn" onclick="notify('Тема: Dark Cinematic')">☼</button>
-    <button class="profile" onclick="notify('Ян Мур · Адміністратор')">
-      <span class="avatar">Я</span>
-      Ян Мур⌄
-    </button>
-  </div>
-</header>
+<section id="masterView">
 
-<section class="stats">
-  <div class="stat">
-    <div class="kicker">ЗАКЛАДИ</div>
-    <div class="num" id="statRestaurants">0</div>
-    <div class="change">Дані з Supabase</div>
-  </div>
+  <header class="top">
 
-  <div class="stat">
-    <div class="kicker">ПРАЦІВНИКИ</div>
-    <div class="num">20</div>
-    <div class="change">+3 за місяць</div>
-  </div>
+    <div class="greeting">
 
-  <div class="stat">
-    <div class="kicker">МЕНЮ</div>
-    <div class="num">310</div>
-    <div class="change">+24 за місяць</div>
-  </div>
+      <div class="kicker">
+        MASTER PANEL
+      </div>
 
-  <div class="stat">
-    <div class="kicker">ЗАДОВОЛЕНІСТЬ</div>
-    <div class="num">+40%</div>
-    <div class="change">+12% за місяць</div>
-  </div>
-</section>
+      <h1>
+        Ласкаво просимо, Ян!
+      </h1>
 
-<div class="section-head">
-  <div>
-    <h2>
-      Мої заклади
-      <span id="restaurantLabel" style="font:12px -apple-system;color:#777">
-        0 закладів
-      </span>
-    </h2>
-  </div>
-
-  <button
-    class="primary"
-    style="width:auto;margin:0"
-    onclick="openModal()"
-  >
-    ＋ Додати заклад
-  </button>
-</div>
-
-<section class="restaurants" id="restaurants">
-
-  <button class="add-card" onclick="openModal()">
-    <div>
-      <div class="plus">＋</div>
-      <strong>Додати новий заклад</strong>
-      <p style="color:#777">
-        Створіть ресторан та налаштуйте<br>
-        його під свій сервіс.
+      <p>
+        Керуйте своїми закладами. Розвивайте сервіс.
       </p>
+
     </div>
-  </button>
+
+
+    <div class="top-actions">
+
+      <input
+        class="search"
+        id="search"
+        placeholder="⌕  Пошук закладу..."
+        oninput="searchRestaurants()"
+      >
+
+      <button
+        class="iconbtn"
+        onclick="notify('Тема: Dark Cinematic')"
+      >
+        ☼
+      </button>
+
+      <button
+        class="profile"
+        onclick="notify('Ян Мур · Адміністратор')"
+      >
+        <span class="avatar">Я</span>
+        Ян Мур⌄
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- STATS -->
+
+  <section class="stats">
+
+    <div class="stat">
+
+      <div class="kicker">
+        ЗАКЛАДИ
+      </div>
+
+      <div
+        class="num"
+        id="statRestaurants"
+      >
+        0
+      </div>
+
+      <div class="change">
+        Дані з Supabase
+      </div>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="kicker">
+        ПРАЦІВНИКИ
+      </div>
+
+      <div class="num">
+        20
+      </div>
+
+      <div class="change">
+        +3 за місяць
+      </div>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="kicker">
+        МЕНЮ
+      </div>
+
+      <div class="num">
+        310
+      </div>
+
+      <div class="change">
+        +24 за місяць
+      </div>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="kicker">
+        ЗАДОВОЛЕНІСТЬ
+      </div>
+
+      <div class="num">
+        +40%
+      </div>
+
+      <div class="change">
+        +12% за місяць
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- RESTAURANTS -->
+
+  <div
+    class="section-head"
+    id="restaurantsSection"
+  >
+
+    <div>
+
+      <h2>
+
+        Мої заклади
+
+        <span
+          class="restaurant-count"
+          id="restaurantLabel"
+        >
+          0 закладів
+        </span>
+
+      </h2>
+
+    </div>
+
+
+    <button
+      class="primary"
+      onclick="openModal()"
+    >
+      ＋ Додати заклад
+    </button>
+
+  </div>
+
+
+  <section
+    class="restaurants"
+    id="restaurants"
+  >
+
+    <button
+      class="add-card"
+      onclick="openModal()"
+    >
+
+      <div>
+
+        <div class="plus">
+          ＋
+        </div>
+
+        <strong>
+          Додати новий заклад
+        </strong>
+
+        <p style="color:#777">
+          Створіть ресторан та налаштуйте<br>
+          його під свій сервіс.
+        </p>
+
+      </div>
+
+    </button>
+
+  </section>
+
+
+  <!-- LOWER BLOCKS -->
+
+  <section class="lower">
+
+
+    <div class="box">
+
+      <h3>
+        Останні зміни
+        <span class="link">
+          Дивитися всі →
+        </span>
+      </h3>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ＋
+        </span>
+
+        <div>
+
+          <b>
+            Додано позицію
+          </b>
+
+          <small>
+            Піно Нуар Cantina · Сьогодні 14:32
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ✎
+        </span>
+
+        <div>
+
+          <b>
+            Змінено позицію
+          </b>
+
+          <small>
+            T-bone — зміна гарніру · Сьогодні 12:11
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="event">
+
+        <span class="badge">
+          −
+        </span>
+
+        <div>
+
+          <b>
+            Stop-list
+          </b>
+
+          <small>
+            Локшина з рагу дичини · Вчора 21:46
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ₴
+        </span>
+
+        <div>
+
+          <b>
+            Оновлено ціну
+          </b>
+
+          <small>
+            Вітело тонато · Вчора 18:20
+          </small>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="box">
+
+      <h3>
+        Сповіщення
+      </h3>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ●
+        </span>
+
+        <div>
+
+          <b>
+            T-bone в стоп-листі
+          </b>
+
+          <small>
+            LUGOSH · 14:32
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ●
+        </span>
+
+        <div>
+
+          <b>
+            Новий працівник
+          </b>
+
+          <small>
+            Катя приєдналась до LUGOSH · 12:11
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="event">
+
+        <span class="badge">
+          ●
+        </span>
+
+        <div>
+
+          <b>
+            Оновлення меню
+          </b>
+
+          <small>
+            3 позиції потребують перевірки · 10:45
+          </small>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="box">
+
+      <h3>
+        Швидкий доступ
+      </h3>
+
+
+      <div class="quick">
+
+        <button onclick="notify('Меню')">
+          ▤<br>Меню
+        </button>
+
+        <button onclick="notify('Персонал')">
+          ♙<br>Персонал
+        </button>
+
+        <button onclick="notify('Stop-list')">
+          ⊘<br>Stop-list
+        </button>
+
+        <button onclick="notify('Навчання')">
+          ◇<br>Навчання
+        </button>
+
+        <button onclick="notify('AI-помічник')">
+          ✦<br>AI-помічник
+        </button>
+
+        <button onclick="notify('Замовлення')">
+          ▣<br>Замовлення
+        </button>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section
+    class="box"
+    style="
+      margin-top:18px;
+      min-height:125px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+      background:linear-gradient(90deg,#171014,#0f0f11)
+    "
+  >
+
+    <div>
+
+      <div class="kicker">
+        SERVISIUM
+      </div>
+
+      <div
+        style="
+          font:27px Georgia,serif;
+          margin-top:8px
+        "
+      >
+        Кращий сервіс починається тут
+      </div>
+
+    </div>
+
+    <div class="quote">
+      Art of Service
+    </div>
+
+  </section>
 
 </section>
 
-<section class="lower">
 
-<div class="box">
-  <h3>
-    Останні зміни
-    <span class="link">Дивитися всі →</span>
-  </h3>
+<!-- =========================
+     RESTAURANT PANEL
+========================= -->
 
-  <div class="event">
-    <span class="badge">＋</span>
-    <div>
-      <b>Додано позицію</b>
-      <small>Піно Нуар Cantina · Сьогодні 14:32</small>
-    </div>
-  </div>
-
-  <div class="event">
-    <span class="badge">✎</span>
-    <div>
-      <b>Змінено позицію</b>
-      <small>T-bone — зміна гарніру · Сьогодні 12:11</small>
-    </div>
-  </div>
-
-  <div class="event">
-    <span class="badge">−</span>
-    <div>
-      <b>Stop-list</b>
-      <small>Локшина з рагу дичини · Вчора 21:46</small>
-    </div>
-  </div>
-
-  <div class="event">
-    <span class="badge">₴</span>
-    <div>
-      <b>Оновлено ціну</b>
-      <small>Вітело тонато · Вчора 18:20</small>
-    </div>
-  </div>
-</div>
-
-<div class="box">
-  <h3>Сповіщення</h3>
-
-  <div class="event">
-    <span class="badge">●</span>
-    <div>
-      <b>T-bone в стоп-листі</b>
-      <small>LUGOSH · 14:32</small>
-    </div>
-  </div>
-
-  <div class="event">
-    <span class="badge">●</span>
-    <div>
-      <b>Новий працівник</b>
-      <small>Катя приєдналась до LUGOSH · 12:11</small>
-    </div>
-  </div>
-
-  <div class="event">
-    <span class="badge">●</span>
-    <div>
-      <b>Оновлення меню</b>
-      <small>3 позиції потребують перевірки · 10:45</small>
-    </div>
-  </div>
-</div>
-
-<div class="box">
-  <h3>Швидкий доступ</h3>
-
-  <div class="quick">
-    <button onclick="notify('Меню')">▤<br>Меню</button>
-    <button onclick="notify('Персонал')">♙<br>Персонал</button>
-    <button onclick="notify('Stop-list')">⊘<br>Stop-list</button>
-    <button onclick="notify('Навчання')">◇<br>Навчання</button>
-    <button onclick="notify('AI-помічник')">✦<br>AI-помічник</button>
-    <button onclick="notify('Замовлення')">▣<br>Замовлення</button>
-  </div>
-</div>
-
-</section>
-
-<section
-  class="box"
-  style="
-    margin-top:18px;
-    min-height:125px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:20px;
-    background:linear-gradient(90deg,#171014,#0f0f11)
-  "
->
-  <div>
-    <div class="kicker">SERVISIUM</div>
-    <div style="font:27px Georgia,serif;margin-top:8px">
-      Кращий сервіс починається тут
-    </div>
-  </div>
-
-  <div class="quote">Art of Service</div>
-</section>
-
-</div>
-
-
-<!-- RESTAURANT VIEW -->
-<div id="restaurantView" class="restaurant-view">
+<section id="restaurantView">
 
   <div class="restaurant-header">
 
-    <button class="back-btn" onclick="showMaster()">
+    <button
+      class="back-btn"
+      onclick="showMaster()"
+    >
       ← Назад
     </button>
 
+
     <div class="restaurant-title">
-      <div class="kicker">RESTAURANT PANEL</div>
-      <h1 id="selectedRestaurantName">Заклад</h1>
-      <p id="selectedRestaurantMeta">—</p>
+
+      <div class="kicker">
+        RESTAURANT PANEL
+      </div>
+
+      <h1 id="selectedRestaurantName">
+        Заклад
+      </h1>
+
+      <p id="selectedRestaurantMeta">
+        —
+      </p>
+
     </div>
 
   </div>
 
-  <div class="restaurant-grid">
-
-    <div class="module" onclick="notify('Модуль меню відкриється на наступному етапі')">
-      <div class="module-icon">🍽</div>
-      <h3>Меню</h3>
-      <p>Кухня, бар, категорії, позиції, ціни та склад.</p>
-    </div>
-
-    <div class="module" onclick="notify('Stop-list відкриється на наступному етапі')">
-      <div class="module-icon">⊘</div>
-      <h3>Stop-list</h3>
-      <p>Контроль недоступних позицій та внутрішні причини.</p>
-    </div>
-
-    <div class="module" onclick="notify('Персонал відкриється на наступному етапі')">
-      <div class="module-icon">♙</div>
-      <h3>Персонал</h3>
-      <p>Працівники, ролі, доступи та старший офіціант.</p>
-    </div>
-
-    <div class="module" onclick="notify('Навчання відкриється на наступному етапі')">
-      <div class="module-icon">◇</div>
-      <h3>Навчання</h3>
-      <p>Тести, прогрес працівників та знання меню.</p>
-    </div>
-
-    <div class="module" onclick="notify('AI відкриється на наступному етапі')">
-      <div class="module-icon">✦</div>
-      <h3>AI Assistant</h3>
-      <p>AI на основі підтвердженої бази знань цього закладу.</p>
-    </div>
-
-    <div class="module" onclick="notify('Замовлення відкриються на наступному етапі')">
-      <div class="module-icon">▣</div>
-      <h3>Замовлення</h3>
-      <p>Столи, замовлення та контроль роботи офіціантів.</p>
-    </div>
-
-    <div class="module" onclick="notify('База знань відкриється на наступному етапі')">
-      <div class="module-icon">🧠</div>
-      <h3>База знань</h3>
-      <p>Підтверджені рецептури, алергени, технології та правила.</p>
-    </div>
-
-    <div class="module" onclick="notify('Версії меню відкриються на наступному етапі')">
-      <div class="module-icon">↻</div>
-      <h3>Версії</h3>
-      <p>Історія змін меню та порівняння версій.</p>
-    </div>
-
-    <div class="module" onclick="notify('Налаштування закладу відкриються на наступному етапі')">
-      <div class="module-icon">⚙</div>
-      <h3>Налаштування</h3>
-      <p>Основна інформація, доступи та параметри закладу.</p>
-    </div>
-
-  </div>
 
   <div class="restaurant-actions">
-    <button onclick="notify('Імпорт меню буде доступний наступним етапом')">
+
+    <button
+      class="primary"
+      onclick="notify('Імпорт меню буде доступний наступним етапом')"
+    >
       ＋ Імпортувати меню
     </button>
 
-    <button onclick="notify('Налаштування закладу')">
+    <button
+      class="secondary-btn"
+      onclick="notify('Налаштування закладу')"
+    >
       ⚙ Налаштування
     </button>
+
   </div>
 
-</div>
+
+  <div class="restaurant-grid">
+
+
+    <div
+      class="module"
+      onclick="notify('Модуль меню буде відкритий наступним етапом')"
+    >
+
+      <div class="module-icon">
+        🍽
+      </div>
+
+      <h3>
+        Меню
+      </h3>
+
+      <p>
+        Кухня, бар, категорії, позиції, ціни та склад.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Stop-list буде відкритий наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ⊘
+      </div>
+
+      <h3>
+        Stop-list
+      </h3>
+
+      <p>
+        Контроль недоступних позицій та внутрішні причини.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Персонал буде відкритий наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ♙
+      </div>
+
+      <h3>
+        Персонал
+      </h3>
+
+      <p>
+        Працівники, ролі, доступи та старший офіціант.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Навчання буде відкрито наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ◇
+      </div>
+
+      <h3>
+        Навчання
+      </h3>
+
+      <p>
+        Тести, прогрес працівників та знання меню.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('AI буде відкритий наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ✦
+      </div>
+
+      <h3>
+        AI Assistant
+      </h3>
+
+      <p>
+        AI на основі підтвердженої бази знань цього закладу.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Замовлення будуть відкриті наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ▣
+      </div>
+
+      <h3>
+        Замовлення
+      </h3>
+
+      <p>
+        Столи, замовлення та контроль роботи офіціантів.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('База знань буде відкрита наступним етапом')"
+    >
+
+      <div class="module-icon">
+        🧠
+      </div>
+
+      <h3>
+        База знань
+      </h3>
+
+      <p>
+        Рецептури, алергени, технології та правила закладу.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Версії меню будуть відкриті наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ↻
+      </div>
+
+      <h3>
+        Версії
+      </h3>
+
+      <p>
+        Історія змін меню та порівняння версій.
+      </p>
+
+    </div>
+
+
+    <div
+      class="module"
+      onclick="notify('Налаштування будуть відкриті наступним етапом')"
+    >
+
+      <div class="module-icon">
+        ⚙
+      </div>
+
+      <h3>
+        Налаштування
+      </h3>
+
+      <p>
+        Основна інформація, доступи та параметри закладу.
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
 
 </main>
+
 </div>
 
 
-<div class="toast" id="toast"></div>
+<!-- =========================
+     TOAST
+========================= -->
+
+<div
+  class="toast"
+  id="toast"
+></div>
 
 
-<div class="modal" id="modal">
+<!-- =========================
+     ADD RESTAURANT MODAL
+========================= -->
+
+<div
+  class="modal"
+  id="modal"
+>
 
   <div class="modal-card">
 
-    <div class="kicker">NEW RESTAURANT</div>
-
-    <h2>Додати заклад</h2>
-
-    <div class="field">
-      <label>НАЗВА</label>
-      <input id="name" placeholder="Назва ресторану">
+    <div class="kicker">
+      NEW RESTAURANT
     </div>
 
-    <div class="field">
-      <label>МІСТО</label>
-      <input id="city" placeholder="Місто">
-    </div>
+    <h2>
+      Додати заклад
+    </h2>
+
 
     <div class="field">
-      <label>ТИП</label>
-      <input id="type" placeholder="Ресторан / Resto-Bar / Кафе">
+
+      <label>
+        НАЗВА
+      </label>
+
+      <input
+        id="name"
+        placeholder="Назва ресторану"
+      >
+
     </div>
+
+
+    <div class="field">
+
+      <label>
+        МІСТО
+      </label>
+
+      <input
+        id="city"
+        placeholder="Місто"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        ТИП
+      </label>
+
+      <input
+        id="type"
+        placeholder="Ресторан / Resto-Bar / Кафе"
+      >
+
+    </div>
+
 
     <div class="actions">
-      <button onclick="closeModal()">Скасувати</button>
-      <button class="primary" onclick="addRestaurant()">Створити</button>
+
+      <button
+        onclick="closeModal()"
+      >
+        Скасувати
+      </button>
+
+      <button
+        class="primary"
+        onclick="addRestaurant()"
+      >
+        Створити
+      </button>
+
     </div>
 
   </div>
@@ -926,74 +1652,150 @@ button{cursor:pointer}
 
 <script>
 
-const SUPABASE_URL = "https://thswpihmhjychjjcybmf.supabase.co";
+/* =========================================================
+   SUPABASE
+========================================================= */
+
+const SUPABASE_URL =
+  "https://thswpihmhjychjjcybmf.supabase.co";
 
 /*
-  ВСТАВ СЮДИ СВІЙ sb_publishable_... КЛЮЧ ІЗ SUPABASE
+  ВСТАВ СЮДИ СВІЙ ПОТОЧНИЙ sb_publishable_... КЛЮЧ.
+  Це саме PUBLISHABLE KEY, НЕ sb_secret_...
 */
-const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "ВСТАВ_ТУТ_СВІЙ_sb_publishable_КЛЮЧ";
 
 
-async function supabaseRequest(path, options = {}) {
+/* =========================================================
+   SUPABASE REQUEST
+========================================================= */
 
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
-    {
-      ...options,
-      headers:{
-        apikey:SUPABASE_PUBLISHABLE_KEY,
-        Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        "Content-Type":"application/json",
-        ...(options.headers || {})
+async function supabaseRequest(
+  path,
+  options = {}
+){
+
+  if(
+    !SUPABASE_PUBLISHABLE_KEY ||
+    SUPABASE_PUBLISHABLE_KEY.includes("ВСТАВ_ТУТ")
+  ){
+
+    throw new Error(
+      "Не встановлено Supabase publishable key"
+    );
+  }
+
+
+  const response =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${path}`,
+      {
+        ...options,
+
+        headers:{
+          apikey:
+            SUPABASE_PUBLISHABLE_KEY,
+
+          Authorization:
+            `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+
+          "Content-Type":
+            "application/json",
+
+          ...(options.headers || {})
+        }
       }
-    }
-  );
+    );
 
-  const text = await response.text();
+
+  const text =
+    await response.text();
+
 
   let data = null;
 
+
   try{
-    data = text ? JSON.parse(text) : null;
+
+    data =
+      text
+        ? JSON.parse(text)
+        : null;
+
   }catch{
+
     data = text;
+
   }
 
+
   if(!response.ok){
+
     throw new Error(
       data?.message ||
       data?.hint ||
       data?.details ||
       `HTTP ${response.status}`
     );
+
   }
 
+
   return data;
+
 }
 
 
-function notify(msg){
+/* =========================================================
+   TOAST
+========================================================= */
 
-  const t = document.getElementById("toast");
+function notify(message){
 
-  t.textContent = msg;
+  const toast =
+    document.getElementById("toast");
 
-  t.classList.add("show");
+  toast.textContent =
+    message;
 
-  clearTimeout(window.__toast);
+  toast.classList.add("show");
 
-  window.__toast = setTimeout(
-    () => t.classList.remove("show"),
-    1800
+  clearTimeout(
+    window.__servisiumToast
   );
+
+  window.__servisiumToast =
+    setTimeout(
+      ()=>{
+        toast.classList.remove("show");
+      },
+      2500
+    );
+
 }
 
+
+/* =========================================================
+   MODAL
+========================================================= */
 
 function openModal(){
 
   document
     .getElementById("modal")
     .classList.add("show");
+
+  setTimeout(
+    ()=>{
+      document
+        .getElementById("name")
+        .focus();
+    },
+    100
+  );
+
 }
 
 
@@ -1002,84 +1804,293 @@ function closeModal(){
   document
     .getElementById("modal")
     .classList.remove("show");
+
 }
 
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
 
 function escapeHtml(value){
 
-  return String(value).replace(
-    /[&<>"']/g,
-    ch => ({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      '"':"&quot;",
-      "'":"&#39;"
-    }[ch])
-  );
+  return String(value)
+    .replace(
+      /[&<>"']/g,
+      function(character){
+
+        return {
+          "&":"&amp;",
+          "<":"&lt;",
+          ">":"&gt;",
+          '"':"&quot;",
+          "'":"&#39;"
+        }[character];
+
+      }
+    );
+
 }
 
+
+/* =========================================================
+   GET RESTAURANTS
+========================================================= */
 
 async function getRestaurants(){
 
-  try{
+  return await supabaseRequest(
+    "restaurants?select=id,created_at,name,city,address,phone,logo_url,status,type&order=created_at.desc"
+  );
 
-    return await supabaseRequest(
-      "restaurants?select=*&order=created_at.desc"
-    );
-
-  }catch(error){
-
-    console.error("Supabase error:",error);
-
-    notify("Помилка завантаження: " + error.message);
-
-    return [];
-  }
 }
 
 
-function renderRestaurant(r){
+/* =========================================================
+   LOAD RESTAURANTS
+========================================================= */
 
-  const grid = document.getElementById("restaurants");
+async function loadRestaurants(){
 
-  const add = grid.querySelector(".add-card");
+  const grid =
+    document.getElementById(
+      "restaurants"
+    );
 
-  const article = document.createElement("article");
 
-  article.className = "rest-card photo";
+  grid.innerHTML = `
+
+    <div class="loading-card">
+
+      <div>
+
+        <div style="font-size:28px;margin-bottom:10px">
+          ⟳
+        </div>
+
+        Завантаження закладів...
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  try{
+
+    const restaurants =
+      await getRestaurants();
+
+
+    renderRestaurants(
+      restaurants
+    );
+
+
+  }catch(error){
+
+    console.error(
+      "SERVISIUM Supabase:",
+      error
+    );
+
+
+    grid.innerHTML = `
+
+      <div class="error-card">
+
+        <div>
+
+          <strong>
+            Не вдалося завантажити заклади
+          </strong>
+
+          <small>
+            ${escapeHtml(error.message)}
+          </small>
+
+          <br><br>
+
+          <button
+            class="primary"
+            onclick="loadRestaurants()"
+          >
+            Повторити
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+
+
+    updateRestaurantCount(0);
+
+    notify(
+      "Помилка підключення до Supabase"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER RESTAURANTS
+========================================================= */
+
+function renderRestaurants(
+  restaurants
+){
+
+  const grid =
+    document.getElementById(
+      "restaurants"
+    );
+
+
+  grid.innerHTML = "";
+
 
   if(
-    (r.name || "")
-      .toLowerCase()
-      .includes("archive")
+    !Array.isArray(restaurants) ||
+    restaurants.length === 0
   ){
-    article.classList.add("archive");
+
+    grid.appendChild(
+      createAddCard()
+    );
+
+    updateRestaurantCount(0);
+
+    return;
+
   }
+
+
+  restaurants.forEach(
+    restaurant => {
+
+      grid.appendChild(
+        createRestaurantCard(
+          restaurant
+        )
+      );
+
+    }
+  );
+
+
+  grid.appendChild(
+    createAddCard()
+  );
+
+
+  updateRestaurantCount(
+    restaurants.length
+  );
+
+
+  searchRestaurants();
+
+}
+
+
+/* =========================================================
+   RESTAURANT CARD
+========================================================= */
+
+function createRestaurantCard(
+  restaurant
+){
+
+  const article =
+    document.createElement(
+      "article"
+    );
+
+
+  article.className =
+    "rest-card";
+
+
+  if(
+    String(
+      restaurant.name || ""
+    )
+    .toLowerCase()
+    .includes("archive")
+  ){
+
+    article.classList.add(
+      "archive"
+    );
+
+  }
+
 
   article.dataset.name =
     (
-      (r.name || "") +
-      " " +
-      (r.city || "") +
-      " " +
-      (r.type || "Ресторан")
-    ).toLowerCase();
+      `${restaurant.name || ""} ` +
+      `${restaurant.city || ""} ` +
+      `${restaurant.type || ""}`
+    )
+    .toLowerCase();
 
-  const name = escapeHtml(r.name || "Без назви");
-  const city = escapeHtml(r.city || "Не вказано");
-  const type = escapeHtml(r.type || "Ресторан");
+
+  const name =
+    escapeHtml(
+      restaurant.name ||
+      "Без назви"
+    );
+
+
+  const city =
+    escapeHtml(
+      restaurant.city ||
+      "Не вказано"
+    );
+
+
+  const type =
+    escapeHtml(
+      restaurant.type ||
+      "Ресторан"
+    );
+
+
+  const status =
+    restaurant.status === "active"
+      ? "Активний"
+      : "Неактивний";
+
+
+  const statusDot =
+    restaurant.status === "active"
+      ? "var(--green)"
+      : "var(--danger)";
+
 
   article.innerHTML = `
 
     <div class="rest-content">
 
       <div>
+
         <span class="active">
-          <i></i>
-          Активний
+
+          <i
+            style="background:${statusDot}"
+          ></i>
+
+          ${status}
+
         </span>
+
       </div>
+
 
       <div>
 
@@ -1087,31 +2098,53 @@ function renderRestaurant(r){
           ${name}
         </div>
 
+
         <div class="rest-meta">
-          ${city} &nbsp;|&nbsp; ${type}
+          ${city}
+          &nbsp;|&nbsp;
+          ${type}
         </div>
+
 
         <div class="rest-numbers">
 
           <div>
+
             <b>—</b>
-            <span>Позицій</span>
+
+            <span>
+              Позицій
+            </span>
+
           </div>
 
-          <div>
-            <b>—</b>
-            <span>Працівників</span>
-          </div>
 
           <div>
+
             <b>—</b>
-            <span>Столів</span>
+
+            <span>
+              Працівників
+            </span>
+
+          </div>
+
+
+          <div>
+
+            <b>—</b>
+
+            <span>
+              Столів
+            </span>
+
           </div>
 
         </div>
 
+
         <button
-          class="primary open-restaurant-btn"
+          class="primary open-btn"
           type="button"
         >
           Відкрити заклад →
@@ -1120,86 +2153,220 @@ function renderRestaurant(r){
       </div>
 
     </div>
+
   `;
 
-  /*
-    ГОЛОВНЕ ВИПРАВЛЕННЯ:
-    кнопка тепер реально відкриває
-    конкретний заклад із Supabase
-  */
+
   const openButton =
-    article.querySelector(".open-restaurant-btn");
+    article.querySelector(
+      ".open-btn"
+    );
+
 
   openButton.addEventListener(
     "click",
-    () => openRestaurant(r.id)
+    function(){
+
+      openRestaurant(
+        restaurant.id
+      );
+
+    }
   );
 
-  grid.insertBefore(article,add);
+
+  return article;
+
 }
 
 
-async function renderSavedRestaurants(){
+/* =========================================================
+   ADD CARD
+========================================================= */
 
-  const grid =
-    document.getElementById("restaurants");
+function createAddCard(){
 
-  if(!grid) return;
+  const button =
+    document.createElement(
+      "button"
+    );
 
-  grid
-    .querySelectorAll(".rest-card.photo")
-    .forEach(card => card.remove());
 
-  const restaurants =
-    await getRestaurants();
+  button.className =
+    "add-card";
 
-  restaurants.forEach(
-    renderRestaurant
+
+  button.type =
+    "button";
+
+
+  button.innerHTML = `
+
+    <div>
+
+      <div class="plus">
+        ＋
+      </div>
+
+      <strong>
+        Додати новий заклад
+      </strong>
+
+      <p style="color:#777">
+        Створіть ресторан та налаштуйте<br>
+        його під свій сервіс.
+      </p>
+
+    </div>
+
+  `;
+
+
+  button.addEventListener(
+    "click",
+    openModal
   );
 
-  updateRestaurantCount(
-    restaurants.length
-  );
+
+  return button;
+
 }
 
 
-function updateRestaurantCount(count){
+/* =========================================================
+   COUNT
+========================================================= */
+
+function updateRestaurantCount(
+  count
+){
 
   document
-    .getElementById("statRestaurants")
-    .textContent = count;
-
-  document
-    .getElementById("restaurantLabel")
+    .getElementById(
+      "statRestaurants"
+    )
     .textContent =
-      count === 1
-        ? "1 заклад"
-        : `${count} заклади`;
+      count;
+
+
+  let text;
+
+
+  if(count === 0){
+
+    text =
+      "0 закладів";
+
+  }else if(count === 1){
+
+    text =
+      "1 заклад";
+
+  }else if(
+    count >= 2 &&
+    count <= 4
+  ){
+
+    text =
+      `${count} заклади`;
+
+  }else{
+
+    text =
+      `${count} закладів`;
+
+  }
+
+
+  document
+    .getElementById(
+      "restaurantLabel"
+    )
+    .textContent =
+      text;
+
 }
 
+
+/* =========================================================
+   ADD RESTAURANT
+========================================================= */
 
 async function addRestaurant(){
 
-  const n =
-    document
-      .getElementById("name")
-      .value
-      .trim() ||
-    "Новий заклад";
+  const nameInput =
+    document.getElementById(
+      "name"
+    );
 
-  const c =
-    document
-      .getElementById("city")
-      .value
-      .trim() ||
-    "Не вказано";
+
+  const cityInput =
+    document.getElementById(
+      "city"
+    );
+
+
+  const typeInput =
+    document.getElementById(
+      "type"
+    );
+
+
+  const name =
+    nameInput.value.trim();
+
+
+  const city =
+    cityInput.value.trim();
+
 
   const type =
-    document
-      .getElementById("type")
-      .value
-      .trim() ||
+    typeInput.value.trim() ||
     "Ресторан";
+
+
+  if(!name){
+
+    notify(
+      "Введи назву закладу"
+    );
+
+    nameInput.focus();
+
+    return;
+
+  }
+
+
+  if(!city){
+
+    notify(
+      "Введи місто"
+    );
+
+    cityInput.focus();
+
+    return;
+
+  }
+
+
+  const createButton =
+    document.querySelector(
+      "#modal .primary"
+    );
+
+
+  const originalText =
+    createButton.textContent;
+
+
+  createButton.disabled =
+    true;
+
+  createButton.textContent =
+    "Збереження...";
+
 
   try{
 
@@ -1209,148 +2376,396 @@ async function addRestaurant(){
         method:"POST",
 
         headers:{
-          "Prefer":"return=representation"
+          "Prefer":
+            "return=representation"
         },
 
-        body:JSON.stringify({
-          name:n,
-          city:c,
-          type:type,
-          status:"active"
-        })
+        body:
+          JSON.stringify({
+
+            name:name,
+
+            city:city,
+
+            type:type,
+
+            status:"active"
+
+          })
       }
     );
 
+
+    nameInput.value = "";
+    cityInput.value = "";
+    typeInput.value = "";
+
+
     closeModal();
 
-    document.getElementById("name").value = "";
-    document.getElementById("city").value = "";
-    document.getElementById("type").value = "";
 
-    notify("Заклад створено та збережено");
+    notify(
+      "Заклад створено та збережено"
+    );
 
-    await renderSavedRestaurants();
+
+    await loadRestaurants();
+
 
   }catch(error){
 
     console.error(
-      "Supabase insert error:",
+      "Add restaurant:",
       error
     );
+
 
     notify(
       "Помилка: " +
       error.message
     );
+
+
+  }finally{
+
+    createButton.disabled =
+      false;
+
+    createButton.textContent =
+      originalText;
+
   }
+
 }
 
 
-/*
-  ВІДКРИТТЯ КОНКРЕТНОГО ЗАКЛАДУ
-*/
-async function openRestaurant(id){
+/* =========================================================
+   OPEN RESTAURANT
+========================================================= */
+
+async function openRestaurant(
+  id
+){
+
+  if(!id){
+
+    notify(
+      "Помилка: ID закладу відсутній"
+    );
+
+    return;
+
+  }
+
 
   try{
 
     const restaurants =
       await supabaseRequest(
-        `restaurants?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+        `restaurants?select=id,created_at,name,city,address,phone,logo_url,status,type&id=eq.${encodeURIComponent(id)}&limit=1`
       );
+
 
     if(
       !restaurants ||
-      !restaurants.length
+      restaurants.length === 0
     ){
-      notify("Заклад не знайдено");
+
+      notify(
+        "Заклад не знайдено в Supabase"
+      );
+
       return;
+
     }
+
 
     const restaurant =
       restaurants[0];
 
+
     document
-      .getElementById("selectedRestaurantName")
+      .getElementById(
+        "selectedRestaurantName"
+      )
       .textContent =
-        restaurant.name || "Без назви";
+        restaurant.name ||
+        "Без назви";
+
 
     document
-      .getElementById("selectedRestaurantMeta")
+      .getElementById(
+        "selectedRestaurantMeta"
+      )
       .textContent =
-        `${restaurant.city || "Не вказано"}  |  ${restaurant.type || "Ресторан"}`;
+        `${restaurant.city || "Не вказано"} | ${restaurant.type || "Ресторан"}`;
+
 
     document
-      .getElementById("masterView")
-      .style.display = "none";
+      .getElementById(
+        "masterView"
+      )
+      .style.display =
+        "none";
+
 
     document
-      .getElementById("restaurantView")
-      .style.display = "block";
+      .getElementById(
+        "restaurantView"
+      )
+      .style.display =
+        "block";
+
 
     window.scrollTo({
       top:0,
       behavior:"smooth"
     });
 
+
+    notify(
+      `Відкрито: ${restaurant.name}`
+    );
+
+
   }catch(error){
 
     console.error(
-      "Open restaurant error:",
+      "Open restaurant:",
       error
     );
 
+
     notify(
-      "Не вдалося відкрити заклад: " +
+      "Помилка відкриття: " +
       error.message
     );
+
   }
+
 }
 
+
+/* =========================================================
+   SHOW MASTER
+========================================================= */
 
 function showMaster(){
 
   document
-    .getElementById("restaurantView")
-    .style.display = "none";
+    .getElementById(
+      "restaurantView"
+    )
+    .style.display =
+      "none";
+
 
   document
-    .getElementById("masterView")
-    .style.display = "block";
+    .getElementById(
+      "masterView"
+    )
+    .style.display =
+      "block";
+
 
   window.scrollTo({
     top:0,
     behavior:"smooth"
   });
+
 }
 
+
+/* =========================================================
+   SEARCH
+========================================================= */
 
 function searchRestaurants(){
 
-  const q =
-    document
-      .getElementById("search")
-      .value
+  const input =
+    document.getElementById(
+      "search"
+    );
+
+
+  if(!input) return;
+
+
+  const query =
+    input.value
       .toLowerCase()
       .trim();
 
+
   document
-    .querySelectorAll(".rest-card.photo")
-    .forEach(card => {
+    .querySelectorAll(
+      ".rest-card"
+    )
+    .forEach(
+      card => {
 
-      card.style.display =
-        card.dataset.name.includes(q)
-          ? "block"
-          : "none";
+        const name =
+          card.dataset.name ||
+          "";
 
-    });
+
+        card.style.display =
+          name.includes(query)
+            ? ""
+            : "none";
+
+      }
+    );
+
 }
 
 
+/* =========================================================
+   SCROLL TO RESTAURANTS
+========================================================= */
+
+function scrollToRestaurants(){
+
+  setTimeout(
+    ()=>{
+      document
+        .getElementById(
+          "restaurantsSection"
+        )
+        .scrollIntoView({
+          behavior:"smooth",
+          block:"start"
+        });
+    },
+    100
+  );
+
+}
+
+
+/* =========================================================
+   ACTIVE SIDEBAR
+========================================================= */
+
+function setActive(
+  button
+){
+
+  document
+    .querySelectorAll(
+      ".nav button"
+    )
+    .forEach(
+      item =>
+        item.classList.remove(
+          "active"
+        )
+    );
+
+
+  button.classList.add(
+    "active"
+  );
+
+}
+
+
+/* =========================================================
+   MODAL OUTSIDE CLICK
+========================================================= */
+
+document
+  .getElementById("modal")
+  .addEventListener(
+    "click",
+    function(event){
+
+      if(
+        event.target === this
+      ){
+
+        closeModal();
+
+      }
+
+    }
+  );
+
+
+/* =========================================================
+   ESC KEY
+========================================================= */
+
+document.addEventListener(
+  "keydown",
+  function(event){
+
+    if(
+      event.key === "Escape"
+    ){
+
+      closeModal();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   ENTER IN MODAL
+========================================================= */
+
+document.addEventListener(
+  "keydown",
+  function(event){
+
+    if(
+      event.key !== "Enter"
+    ) return;
+
+
+    const modal =
+      document.getElementById(
+        "modal"
+      );
+
+
+    if(
+      !modal.classList.contains(
+        "show"
+      )
+    ) return;
+
+
+    const active =
+      document.activeElement;
+
+
+    if(
+      active &&
+      active.tagName === "INPUT"
+    ){
+
+      event.preventDefault();
+
+      addRestaurant();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   INITIAL LOAD
+========================================================= */
+
 document.addEventListener(
   "DOMContentLoaded",
-  () => {
+  function(){
 
-    renderSavedRestaurants();
+    loadRestaurants();
 
   }
 );
