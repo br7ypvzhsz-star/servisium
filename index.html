@@ -1290,9 +1290,12 @@ h3{
 .menu-card-actions{
   display:flex;
   gap:6px;
-  opacity:0;
-  transform:translateY(3px);
+  opacity:1;
+  transform:none;
   transition:.2s;
+  position:relative;
+  z-index:20;
+  pointer-events:auto;
 }
 
 .menu-card:hover .menu-card-actions,
@@ -4669,10 +4672,10 @@ function renderMenu(){
             ${escapeHtml(item.name)}
           </h3>
 
-          <div class="menu-card-actions" onclick="event.stopPropagation()">
-            <button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}">✎</button>
-            <button type="button" class="menu-mini-btn ${stopped ? "danger" : ""}" title="${stopped ? "Зняти зі стопу" : "Поставити на стоп"}" data-menu-action="stop" data-menu-id="${Number(item.id)}">${stopped ? "↺" : "●"}</button>
-            <button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}">×</button>
+          <div class="menu-card-actions" onclick="event.stopPropagation()" style="position:relative;z-index:20;pointer-events:auto;opacity:1;transform:none;">
+            <button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();openEditMenuItem(Number(this.dataset.menuId));">✎</button>
+            <button type="button" class="menu-mini-btn ${stopped ? "danger" : ""}" title="${stopped ? "Зняти зі стопу" : "Поставити на стоп"}" data-menu-action="stop" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();toggleMenuItemStop(Number(this.dataset.menuId));">${stopped ? "↺" : "●"}</button>
+            <button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();deleteMenuItem(Number(this.dataset.menuId));">×</button>
           </div>
 
         </div>
