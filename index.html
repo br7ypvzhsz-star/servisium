@@ -973,6 +973,23 @@ h3{
 .stop-input:focus,.stop-select:focus{border-color:var(--wine);}
 @media(max-width:900px){.stop-row{align-items:flex-start;flex-wrap:wrap}.stop-reason{max-width:none;width:100%}.stop-meta{margin-left:62px}.stop-add{display:grid;grid-template-columns:1fr}.stop-select,.stop-input{width:100%;min-width:0;}}
 
+/* PERSONNEL */
+.personnel-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px;flex-wrap:wrap;}
+.personnel-list{display:grid;gap:10px;}
+.personnel-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface2);}
+.personnel-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#2a171d,#17171a);border:1px solid rgba(211,59,87,.35);color:#f2dfe4;font-weight:800;flex:none;}
+.personnel-main{min-width:0;flex:1;}
+.personnel-main strong{display:block;font-size:14px;}
+.personnel-main span{display:block;margin-top:4px;color:#777176;font-size:10px;}
+.role-badge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;border:1px solid var(--line);font-size:9px;font-weight:800;letter-spacing:.5px;white-space:nowrap;}
+.role-badge.admin{border-color:rgba(211,59,87,.45);color:#ef8194;background:rgba(211,59,87,.09);}
+.role-badge.senior{border-color:rgba(180,145,70,.45);color:#d8bd7c;background:rgba(180,145,70,.08);}
+.role-badge.waiter{color:#b9b2b5;background:rgba(255,255,255,.025);}
+.personnel-actions{display:flex;gap:7px;flex-wrap:wrap;}
+.personnel-select{height:36px;background:var(--surface);color:#fff;border:1px solid var(--line);border-radius:9px;padding:0 9px;outline:none;font-size:11px;}
+.personnel-empty{padding:40px;text-align:center;color:#777176;border:1px dashed var(--line);border-radius:14px;}
+@media(max-width:900px){.personnel-row{align-items:flex-start;flex-wrap:wrap}.personnel-actions{width:100%;margin-left:58px;}}
+
 /* MODULE PAGE */
 
 .module-page{
@@ -1690,10 +1707,96 @@ h3{
 .stop-confirm.resolve{border-color:#3aa76d;}
 .stop-confirm:disabled{opacity:.55;cursor:not-allowed;}
 #stopReasonInput{width:100%;box-sizing:border-box;}
+
+/* ================= AUTH ================= */
+.auth-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 15%,rgba(141,23,56,.18),transparent 38%),rgba(7,7,8,.98);backdrop-filter:blur(18px);}
+.auth-screen.hidden{display:none;}
+.auth-card{width:min(440px,100%);border:1px solid #29292e;border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),#101012;padding:30px;box-shadow:0 30px 90px rgba(0,0,0,.5);}
+.auth-brand{display:flex;align-items:center;gap:13px;margin-bottom:28px;}
+.auth-mark{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;color:#d7b987;border:1px solid rgba(215,185,135,.38);background:linear-gradient(145deg,rgba(141,23,56,.42),#141416);font-size:22px;}
+.auth-title{font-size:25px;font-weight:850;letter-spacing:-.7px;}
+.auth-subtitle{margin-top:5px;color:#777176;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;}
+.auth-heading{font-size:21px;margin-bottom:7px;}
+.auth-copy{color:#777176;font-size:12px;line-height:1.55;margin-bottom:20px;}
+.auth-field{margin-top:13px;}
+.auth-field label{display:block;color:#8d888b;font-size:9px;font-weight:800;letter-spacing:1.4px;margin-bottom:7px;}
+.auth-field input{width:100%;height:46px;border:1px solid #29292e;border-radius:12px;background:#151518;color:#fff;padding:0 13px;outline:none;}
+.auth-field input:focus{border-color:#8d1738;box-shadow:0 0 0 3px rgba(141,23,56,.12);}
+.auth-submit{width:100%;margin-top:18px;min-height:46px;border:1px solid rgba(179,32,75,.75);border-radius:12px;background:linear-gradient(135deg,#b3204b,#8d1738);color:#fff;font-weight:800;cursor:pointer;}
+.auth-secondary{width:100%;margin-top:9px;min-height:42px;border:1px solid #39393f;border-radius:12px;background:#151518;color:#ccc;cursor:pointer;}
+.auth-error{display:none;margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid rgba(211,59,87,.3);background:rgba(211,59,87,.08);color:#ef8194;font-size:11px;line-height:1.45;}
+.auth-error.active{display:block;}
+.auth-user{font-size:10px;color:#777176;word-break:break-all;margin-top:12px;}
+
+
+/* ================= PIN LOGIN + PERSONAL CABINET ================= */
+.pin-auth-card{width:min(390px,100%);}
+.pin-login-wrap{margin-top:18px;}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin:18px 0 20px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1px solid #5b4a50;background:#151518;box-shadow:inset 0 0 0 3px #151518;transition:.15s;}
+.pin-dot.filled{background:#b3204b;border-color:#b3204b;box-shadow:0 0 15px rgba(179,32,75,.35);}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.pin-key{height:62px;border:1px solid #302a2d;border-radius:14px;background:linear-gradient(145deg,#191417,#111012);color:#f5f1eb;font-size:21px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.22);}
+.pin-key:hover{border-color:#6b2438;background:linear-gradient(145deg,#24151b,#141114);}
+.pin-key:active{transform:scale(.97);}
+.pin-key.action{font-size:15px;color:#a9a1a4;}
+.pin-key.zero{grid-column:2;}
+.pin-mode-note{text-align:center;color:#686267;font-size:10px;line-height:1.5;margin-top:13px;}
+.pin-switch{margin-top:12px;text-align:center;color:#9c9498;font-size:11px;cursor:pointer;}
+.pin-switch:hover{color:#d7b987;}
+.personal-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:15px;}
+.personal-stat{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);}
+.personal-stat .label{color:#777176;font-size:9px;font-weight:800;letter-spacing:1.2px;}
+.personal-stat .value{margin-top:9px;font-size:25px;font-weight:850;letter-spacing:-.7px;}
+.personal-stat .sub{margin-top:5px;color:#5f5a5e;font-size:9px;}
+.sales-table{width:100%;border-collapse:collapse;}
+.sales-table th,.sales-table td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.055);text-align:left;font-size:11px;}
+.sales-table th{color:#777176;font-size:9px;text-transform:uppercase;letter-spacing:1px;}
+.sales-table td strong{font-size:12px;}
+.personal-note{color:#686267;font-size:10px;line-height:1.55;}
+@media(max-width:1000px){.personal-stats-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:560px){.pin-key{height:58px}.personal-stats-grid{grid-template-columns:1fr}.sales-table{font-size:10px}.sales-table th,.sales-table td{padding:9px 6px;}}
+
 </style>
 </head>
 
 <body>
+
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card pin-auth-card">
+    <div class="auth-brand">
+      <div class="auth-mark">♜</div>
+      <div><div class="auth-title">SERVISIUM</div><div class="auth-subtitle">ART OF SERVICE</div></div>
+    </div>
+    <h2 class="auth-heading">Вхід у SERVISIUM</h2>
+    <p class="auth-copy">Введи свій персональний 4-значний код. Після входу SERVISIUM відкриє тільки доступи твоєї ролі.</p>
+    <div class="pin-login-wrap">
+      <div id="pinDots" class="pin-dots"><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span></div>
+      <div id="pinKeypad" class="pin-keypad">
+        <button class="pin-key" type="button" onclick="pinPress('1')">1</button><button class="pin-key" type="button" onclick="pinPress('2')">2</button><button class="pin-key" type="button" onclick="pinPress('3')">3</button>
+        <button class="pin-key" type="button" onclick="pinPress('4')">4</button><button class="pin-key" type="button" onclick="pinPress('5')">5</button><button class="pin-key" type="button" onclick="pinPress('6')">6</button>
+        <button class="pin-key" type="button" onclick="pinPress('7')">7</button><button class="pin-key" type="button" onclick="pinPress('8')">8</button><button class="pin-key" type="button" onclick="pinPress('9')">9</button>
+        <button class="pin-key action" type="button" onclick="pinClear()">Очистити</button><button class="pin-key zero" type="button" onclick="pinPress('0')">0</button><button class="pin-key action" type="button" onclick="pinBackspace()">⌫</button>
+      </div>
+      <div class="pin-mode-note">4 цифри · сенсорна клавіатура · PIN не показується на екрані</div>
+      <div class="pin-switch" onclick="openEmailAuthMode()">Вхід адміністратора через email / пароль</div>
+    </div>
+    <div id="authError" class="auth-error"></div>
+  </div>
+</div>
+<div id="emailAuthScreen" class="auth-screen hidden">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="auth-mark">♜</div><div><div class="auth-title">SERVISIUM</div><div class="auth-subtitle">ART OF SERVICE</div></div></div>
+    <h2 class="auth-heading">Вхід адміністратора</h2>
+    <p class="auth-copy">Технічний вхід через Supabase Auth. Для працівників основний спосіб входу — персональний 4-значний PIN.</p>
+    <div class="auth-field"><label>EMAIL</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div>
+    <div class="auth-field"><label>ПАРОЛЬ</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Введи пароль"></div>
+    <button id="authLoginBtn" class="auth-submit" type="button" onclick="loginServisium()">Увійти</button>
+    <button class="auth-secondary" type="button" onclick="openPinAuthMode()">← Назад до PIN</button>
+    <div id="emailAuthError" class="auth-error"></div>
+  </div>
+</div>
 
 <div class="app">
 
@@ -1720,27 +1823,31 @@ h3{
         <span>Мої заклади</span>
       </button>
 
-      <button id="navChanges" onclick="openMasterModule('changes')">
+      <button id="navChanges" data-role-admin onclick="openMasterModule('changes')">
         <span class="nav-icon">↻</span>
         <span>Зміни</span>
       </button>
 
-      <button id="navNotifications" onclick="openMasterModule('notifications')">
+      <button id="navNotifications" data-role-admin onclick="openMasterModule('notifications')">
         <span class="nav-icon">♧</span>
         <span>Сповіщення</span>
       </button>
 
-      <button id="navAnalytics" onclick="openMasterModule('analytics')">
+      <button id="navAnalytics" data-role-admin onclick="openMasterModule('analytics')">
         <span class="nav-icon">▥</span>
         <span>Аналітика</span>
       </button>
 
-      <button id="navProfile" onclick="openMasterModule('profile')">
+      <button id="navProfile" onclick="openPersonalCabinet()">
         <span class="nav-icon">♙</span>
         <span>Профіль</span>
       </button>
+      <button id="navMyCabinet" onclick="openPersonalCabinet()">
+        <span class="nav-icon">◉</span>
+        <span>Мій кабінет</span>
+      </button>
 
-      <button id="navSettings" onclick="openMasterModule('settings')">
+      <button id="navSettings" data-role-admin onclick="openMasterModule('settings')">
         <span class="nav-icon">⚙</span>
         <span>Налаштування</span>
       </button>
@@ -1753,6 +1860,7 @@ h3{
     </div>
 
     <div class="side-foot">
+    <button class="secondary" style="width:100%;margin-bottom:10px" type="button" onclick="logoutServisium()">Вийти з акаунта</button>
       SERVISIUM v2.1.0 · © 2026
     </div>
 
@@ -1797,8 +1905,8 @@ h3{
               class="profile-btn"
               onclick="openMasterModule('profile')"
             >
-              <span class="avatar">Я</span>
-              <span class="profile-name">Ян Мур</span>
+              <span class="avatar" id="profileAvatar">Я</span>
+              <span class="profile-name" id="profileName">Профіль</span>
               <span>⌄</span>
             </button>
 
@@ -2639,6 +2747,31 @@ h3{
   </div>
 </div>
 
+<!-- ================= PERSONNEL MODAL ================= -->
+<div id="personnelModal" class="modal-backdrop" onclick="backdropClose(event,'personnelModal')">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="kicker">PERSONNEL</div>
+        <h2>Додати працівника</h2>
+        <p>Доступ до конкретного закладу SERVISIUM.</p>
+      </div>
+      <button class="close" onclick="closeModal('personnelModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="menu-edit-grid">
+        <div class="field full"><label>ІМ'Я</label><input id="staffNameInput" placeholder="Наприклад: Андрій Коваль"></div>
+        <div class="field"><label>РОЛЬ</label><select id="staffRoleInput"><option value="WAITER">WAITER</option><option value="SENIOR WAITER">SENIOR WAITER</option><option value="ADMIN">ADMIN</option></select></div>
+        <div class="field"><label>ТЕЛЕФОН / EMAIL</label><input id="staffContactInput" placeholder="Необов'язково"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary" onclick="closeModal('personnelModal')">Скасувати</button>
+        <button class="primary" onclick="savePersonnelMember()">Додати працівника</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= TOAST ================= -->
 
 <div
@@ -2677,6 +2810,13 @@ let currentRestaurant = null;
 let currentMenu = [];
 let currentCategory = "Усі";
 let currentStopList = [];
+let currentPersonnel = [];
+let servisiumSession = null;
+let currentUser = null;
+let currentUserRole = null;
+let currentUserStaff = null;
+let currentPin = "";
+let personalStatsCache = null;
 let importedPreviewItems = [];
 let toastTimer = null;
 
@@ -2692,7 +2832,7 @@ async function supabaseRequest(path, options = {}) {
 
       headers:{
         apikey:SUPABASE_PUBLISHABLE_KEY,
-        Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization:`Bearer ${servisiumSession?.access_token || SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type":"application/json",
         ...(options.headers || {})
       }
@@ -2727,6 +2867,95 @@ async function supabaseRequest(path, options = {}) {
   return data;
 }
 
+
+
+/* ================= AUTH ================= */
+function setAuthError(message){const el=document.getElementById("authError");if(el){el.textContent=message||"";el.classList.toggle("active",!!message);}}
+function setEmailAuthError(message){const el=document.getElementById("emailAuthError");if(el){el.textContent=message||"";el.classList.toggle("active",!!message);}}
+function showAuthScreen(show=true){document.getElementById("authScreen")?.classList.toggle("hidden",!show);}
+function openEmailAuthMode(){setAuthError("");document.getElementById("authScreen")?.classList.add("hidden");document.getElementById("emailAuthScreen")?.classList.remove("hidden");}
+function openPinAuthMode(){setEmailAuthError("");document.getElementById("emailAuthScreen")?.classList.add("hidden");document.getElementById("authScreen")?.classList.remove("hidden");currentPin="";renderPinDots();}
+function renderPinDots(){document.querySelectorAll("#pinDots .pin-dot").forEach((dot,i)=>dot.classList.toggle("filled",i<currentPin.length));}
+function pinPress(digit){if(currentPin.length>=4)return;currentPin+=String(digit);renderPinDots();if(currentPin.length===4)verifyPinLogin();}
+function pinBackspace(){currentPin=currentPin.slice(0,-1);renderPinDots();}
+function pinClear(){currentPin="";renderPinDots();}
+async function sha256Hex(value){const bytes=new TextEncoder().encode(String(value));const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function verifyPinLogin(){
+  setAuthError("");
+  const pin=currentPin;
+  if(!/^\d{4}$/.test(pin)){setAuthError("PIN має містити рівно 4 цифри.");return;}
+  try{
+    const hash=await sha256Hex(pin);
+    const rows=await supabaseRequest(`restaurant_staff?select=id,restaurant_id,name,email,auth_user_id,role,status,pin_hash&pin_hash=eq.${encodeURIComponent(hash)}&status=eq.active&limit=5`);
+    const staff=Array.isArray(rows)&&rows.length?rows[0]:null;
+    if(!staff){pinClear();setAuthError("Невірний PIN-код.");return;}
+    currentUserStaff=staff;currentUserRole=staff.role||"WAITER";currentUser={email:staff.email||"",id:staff.auth_user_id||null};
+    localStorage.setItem("servisium_pin_staff",JSON.stringify({id:staff.id,restaurant_id:staff.restaurant_id,name:staff.name,email:staff.email||"",role:staff.role||"WAITER",auth_user_id:staff.auth_user_id||null}));
+    showAuthScreen(false);document.getElementById("emailAuthScreen")?.classList.add("hidden");applyRoleAccess();await loadRestaurants();updateProfileUI();
+    if(staff.restaurant_id){const rest=restaurants.find(r=>Number(r.id)===Number(staff.restaurant_id));if(rest)await openRestaurant(rest.id);}
+  }catch(e){console.error("PIN login error:",e);setAuthError("Помилка входу: "+e.message);pinClear();}
+}
+function restorePinSession(){
+  try{const raw=localStorage.getItem("servisium_pin_staff");if(!raw)return false;const staff=JSON.parse(raw);if(!staff?.id)return false;
+    currentUserStaff=staff;currentUserRole=staff.role||"WAITER";currentUser={email:staff.email||"",id:staff.auth_user_id||null};applyRoleAccess();updateProfileUI();showAuthScreen(false);document.getElementById("emailAuthScreen")?.classList.add("hidden");return true;
+  }catch{return false;}
+}
+function openSignupMode(){openEmailAuthMode();const card=document.querySelector("#emailAuthScreen .auth-card");if(!card)return;card.querySelector(".auth-heading").textContent="Створити ADMIN акаунт";card.querySelector(".auth-copy").textContent="Створення технічного акаунта через Supabase Auth. Після цього ADMIN може створювати персональні профілі та PIN-коди.";const btn=document.getElementById("authLoginBtn");btn.textContent="Зареєструватися";btn.onclick=signupServisium;}
+async function signupServisium(){
+  const email=(document.getElementById("authEmail")?.value||"").trim().toLowerCase(),password=document.getElementById("authPassword")?.value||"";setEmailAuthError("");
+  if(!email||!password){setEmailAuthError("Введи email та пароль.");return;}if(password.length<6){setEmailAuthError("Пароль має містити щонайменше 6 символів.");return;}
+  const btn=document.getElementById("authLoginBtn");btn.disabled=true;btn.textContent="Створюємо...";
+  try{const res=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error(data?.msg||data?.message||data?.error_description||"Не вдалося створити акаунт.");if(data?.access_token){servisiumSession=data;currentUser=data.user||null;localStorage.setItem("servisium_session",JSON.stringify(data));await finishAuth();return;}setEmailAuthError("Акаунт створено. Якщо потрібне підтвердження email — підтверди його, потім увійди.");}catch(e){setEmailAuthError(e.message);}finally{btn.disabled=false;btn.textContent="Зареєструватися";}
+}
+async function loginServisium(){
+  const email=(document.getElementById("authEmail")?.value||"").trim().toLowerCase(),password=document.getElementById("authPassword")?.value||"";setEmailAuthError("");
+  if(!email||!password){setEmailAuthError("Введи email та пароль.");return;}const btn=document.getElementById("authLoginBtn");btn.disabled=true;btn.textContent="Входимо...";
+  try{const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error(data?.error_description||data?.msg||"Невірний email або пароль.");servisiumSession=data;currentUser=data.user||null;localStorage.setItem("servisium_session",JSON.stringify(data));await finishAuth();}catch(e){setEmailAuthError(e.message);localStorage.removeItem("servisium_session");}finally{btn.disabled=false;btn.textContent="Увійти";}
+}
+async function restoreServisiumSession(){if(restorePinSession()){await loadRestaurants();return true;}try{const raw=localStorage.getItem("servisium_session");if(!raw){showAuthScreen(true);return false;}servisiumSession=JSON.parse(raw);if(!servisiumSession?.access_token){showAuthScreen(true);return false;}const res=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession.access_token}`}});if(!res.ok)throw new Error("session");currentUser=await res.json();await finishAuth();return true;}catch{localStorage.removeItem("servisium_session");servisiumSession=null;currentUser=null;showAuthScreen(true);return false;}}
+async function finishAuth(){showAuthScreen(false);await loadCurrentUserStaff();await loadRestaurants();updateProfileUI();}
+async function loadCurrentUserStaff(){if(currentUserStaff?.id&&!servisiumSession){currentUserRole=currentUserStaff.role||null;applyRoleAccess();return;}currentUserStaff=null;currentUserRole=null;if(!currentUser?.email)return;try{const rows=await supabaseRequest(`restaurant_staff?select=*&email=eq.${encodeURIComponent(String(currentUser.email).toLowerCase())}&status=eq.active&order=created_at.asc`);currentUserStaff=Array.isArray(rows)&&rows.length?rows[0]:null;currentUserRole=currentUserStaff?.role||null;applyRoleAccess();}catch(e){console.warn("Staff profile lookup:",e.message);}}
+function applyRoleAccess(){const role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";document.querySelectorAll("[data-role-admin]").forEach(el=>el.style.display=canManage?"":"none");document.querySelectorAll("[data-role-waiter]").forEach(el=>el.style.display=role?"":"none");}
+function updateProfileUI(){const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;}
+async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
+
+/* ================= PERSONAL SALES STATS ================= */
+function monthStartISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths);return d.toISOString();}
+function nextMonthISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths+1);return d.toISOString();}
+function money(value){return Number(value||0).toLocaleString("uk-UA",{minimumFractionDigits:0,maximumFractionDigits:2})+" ₴";}
+async function loadPersonalSalesStats(){
+  const result={total:0,checks:0,avg:0,items:0,byDay:[]},staffId=Number(currentUserStaff?.id||0);if(!staffId)return result;
+  try{
+    const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&waiter_id=eq.${encodeURIComponent(staffId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc`);
+    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()!=="cancelled");
+    result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
+    const dayMap={};valid.forEach(o=>{const day=String(o.created_at||"").slice(0,10);dayMap[day]=(dayMap[day]||0)+Number(o.total||0);});
+    result.byDay=Object.entries(dayMap).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
+    try{const ids=valid.map(o=>Number(o.id)).filter(Boolean);if(ids.length){const oi=await supabaseRequest(`order_items?select=menu_item_id,qty,order_id&order_id=in.(${ids.join(",")})`);result.items=(Array.isArray(oi)?oi:[]).reduce((sum,x)=>sum+Number(x.qty||1),0);}}catch(e){console.warn("order_items stats unavailable:",e.message);}
+  }catch(e){console.warn("Personal sales stats unavailable:",e.message);}
+  return result;
+}
+async function openPersonalCabinet(){
+  hideAllMainViews();setActiveNav("navMyCabinet");const view=document.getElementById("masterModuleView");if(!view)return;view.classList.add("active");
+  const name=currentUserStaff?.name||currentUser?.email||"Працівник",role=currentUserRole||"WAITER";
+  view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">PERSONAL ACCOUNT</div><h1>Мій кабінет</h1><p class="subtitle">${escapeHtml(name)} · ${escapeHtml(role)}</p><div class="panel" style="margin-top:20px"><div class="personal-note">Завантаження персональної статистики за поточний місяць…</div></div></div>`;
+  const stats=await loadPersonalSalesStats();personalStatsCache=stats;
+  view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">PERSONAL ACCOUNT</div><h1>${escapeHtml(name)}</h1><p class="subtitle">${escapeHtml(role)} · персональна статистика продажів</p>
+    <div class="personal-stats-grid" style="margin-top:22px">
+      <div class="personal-stat"><div class="label">ЗАГАЛЬНА КАСА</div><div class="value">${money(stats.total)}</div><div class="sub">поточний місяць</div></div>
+      <div class="personal-stat"><div class="label">ЧЕКИ</div><div class="value">${stats.checks}</div><div class="sub">закриті чеки</div></div>
+      <div class="personal-stat"><div class="label">СЕРЕДНІЙ ЧЕК</div><div class="value">${money(stats.avg)}</div><div class="sub">каса ÷ чеки</div></div>
+      <div class="personal-stat"><div class="label">ПРОДАНО ПОЗИЦІЙ</div><div class="value">${stats.items}</div><div class="sub">кількість одиниць</div></div>
+    </div>
+    <div class="panel"><div class="section-head"><div><h2>Місячний звіт</h2><div class="section-meta">Продажі цього працівника за ${new Date().toLocaleString("uk-UA",{month:"long",year:"numeric"})}.</div></div></div>
+      ${stats.byDay.length?`<table class="sales-table"><thead><tr><th>Дата</th><th>Продажі</th></tr></thead><tbody>${stats.byDay.map(([day,total])=>`<tr><td>${escapeHtml(day)}</td><td><strong>${money(total)}</strong></td></tr>`).join("")}</tbody></table>`:`<div class="personal-note">Поки немає даних у таблиці orders. Статистика з'явиться автоматично після підключення замовлень.</div>`}
+    </div>
+    <div class="panel" style="margin-top:15px"><h2>Показники</h2><div class="list-box" style="margin-top:12px">
+      <div class="list-item"><div><strong>Загальна каса офіціанта</strong><span>Сума його чеків за вибраний період.</span></div><span>SALES</span></div>
+      <div class="list-item"><div><strong>Середній чек</strong><span>Загальна каса ÷ кількість чеків.</span></div><span>AVG</span></div>
+      <div class="list-item"><div><strong>Місячний звіт</strong><span>Продажі та кількість чеків за поточний місяць.</span></div><span>MONTH</span></div>
+    </div></div></div>`;
+}
 
 /* ================= HELPERS ================= */
 
@@ -3790,36 +4019,8 @@ async function openRestaurantModule(type){
 
   else if(type === "personnel"){
 
-    content = `
-
-      <div class="list-box">
-
-        <div class="list-item">
-          <div>
-            <strong>ADMIN</strong>
-            <span>Повний контроль закладу.</span>
-          </div>
-          <span>FULL</span>
-        </div>
-
-        <div class="list-item">
-          <div>
-            <strong>SENIOR WAITER</strong>
-            <span>Stop-list, перевірка меню, контроль персоналу.</span>
-          </div>
-          <span>FULL</span>
-        </div>
-
-        <div class="list-item">
-          <div>
-            <strong>WAITER</strong>
-            <span>Меню, AI, навчання, замовлення.</span>
-          </div>
-          <span>STAFF</span>
-        </div>
-
-      </div>
-    `;
+    await loadPersonnel();
+    content = renderPersonnelModule();
 
   }
 
@@ -4480,6 +4681,146 @@ async function confirmStopAction(){
 
 async function toggleMenuItemStop(itemId){
   openStopModal(itemId);
+}
+
+async function loadPersonnel(){
+  if(!currentRestaurant){ currentPersonnel=[]; return; }
+  try{
+    const data = await supabaseRequest(
+      `restaurant_staff?select=*&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}&order=created_at.asc`
+    );
+    currentPersonnel = Array.isArray(data) ? data : [];
+  }catch(error){
+    console.error("Personnel load error:",error);
+    currentPersonnel = [];
+    showToast("Не вдалося завантажити персонал: " + error.message);
+  }
+}
+
+function roleClass(role){
+  const r=String(role||"").toUpperCase();
+  if(r === "ADMIN") return "admin";
+  if(r === "SENIOR WAITER") return "senior";
+  return "waiter";
+}
+
+function initials(name){
+  return String(name||"?").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase() || "?";
+}
+
+function renderPersonnelModule(){
+  const rows = currentPersonnel.map(member=>{
+    const role=String(member.role||"WAITER").toUpperCase();
+    return `
+      <div class="personnel-row">
+        <div class="personnel-avatar">${escapeHtml(initials(member.name))}</div>
+        <div class="personnel-main">
+          <strong>${escapeHtml(member.name||"Без імені")}</strong>
+          <span>${escapeHtml(member.email||member.contact||"Email не вказаний")} · ${member.status === "inactive" ? "Неактивний" : "Активний"}</span>
+        </div>
+        <span class="role-badge ${roleClass(role)}">${escapeHtml(role)}</span>
+        <div class="personnel-actions">
+          <select class="personnel-select" onchange="changePersonnelRole(${Number(member.id)},this.value)">
+            <option value="WAITER" ${role==="WAITER"?"selected":""}>WAITER</option>
+            <option value="SENIOR WAITER" ${role==="SENIOR WAITER"?"selected":""}>SENIOR WAITER</option>
+            <option value="ADMIN" ${role==="ADMIN"?"selected":""}>ADMIN</option>
+          </select>
+          <button class="secondary" type="button" onclick="togglePersonnelStatus(${Number(member.id)},'${member.status === "inactive" ? "active" : "inactive"}')">${member.status === "inactive" ? "Активувати" : "Вимкнути"}</button>
+          <button class="danger-btn" type="button" onclick="deletePersonnelMember(${Number(member.id)})">Видалити</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="info-grid">
+      <div class="info-box"><div class="kicker">STAFF</div><div class="big">${currentPersonnel.length}</div><p>працівників у закладі.</p></div>
+      <div class="info-box"><div class="kicker">SENIOR</div><div class="big">${currentPersonnel.filter(x=>String(x.role).toUpperCase()==="SENIOR WAITER").length}</div><p>Senior Waiter.</p></div>
+      <div class="info-box"><div class="kicker">ACCESS</div><div class="big">3</div><p>ролі: Admin / Senior / Waiter.</p></div>
+    </div>
+    <div class="panel" style="margin-top:15px">
+      <div class="personnel-toolbar">
+        <div><h2>Команда закладу</h2><div class="section-meta">Ролі визначають доступ до функцій SERVISIUM.</div></div>
+        <button class="primary" type="button" onclick="openPersonnelModal()">+ Додати працівника</button>
+      </div>
+      <div class="personnel-list">
+        ${rows || `<div class="personnel-empty"><strong>Персонал ще не доданий</strong><p>Додай першого працівника та признач роль.</p></div>`}
+      </div>
+    </div>
+    <div class="panel" style="margin-top:15px">
+      <h2>Права ролей</h2>
+      <div class="list-box" style="margin-top:12px">
+        <div class="list-item"><div><strong>ADMIN</strong><span>Повний контроль закладу, персоналу, меню та Stop-list.</span></div><span>FULL</span></div>
+        <div class="list-item"><div><strong>SENIOR WAITER</strong><span>Меню, Stop-list, перевірка даних, контроль команди.</span></div><span>MANAGER</span></div>
+        <div class="list-item"><div><strong>WAITER</strong><span>Меню, AI, навчання та замовлення. Без внутрішнього Stop-list.</span></div><span>STAFF</span></div>
+      </div>
+    </div>`;
+}
+
+function openPersonnelModal(){
+  if(!currentRestaurant){showToast("Спочатку відкрий заклад.");return;}
+  document.getElementById("staffNameInput").value="";
+  document.getElementById("staffEmailInput") && (document.getElementById("staffEmailInput").value="");
+  document.getElementById("staffPinInput") && (document.getElementById("staffPinInput").value="");
+  document.getElementById("staffContactInput").value="";
+  document.getElementById("staffRoleInput").value="WAITER";
+  document.getElementById("personnelModal")?.classList.add("active");
+}
+
+async function savePersonnelMember(){
+  const name=(document.getElementById("staffNameInput")?.value||"").trim();
+  const email=(document.getElementById("staffEmailInput")?.value||"").trim().toLowerCase();
+  const contact=(document.getElementById("staffContactInput")?.value||"").trim();
+  const role=(document.getElementById("staffRoleInput")?.value||"WAITER").trim();
+  if(!name){showToast("Вкажи ім'я працівника.");return;}
+  if(!email || !email.includes("@")){showToast("Вкажи email для акаунта працівника.");return;}
+  try{
+    const pinInput=document.getElementById("staffPinInput");
+    let pin=(pinInput?.value||"").trim();
+    if(pin && !/^\d{4}$/.test(pin)){showToast("PIN має містити рівно 4 цифри.");return;}
+    if(!pin)pin=String(Math.floor(1000+Math.random()*9000));
+    const pin_hash=await sha256Hex(pin);
+    await supabaseRequest("restaurant_staff",{method:"POST",body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),name,email,contact:contact||null,role,status:"active",pin_hash})});
+    closeModal("personnelModal");
+    await openRestaurantModule("personnel");
+    showToast(`${name} доданий. PIN-код: ${pin}`);
+  }catch(error){
+    console.error("Personnel insert error:",error);
+    showToast("Не вдалося додати працівника: " + error.message);
+  }
+}
+
+async function changePersonnelRole(id,role){
+  try{
+    await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"PATCH",body:JSON.stringify({role})});
+    await openRestaurantModule("personnel");
+    showToast("Роль працівника оновлено.");
+  }catch(error){
+    console.error("Personnel role error:",error);
+    showToast("Не вдалося змінити роль: " + error.message);
+  }
+}
+
+async function togglePersonnelStatus(id,status){
+  try{
+    await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"PATCH",body:JSON.stringify({status})});
+    await openRestaurantModule("personnel");
+    showToast(status === "active" ? "Працівника активовано." : "Доступ працівника вимкнено.");
+  }catch(error){
+    console.error("Personnel status error:",error);
+    showToast("Не вдалося змінити статус: " + error.message);
+  }
+}
+
+async function deletePersonnelMember(id){
+  if(!confirm("Видалити працівника із закладу?")) return;
+  try{
+    await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"DELETE"});
+    await openRestaurantModule("personnel");
+    showToast("Працівника видалено.");
+  }catch(error){
+    console.error("Personnel delete error:",error);
+    showToast("Не вдалося видалити працівника: " + error.message);
+  }
 }
 
 async function renderStopModule(){
@@ -6515,7 +6856,7 @@ document.addEventListener(
   "DOMContentLoaded",
   async ()=>{
 
-    await loadRestaurants();
+    await restoreServisiumSession();
 
   }
 );
