@@ -3515,7 +3515,7 @@ function scrollToRestaurants(){
 
 /* ================= MASTER MODULES ================= */
 
-function hallKey(){return `servisium_hall_builder_v45_${Number(currentRestaurant?.id||0)}`;}
+function hallKey(){return `servisium_hall_builder_v49_${Number(currentRestaurant?.id||0)}`;}
 function defaultHallConfig(){return {version:7,style:"DARK",floors:[{id:"f1",name:"1 поверх",sort:1,image:null,imageRotation:0,imageOpacity:48,planScale:1.15,sourceImage:null,analysis:null,digitalized:false,zones:[{id:"z1",name:"Основний зал",sort:1}]}],tables:[]};}
 function loadHallConfig(){if(!currentRestaurant)return defaultHallConfig();try{const raw=localStorage.getItem(hallKey());if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.floors)&&Array.isArray(p.tables)){p.floors.forEach(f=>{f.zones=f.zones||[{id:"z"+Date.now(),name:"Основна зона",sort:1}];f.planScale=Number(f.planScale||1.15);f.style=f.style||p.style||"DARK";});if(Number(p.version||0)<7){p.tables=p.tables.filter(t=>!t.autoDetected);p.version=7;}return p;}}}catch(e){console.warn("Hall config read error",e);}return defaultHallConfig();}
 function saveHallConfig(cfg){localStorage.setItem(hallKey(),JSON.stringify(cfg));}
@@ -3559,7 +3559,7 @@ function hallTransformCanvasRotation(src,rotation){if(!rotation)return src;const
 function hallNormalizeDetectedShape(w,h,circularity){const r=w/Math.max(1,h);if(circularity>.55&&r>.72&&r<1.38)return {shape:"circle",width:Math.max(70,Math.min(150,w)),height:Math.max(70,Math.min(150,h))};if(r>1.5||r<.67)return {shape:"rect",width:Math.max(70,Math.min(180,w)),height:Math.max(55,Math.min(120,h))};return {shape:"square",width:Math.max(70,Math.min(150,w)),height:Math.max(65,Math.min(150,h))};}
 function hallAnalyzeImageContours(canvas){
   const mat=cv.imread(canvas),gray=new cv.Mat(),blur=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();
-  cv.cvtColor(mat,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,45,135,edges);
+  cv.cvtColor(mat,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,edges,45,135,3,false);
   const kernel=cv.Mat.ones(3,3,cv.CV_8U);cv.morphologyEx(edges,edges,cv.MORPH_CLOSE,kernel,new cv.Point(-1,-1),2);cv.findContours(edges,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
   const W=canvas.width,H=canvas.height,cands=[],large=[];
   for(let i=0;i<contours.size();i++){
