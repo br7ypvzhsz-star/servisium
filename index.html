@@ -1772,6 +1772,8 @@ h3{
 @media(max-width:1000px){.personal-stats-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:560px){.pin-key{height:58px}.personal-stats-grid{grid-template-columns:1fr}.sales-table{font-size:10px}.sales-table th,.sales-table td{padding:9px 6px;}}
 
+
+.orders-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:4px 0 0}.orders-list{display:grid;gap:9px;margin-top:12px}.order-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 15px;border:1px solid var(--line);border-radius:13px;background:var(--surface2)}.order-main,.order-meta{display:flex;align-items:center;gap:13px}.order-main span{display:block;color:#777176;font-size:11px;margin-top:4px}.order-id{font-weight:900;color:#d65a77}.order-status{font-size:9px;letter-spacing:.8px;color:#d8bd7c;border:1px solid rgba(180,145,70,.35);padding:6px 8px;border-radius:999px}.order-composer{width:min(1000px,calc(100vw - 30px));max-height:90vh;overflow:auto}.order-composer-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;padding:20px}.order-menu-picker{display:grid;gap:8px;max-height:480px;overflow:auto;margin-top:10px}.order-menu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface2);color:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;cursor:pointer}.order-menu-item:hover{border-color:var(--wine)}.order-menu-item img{width:48px;height:48px;object-fit:cover;border-radius:9px;background:#17171a}.order-menu-item span{flex:1}.order-menu-item strong,.order-menu-item small{display:block}.order-menu-item small{color:#777176;margin-top:3px}.order-cart{margin-top:12px;border:1px solid var(--line);border-radius:13px;padding:8px;min-height:180px;max-height:390px;overflow:auto}.cart-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 7px;border-bottom:1px solid rgba(255,255,255,.06)}.cart-row:last-child{border-bottom:0}.cart-row span{display:block;color:#777176;font-size:11px;margin-top:3px}.cart-actions{display:flex;align-items:center;gap:8px}.cart-actions button{width:31px;height:31px;border:1px solid var(--line);background:var(--surface);color:#fff;border-radius:8px;font-size:17px;cursor:pointer}.order-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:15px;border:1px solid rgba(211,59,87,.25);border-radius:13px;background:rgba(141,23,56,.08)}.order-total span{font-size:10px;letter-spacing:1.2px;color:#aaa}.order-total strong{font-size:22px}.assigned-waiter{padding:12px;border:1px solid var(--line);border-radius:11px;margin-bottom:12px}.assigned-waiter span{display:block;font-size:9px;letter-spacing:1px;color:#777176;margin-bottom:4px}.assigned-waiter strong{font-size:14px}@media(max-width:800px){.orders-toolbar{align-items:stretch;flex-direction:column}.order-composer-grid{grid-template-columns:1fr}.order-menu-picker{max-height:330px}.order-row{align-items:flex-start;flex-direction:column}.order-meta{width:100%;justify-content:space-between}}
 </style>
 </head>
 
@@ -3035,6 +3037,156 @@ async function openPersonalCabinet(){
   </div>`;
 }
 
+
+/* ================= ORDERS MVP ================= */
+let ordersModuleCache = [];
+let orderDraft = [];
+let ordersStaffCache = [];
+
+async function loadOrdersModuleData(){
+  const restaurantId=Number(currentRestaurant?.id||currentUserStaff?.restaurant_id||0);
+  ordersModuleCache=[];ordersStaffCache=[];
+  if(!restaurantId)return;
+  try{
+    const rows=await supabaseRequest(`orders?select=id,restaurant_id,waiter_id,total,created_at,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&order=created_at.desc&limit=100`);
+    ordersModuleCache=Array.isArray(rows)?rows:[];
+  }catch(e){
+    console.warn("Orders load error:",e.message);
+    showToast("Не вдалося завантажити замовлення: "+e.message);
+  }
+  try{
+    const staff=await supabaseRequest(`restaurant_staff?select=id,name,role,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&status=eq.active&order=name.asc&limit=500`);
+    ordersStaffCache=Array.isArray(staff)?staff:[];
+  }catch(e){console.warn("Orders staff load error:",e.message);}
+}
+
+function orderStatusLabel(status){
+  const s=String(status||"").toLowerCase();
+  if(s==="closed"||s==="completed")return "ЗАКРИТО";
+  if(s==="cancelled")return "СКАСОВАНО";
+  if(s==="paid")return "ОПЛАЧЕНО";
+  return "В РОБОТІ";
+}
+
+function renderOrdersModule(){
+  const role=String(currentUserRole||"").toUpperCase();
+  const activeOrders=ordersModuleCache.filter(o=>!['cancelled','closed','completed','paid'].includes(String(o.status||"").toLowerCase()));
+  const today=ordersModuleCache.filter(o=>String(o.created_at||"").slice(0,10)===new Date().toISOString().slice(0,10));
+  const canAssign=role==="ADMIN"||role==="SENIOR WAITER";
+  const staffMap={};ordersStaffCache.forEach(s=>staffMap[Number(s.id)]=s.name);
+  return `
+    <div class="orders-toolbar">
+      <div>
+        <div class="kicker">ORDERS · LIVE</div>
+        <h2 style="margin:5px 0 0">Замовлення</h2>
+        <div class="section-meta">Реальні замовлення закладу. Продаж автоматично прив'язується до офіціанта.</div>
+      </div>
+      <button class="primary-btn" onclick="openNewOrderComposer()">＋ Нове замовлення</button>
+    </div>
+    <div class="info-grid" style="margin-top:18px">
+      <div class="info-box"><div class="kicker">TODAY</div><div class="big">${today.length}</div><p>замовлень сьогодні</p></div>
+      <div class="info-box"><div class="kicker">ACTIVE</div><div class="big">${activeOrders.length}</div><p>активних замовлень</p></div>
+      <div class="info-box"><div class="kicker">STAFF</div><div class="big">${ordersStaffCache.length}</div><p>активних працівників</p></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-head"><div><h2>Останні замовлення</h2><div class="section-meta">До 100 останніх замовлень цього закладу.</div></div><span class="section-badge">${ordersModuleCache.length}</span></div>
+      ${ordersModuleCache.length?`<div class="orders-list">${ordersModuleCache.map(o=>{
+        const wid=Number(o.waiter_id||0), name=staffMap[wid]||`Працівник #${wid||"—"}`;
+        return `<div class="order-row"><div class="order-main"><div class="order-id">#${o.id}</div><div><strong>${escapeHtml(name)}</strong><span>${formatDateTime(o.created_at)}</span></div></div><div class="order-meta"><span class="order-status">${orderStatusLabel(o.status)}</span><strong>${money(o.total||0)}</strong></div></div>`;
+      }).join("")}</div>`:`<div class="personal-note">Замовлень ще немає. Створіть перше замовлення — воно одразу з'явиться у статистиці офіціанта.</div>`}
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="section-head"><div><h2>Як працює каса</h2><div class="section-meta">Зв'язок замовлення з персональною статистикою.</div></div></div>
+      <div class="list-box">
+        <div class="list-item"><div><strong>1. Офіціант створює замовлення</strong><span>У замовлення записується waiter_id.</span></div><span>WAITER</span></div>
+        <div class="list-item"><div><strong>2. Додаються позиції</strong><span>Кожна позиція записується в order_items з ціною на момент продажу.</span></div><span>ITEMS</span></div>
+        <div class="list-item"><div><strong>3. Закривається чек</strong><span>total замовлення використовується для розрахунку каси та середнього чека.</span></div><span>SALES</span></div>
+      </div>
+    </div>
+    ${canAssign?`<div class="personal-note" style="margin-top:12px">ADMIN і SENIOR WAITER можуть під час створення замовлення вибрати офіціанта, на якого буде зарахований чек.</div>`:""}
+  `;
+}
+
+function formatDateTime(value){
+  if(!value)return "—";
+  const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);
+  return d.toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+
+async function openNewOrderComposer(){
+  if(!currentRestaurant){showToast("Спочатку відкрий заклад.");return;}
+  orderDraft=[];
+  const role=String(currentUserRole||"").toUpperCase();
+  const canAssign=role==="ADMIN"||role==="SENIOR WAITER";
+  if(!currentMenu.length){
+    try{await loadRestaurantMenu(currentRestaurant.id);}catch(e){console.warn("Menu load for order:",e.message);}
+  }
+  const available=currentMenu.filter(x=>String(x.status||"active").toLowerCase()!=="stop"&&String(x.status||"active").toLowerCase()!=="stopped");
+  const staffOptions=ordersStaffCache.map(s=>`<option value="${Number(s.id)}" ${Number(s.id)===Number(currentUserStaff?.id)?"selected":""}>${escapeHtml(s.name)} · ${escapeHtml(s.role)}</option>`).join("");
+  const modal=document.createElement("div");modal.className="servisium-modal-backdrop";modal.id="newOrderModal";
+  modal.innerHTML=`<div class="servisium-modal order-composer"><div class="modal-head"><div><div class="kicker">NEW ORDER</div><h2>Нове замовлення</h2><div class="section-meta">Додавай позиції — SERVISIUM автоматично порахує чек.</div></div><button class="icon-btn" onclick="closeNewOrderComposer()">×</button></div>
+    <div class="order-composer-grid">
+      <div>
+        <label class="field-label">ПОШУК ПОЗИЦІЇ</label><input id="orderSearchInput" class="text-input" placeholder="Наприклад: T-bone, бургер, вино…" oninput="filterOrderMenu(this.value)">
+        <div id="orderMenuPicker" class="order-menu-picker">${renderOrderMenuPicker(available)}</div>
+      </div>
+      <div>
+        ${canAssign?`<label class="field-label">ОФІЦІАНТ</label><select id="orderWaiterSelect" class="text-input">${staffOptions}</select>`:`<div class="assigned-waiter"><span>ОФІЦІАНТ</span><strong>${escapeHtml(currentUserStaff?.name||"Поточний користувач")}</strong></div>`}
+        <div class="order-cart" id="orderCart">${renderOrderCart()}</div>
+        <div class="order-total"><span>РАЗОМ</span><strong id="orderDraftTotal">${money(orderDraftTotal())}</strong></div>
+        <button class="primary-btn" style="width:100%;margin-top:12px" onclick="saveNewOrder()">Створити чек</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function closeNewOrderComposer(){document.getElementById("newOrderModal")?.remove();}
+function orderDraftTotal(){return orderDraft.reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||0),0);}
+function renderOrderMenuPicker(items){
+  if(!items.length)return `<div class="personal-note">Немає доступних позицій меню.</div>`;
+  return items.slice(0,80).map(item=>`<button class="order-menu-item" onclick="addOrderDraftItem(${Number(item.id)})"><img src="${escapeHtml(item.photo_url||"")}" onerror="this.style.display='none'" alt=""><span><strong>${escapeHtml(item.name||"Позиція")}</strong><small>${escapeHtml(item.category||item.type||"")}</small></span><b>${money(item.price||0)}</b></button>`).join("");
+}
+function filterOrderMenu(query){
+  const q=String(query||"").trim().toLowerCase();
+  const list=currentMenu.filter(x=>{const status=String(x.status||"active").toLowerCase();if(status==="stop"||status==="stopped")return false;return !q||`${x.name||""} ${x.category||""} ${x.type||""}`.toLowerCase().includes(q);});
+  const el=document.getElementById("orderMenuPicker");if(el)el.innerHTML=renderOrderMenuPicker(list);
+}
+function addOrderDraftItem(id){
+  const item=currentMenu.find(x=>Number(x.id)===Number(id));if(!item)return;
+  const existing=orderDraft.find(x=>Number(x.menu_item_id)===Number(id));
+  if(existing)existing.qty=Number(existing.qty||0)+1;else orderDraft.push({menu_item_id:Number(item.id),name:item.name,price:Number(item.price||0),qty:1});
+  refreshOrderComposer();
+}
+function changeOrderDraftQty(id,delta){const x=orderDraft.find(i=>Number(i.menu_item_id)===Number(id));if(!x)return;x.qty=Number(x.qty||0)+Number(delta||0);if(x.qty<=0)orderDraft=orderDraft.filter(i=>Number(i.menu_item_id)!==Number(id));refreshOrderComposer();}
+function refreshOrderComposer(){const cart=document.getElementById("orderCart");if(cart)cart.innerHTML=renderOrderCart();const total=document.getElementById("orderDraftTotal");if(total)total.textContent=money(orderDraftTotal());}
+function renderOrderCart(){if(!orderDraft.length)return `<div class="personal-note">Чек порожній. Додай позиції з меню.</div>`;return orderDraft.map(x=>`<div class="cart-row"><div><strong>${escapeHtml(x.name)}</strong><span>${money(x.price)} × ${x.qty}</span></div><div class="cart-actions"><button onclick="changeOrderDraftQty(${x.menu_item_id},-1)">−</button><strong>${x.qty}</strong><button onclick="changeOrderDraftQty(${x.menu_item_id},1)">+</button></div></div>`).join("");}
+
+async function saveNewOrder(){
+  if(!currentRestaurant){showToast("Не вибрано заклад.");return;}
+  if(!orderDraft.length){showToast("Додай хоча б одну позицію.");return;}
+  const role=String(currentUserRole||"").toUpperCase();
+  const waiterId=(role==="ADMIN"||role==="SENIOR WAITER")?Number(document.getElementById("orderWaiterSelect")?.value||currentUserStaff?.id||0):Number(currentUserStaff?.id||0);
+  if(!waiterId){showToast("Не визначено офіціанта для чека.");return;}
+  const total=orderDraftTotal();
+  try{
+    const created=await supabaseRequest("orders",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),waiter_id:waiterId,total,status:"closed"})});
+    const order=Array.isArray(created)?created[0]:created;
+    const orderId=Number(order?.id||0);if(!orderId)throw new Error("Не отримано ID нового чека.");
+    const payload=orderDraft.map(x=>({order_id:orderId,menu_item_id:Number(x.menu_item_id),qty:Number(x.qty),price:Number(x.price||0)}));
+    try{
+      await supabaseRequest("order_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
+    }catch(itemError){
+      try{await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});}catch{}
+      throw itemError;
+    }
+    closeNewOrderComposer();
+    await loadOrdersModuleData();
+    const view=document.getElementById("masterModuleView");if(view) { const temp=renderOrdersModule(); view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">ORDERS · LIVE</div><h1>Замовлення</h1><p class="subtitle">Чек #${orderId} створено та зараховано офіціанту.</p>${temp}</div>`; }
+    showToast(`Чек #${orderId} створено: ${money(total)}.`);
+  }catch(e){console.error("Create order error:",e);showToast("Не вдалося створити чек: "+e.message);}
+}
+
 /* ================= HELPERS ================= */
 
 function escapeHtml(value){
@@ -4232,30 +4384,8 @@ async function openRestaurantModule(type){
 
   else if(type === "orders"){
 
-    content = `
-
-      <div class="info-grid">
-
-        <div class="info-box">
-          <div class="kicker">TABLES</div>
-          <div class="big">—</div>
-          <p>Схема залу.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">ORDERS</div>
-          <div class="big">0</div>
-          <p>Активні замовлення.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">ROUTING</div>
-          <div class="big">K/B</div>
-          <p>Кухня / бар.</p>
-        </div>
-
-      </div>
-    `;
+    await loadOrdersModuleData();
+    content = renderOrdersModule();
 
   }
 
