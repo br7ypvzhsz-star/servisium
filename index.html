@@ -4158,12 +4158,13 @@ function renderCategoryTabs(){
     categories.map(category => `
 
       <button
+        type="button"
         class="category-tab ${
           currentCategory === category
             ? "active"
             : ""
         }"
-        onclick="setMenuCategory(${JSON.stringify(category)})"
+        data-category="${escapeHtml(category)}"
       >
         ${escapeHtml(category)}
       </button>
@@ -4182,6 +4183,54 @@ function setMenuCategory(category){
   renderMenu();
 
 }
+
+
+/* ================= MENU INTERACTION FALLBACK ================= */
+/*
+   Menu cards and category tabs use delegated events so the UI does not
+   depend on inline onclick handlers. This is more reliable after dynamic
+   innerHTML rendering and on GitHub Pages.
+*/
+document.addEventListener("click", function(event){
+
+  const categoryButton = event.target.closest("#categoryTabs .category-tab");
+  if(categoryButton){
+    event.preventDefault();
+    const category = categoryButton.dataset.category || "Усі";
+    setMenuCategory(category);
+    return;
+  }
+
+  const actionButton = event.target.closest("[data-menu-action]");
+  if(actionButton){
+    event.preventDefault();
+    event.stopPropagation();
+    const id = Number(actionButton.dataset.menuId);
+    const action = actionButton.dataset.menuAction;
+    if(action === "edit") openEditMenuItem(id);
+    if(action === "delete") deleteMenuItem(id);
+    return;
+  }
+
+  const card = event.target.closest("#menuGrid .menu-card");
+  if(card){
+    const id = Number(card.dataset.menuId);
+    if(Number.isFinite(id)) openMenuItemDetails(id);
+  }
+});
+
+document.addEventListener("keydown", function(event){
+
+  if(event.key !== "Enter" && event.key !== " ") return;
+
+  const card = event.target.closest("#menuGrid .menu-card");
+  if(!card) return;
+  if(event.target.closest("button, input, textarea, select, a")) return;
+
+  event.preventDefault();
+  const id = Number(card.dataset.menuId);
+  if(Number.isFinite(id)) openMenuItemDetails(id);
+});
 
 
 function renderMenu(){
@@ -4338,8 +4387,9 @@ function renderMenu(){
       <article
         class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""}"
         tabindex="0"
-        onclick="openMenuItemDetails(${Number(item.id)})"
-        onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openMenuItemDetails(${Number(item.id)})}"
+        data-menu-id="${Number(item.id)}"
+        role="button"
+        aria-label="Відкрити позицію ${escapeHtml(item.name || "Позиція")}"
       >
 
         ${
@@ -4355,8 +4405,8 @@ function renderMenu(){
           </h3>
 
           <div class="menu-card-actions" onclick="event.stopPropagation()">
-            <button class="menu-mini-btn" title="Редагувати" onclick="openEditMenuItem(${Number(item.id)})">✎</button>
-            <button class="menu-mini-btn danger" title="Видалити" onclick="deleteMenuItem(${Number(item.id)})">×</button>
+            <button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}">✎</button>
+            <button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}">×</button>
           </div>
 
         </div>
