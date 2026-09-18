@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <meta name="description" content="SERVISIUM — Art of Service">
-<title>SERVISIUM | Art of Service · Menu Engine 3.2</title>
+<title>SERVISIUM | Art of Service · Menu Engine 3.4</title>
 
 <style>
 :root{
@@ -1833,7 +1833,7 @@ h3{
         <span>Головна</span>
       </button>
 
-      <button id="navRestaurants" data-role="ADMIN" onclick="scrollToRestaurants()">
+      <button id="navRestaurants" data-role="ADMIN,SENIOR WAITER,WAITER" onclick="scrollToRestaurants()">
         <span class="nav-icon">▦</span>
         <span>Мої заклади</span>
       </button>
@@ -1876,7 +1876,7 @@ h3{
 
     <div class="side-foot">
     <button class="secondary" style="width:100%;margin-bottom:10px" type="button" onclick="logoutServisium()">Вийти з акаунта</button>
-      SERVISIUM v3.2.0 · © 2026
+      SERVISIUM v3.4.0 · © 2026
     </div>
 
   </aside>
@@ -2949,7 +2949,17 @@ function applyRoleAccess(){
 function updateProfileUI(){
   const displayName = (currentUserStaff?.name || currentUser?.name || currentUser?.email?.split("@")[0] || "Користувач").trim();
   const greeting = document.getElementById("masterGreeting");
-  if(greeting){ greeting.textContent = `Ласкаво просимо, ${displayName}!`; }const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;}
+  if(greeting){ greeting.textContent = `Ласкаво просимо, ${displayName}!`; }const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;
+  const subtitle = document.getElementById("masterSubtitle");
+  if(subtitle){
+    const role = String(currentUserRole || "").toUpperCase();
+    subtitle.textContent = role === "ADMIN"
+      ? "Керуйте закладами. Контролюйте сервіс. Розвивайте систему."
+      : role === "SENIOR WAITER"
+        ? "Керуйте операційною роботою свого закладу. Контролюйте сервіс і команду."
+        : "Працюй із меню, замовленнями, навчанням та власною статистикою.";
+  }
+}
 async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
 
 /* ================= PERSONAL + TEAM SALES STATS ================= */
@@ -3155,15 +3165,12 @@ function showMasterView(){
 
   const role = String(currentUserRole || "").toUpperCase();
 
-  if(role && role !== "ADMIN"){
-    if(currentRestaurant){
-      showRestaurantHome();
-    }else{
-      showToast("Для цієї ролі Master Panel недоступний.");
-    }
-    return;
-  }
-
+  /*
+   * Master Panel is a shared workspace, not an ADMIN-only screen.
+   * ADMIN sees the full multi-restaurant management layer.
+   * SENIOR WAITER / WAITER can enter the panel too, but their data and
+   * actions are constrained by role-specific permissions elsewhere.
+   */
   hideAllMainViews();
 
   document
@@ -3179,11 +3186,6 @@ function showMasterView(){
 }
 
 function scrollToRestaurants(){
-
-  if(String(currentUserRole || "").toUpperCase() !== "ADMIN"){
-    showMasterView();
-    return;
-  }
 
   showMasterView();
 
@@ -3554,32 +3556,46 @@ async function renderRestaurants(){
 
   if(!restaurants.length){
 
-    grid.innerHTML = `
+    const role = String(currentUserRole || "").toUpperCase();
 
-      <article class="add-card">
+    if(role === "ADMIN"){
+      grid.innerHTML = `
 
-        <div class="add-inner">
+        <article class="add-card">
 
-          <div class="add-plus">＋</div>
+          <div class="add-inner">
 
-          <strong>Перший заклад</strong>
+            <div class="add-plus">＋</div>
 
-          <span>Додай свій ресторан до SERVISIUM</span>
+            <strong>Перший заклад</strong>
 
-          <br>
+            <span>Додай свій ресторан до SERVISIUM</span>
 
-          <button
-            class="primary"
-            onclick="openRestaurantModal()"
-          >
-            Додати заклад
-          </button>
+            <br>
 
+            <button
+              class="primary"
+              onclick="openRestaurantModal()"
+            >
+              Додати заклад
+            </button>
+
+          </div>
+
+        </article>
+
+      `;
+    }else{
+      grid.innerHTML = `
+        <div class="empty" style="grid-column:1/-1;">
+          <div>
+            <div class="empty-icon">🏢</div>
+            <strong>Заклад ще не призначено</strong>
+            <p>Звернися до ADMIN, щоб отримати доступ до закладу.</p>
+          </div>
         </div>
-
-      </article>
-
-    `;
+      `;
+    }
 
   }else{
 
@@ -3593,26 +3609,29 @@ async function renderRestaurants(){
     }
 
 
-    const add = document.createElement("article");
+    const role = String(currentUserRole || "").toUpperCase();
 
-    add.className = "add-card";
+    if(role === "ADMIN"){
+      const add = document.createElement("article");
 
-    add.innerHTML = `
+      add.className = "add-card";
 
-      <div class="add-inner">
+      add.innerHTML = `
 
-        <div class="add-plus">＋</div>
+        <div class="add-inner">
 
-        <strong>Додати заклад</strong>
+          <div class="add-plus">＋</div>
 
-        <span>Підключити ще один ресторан</span>
+          <strong>Додати заклад</strong>
 
-      </div>
-    `;
+          <span>Підключити ще один ресторан</span>
 
-    add.onclick = openRestaurantModal;
+        </div>
+      `;
 
-    grid.appendChild(add);
+      add.onclick = openRestaurantModal;
+      grid.appendChild(add);
+    }
 
   }
 
