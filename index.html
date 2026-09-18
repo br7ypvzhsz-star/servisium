@@ -990,6 +990,32 @@ h3{
 .personnel-empty{padding:40px;text-align:center;color:#777176;border:1px dashed var(--line);border-radius:14px;}
 @media(max-width:900px){.personnel-row{align-items:flex-start;flex-wrap:wrap}.personnel-actions{width:100%;margin-left:58px;}}
 
+/* HALL MODULE */
+.hall-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.hall-legend{display:flex;gap:7px;flex-wrap:wrap;}
+.hall-legend span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:#8f898c;font-size:9px;background:var(--surface2);}
+.hall-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;}
+.table-card{min-height:155px;border:1px solid var(--line);border-radius:17px;background:var(--surface);padding:17px;position:relative;overflow:hidden;transition:.2s;}
+.table-card:hover{transform:translateY(-2px);border-color:#45454c;}
+.table-card.available{border-color:rgba(79,189,120,.28);}
+.table-card.busy{border-color:rgba(211,59,87,.36);}
+.table-card.reserved{border-color:rgba(215,185,135,.35);}
+.table-card.cleaning{border-color:rgba(117,149,217,.34);}
+.table-number{font-size:29px;font-weight:850;letter-spacing:-1px;}
+.table-meta{margin-top:5px;color:#706b6f;font-size:10px;}
+.table-status{display:inline-flex;margin-top:13px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:800;border:1px solid var(--line);}
+.table-card.available .table-status{color:#78d497;background:rgba(79,189,120,.08);}
+.table-card.busy .table-status{color:#ef8194;background:rgba(211,59,87,.08);}
+.table-card.reserved .table-status{color:#d7b987;background:rgba(215,185,135,.08);}
+.table-card.cleaning .table-status{color:#91a8e0;background:rgba(117,149,217,.08);}
+.table-actions{display:flex;gap:7px;margin-top:13px;}
+.table-actions button{flex:1;min-height:35px;border:1px solid var(--line);background:var(--surface2);color:#ddd;border-radius:9px;font-size:10px;}
+.table-actions button:hover{border-color:var(--line2);}
+.hall-note{margin-top:14px;padding:12px 14px;border:1px solid rgba(141,23,56,.25);background:rgba(141,23,56,.05);border-radius:12px;color:#8e888b;font-size:10px;line-height:1.5;}
+@media(max-width:1100px){.hall-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:700px){.hall-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.table-card{min-height:145px;}}
+@media(max-width:460px){.hall-grid{grid-template-columns:1fr;}}
+
 /* ROLE ACCESS */
 .role-hidden{display:none !important;}
 
@@ -1855,6 +1881,16 @@ h3{
         <span>Аналітика</span>
       </button>
 
+      <button id="navHall" data-role="ADMIN,SENIOR WAITER,WAITER" onclick="openHallModule()">
+        <span class="nav-icon">⌘</span>
+        <span>Зал</span>
+      </button>
+
+      <button id="navOrders" data-role="ADMIN,SENIOR WAITER,WAITER" onclick="openOrdersFromNav()">
+        <span class="nav-icon">▣</span>
+        <span>Замовлення</span>
+      </button>
+
       <button id="navProfile" onclick="openPersonalCabinet()">
         <span class="nav-icon">♙</span>
         <span>Профіль</span>
@@ -1878,7 +1914,7 @@ h3{
 
     <div class="side-foot">
     <button class="secondary" style="width:100%;margin-bottom:10px" type="button" onclick="logoutServisium()">Вийти з акаунта</button>
-      SERVISIUM v3.4.0 · © 2026
+      SERVISIUM v3.6.0 · © 2026
     </div>
 
   </aside>
@@ -2155,6 +2191,16 @@ h3{
 
 
         <div class="module-grid">
+
+          <button
+            class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
+            onclick="openHallModule()"
+          >
+            <span class="module-icon">⌘</span>
+            <h3>Зал</h3>
+            <p>Столи, статуси та швидкий перехід до замовлення.</p>
+          </button>
+
 
           <button
             class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
@@ -3354,6 +3400,86 @@ function scrollToRestaurants(){
 }
 
 /* ================= MASTER MODULES ================= */
+
+function openHallModule(){
+  if(!currentRestaurant){
+    showToast("Спочатку відкрий свій заклад.");
+    scrollToRestaurants();
+    return;
+  }
+  renderHallModule();
+}
+
+function openOrdersFromNav(){
+  if(!currentRestaurant){
+    showToast("Спочатку відкрий свій заклад.");
+    scrollToRestaurants();
+    return;
+  }
+  openRestaurantModule("orders");
+}
+
+function getHallStorageKey(){
+  return `servisium_hall_${Number(currentRestaurant?.id||0)}`;
+}
+function getHallTables(){
+  if(!currentRestaurant) return [];
+  try{
+    const raw=localStorage.getItem(getHallStorageKey());
+    const parsed=raw?JSON.parse(raw):null;
+    if(Array.isArray(parsed)&&parsed.length)return parsed;
+  }catch{}
+  return Array.from({length:12},(_,i)=>({id:i+1,number:i+1,capacity:i<8?4:6,zone:i<8?"Основний зал":"Тераса",status:"available"}));
+}
+function saveHallTables(tables){
+  localStorage.setItem(getHallStorageKey(),JSON.stringify(tables));
+}
+function hallStatusLabel(status){
+  return {available:"Вільний",busy:"Зайнятий",reserved:"Резерв",cleaning:"Прибирання"}[status]||"Вільний";
+}
+function cycleTableStatus(id){
+  const order=["available","busy","reserved","cleaning"];
+  const tables=getHallTables();
+  const t=tables.find(x=>Number(x.id)===Number(id));
+  if(!t)return;
+  t.status=order[(order.indexOf(t.status)+1)%order.length];
+  saveHallTables(tables);
+  renderHallModule();
+}
+function startTableOrder(id){
+  const t=getHallTables().find(x=>Number(x.id)===Number(id));
+  if(!t)return;
+  if(t.status==="available"){
+    t.status="busy";
+    const tables=getHallTables();
+    const row=tables.find(x=>Number(x.id)===Number(id)); if(row)row.status="busy";
+    saveHallTables(tables);
+  }
+  openRestaurantModule("orders");
+}
+function renderHallModule(){
+  hideAllMainViews();
+  setActiveNav("navHall");
+  const container=document.getElementById("restaurantModuleView");
+  if(!container)return;
+  const tables=getHallTables();
+  const role=String(currentUserRole||"").toUpperCase();
+  container.classList.add("active");
+  container.innerHTML=`
+    <div class="back-row"><button class="back-btn" onclick="showRestaurantHome()">← Назад до закладу</button></div>
+    <div class="section-head"><div><div class="kicker">HALL</div><h2>Зал · ${escapeHtml(currentRestaurant?.name||"")}</h2><div class="section-meta">Схема столів та швидкий перехід до замовлення.</div></div><button class="primary" onclick="openTableOrderFromHall()">＋ Нове замовлення</button></div>
+    <div class="hall-toolbar"><div class="hall-legend"><span>● Вільний</span><span>● Зайнятий</span><span>● Резерв</span><span>● Прибирання</span></div><span class="section-meta">${tables.length} столів</span></div>
+    <div class="hall-grid">
+      ${tables.map(t=>`<div class="table-card ${t.status}">
+        <div class="table-number">Стіл ${escapeHtml(t.number)}</div>
+        <div class="table-meta">${escapeHtml(t.zone)} · до ${escapeHtml(t.capacity)} гостей</div>
+        <span class="table-status">${hallStatusLabel(t.status)}</span>
+        <div class="table-actions"><button onclick="startTableOrder(${Number(t.id)})">Замовлення</button><button onclick="cycleTableStatus(${Number(t.id)})">Статус</button></div>
+      </div>`).join("")}
+    </div>
+    <div class="hall-note">Фундамент модуля вже відокремлений від Orders: далі стіл буде напряму зв'язаний з відкритим замовленням, офіціантом і чеком. Наразі схема столів зберігається локально для швидкого прототипування.</div>`;
+}
+function openTableOrderFromHall(){openOrdersFromNav();}
 
 function openMasterModule(type){
 
