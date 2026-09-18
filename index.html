@@ -5394,7 +5394,7 @@ async function importMenuFromUrl(){
 }
 
 
-function renderImportPreview(items = importedPreviewItems){
+function renderImportPreview(items){
 
   const preview =
     document.getElementById(
@@ -5730,7 +5730,9 @@ async function saveImportedMenu(){
       );
 
 
-    renderImportPreview();
+    renderImportPreview(
+      importedPreviewItems
+    );
 
 
     renderMenu();
