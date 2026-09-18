@@ -1053,56 +1053,6 @@ h3{
 
 /* MODAL */
 
-
-/* ================= STOP ACTION MODAL ================= */
-.stop-action-modal{
-  width:min(520px,100%);
-}
-.stop-action-copy{
-  margin:0 0 18px;
-  color:#aaa;
-  font-size:12px;
-  line-height:1.6;
-}
-.stop-action-item{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:16px;
-  padding:12px 14px;
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;
-  background:#0c0c0e;
-  font-weight:700;
-}
-.stop-action-dot{
-  width:9px;
-  height:9px;
-  border-radius:50%;
-  background:#d33b57;
-  box-shadow:0 0 14px rgba(211,59,87,.45);
-}
-.stop-action-modal textarea{
-  width:100%;
-  min-height:92px;
-  resize:vertical;
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#0c0c0e;
-  color:#fff;
-  outline:none;
-  padding:12px;
-  font:inherit;
-  font-size:12px;
-}
-.stop-action-modal textarea:focus{
-  border-color:var(--wine);
-  box-shadow:0 0 0 3px rgba(141,23,56,.1);
-}
-.stop-action-modal .modal-actions{
-  margin-top:16px;
-}
-
 .modal-backdrop{
   position:fixed;
   inset:0;
@@ -1733,6 +1683,13 @@ h3{
     width:100%;
   }
 }
+
+.stop-action-modal{max-width:620px;}
+.stop-action-modal .modal-head p{max-width:520px;}
+.stop-confirm{min-width:210px;}
+.stop-confirm.resolve{border-color:#3aa76d;}
+.stop-confirm:disabled{opacity:.55;cursor:not-allowed;}
+#stopReasonInput{width:100%;box-sizing:border-box;}
 </style>
 </head>
 
@@ -2657,7 +2614,6 @@ h3{
   </div>
 </div>
 
-
 <!-- ================= STOP ACTION MODAL ================= -->
 <div id="stopActionModal" class="modal-backdrop" onclick="backdropClose(event,'stopActionModal')">
   <div class="modal stop-action-modal">
@@ -2667,20 +2623,17 @@ h3{
         <h2 id="stopActionTitle">Поставити на стоп</h2>
         <p id="stopActionSubtitle">Позиція стане недоступною для замовлення.</p>
       </div>
-      <button class="close" type="button" onclick="closeStopActionModal()">×</button>
+      <button class="close" onclick="closeStopModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="stop-action-item">
-        <span class="stop-action-dot"></span>
-        <span id="stopActionItemName">Позиція</span>
-      </div>
-      <div id="stopActionReasonWrap" class="field">
+      <input id="stopActionItemId" type="hidden">
+      <div id="stopReasonWrap" class="field full">
         <label>ПРИЧИНА СТОПУ</label>
-        <textarea id="stopActionReason" placeholder="Наприклад: закінчився продукт, тимчасово недоступно..."></textarea>
+        <input id="stopReasonInput" maxlength="180" placeholder="Наприклад: закінчився продукт">
       </div>
       <div class="modal-actions">
-        <button class="secondary" type="button" onclick="closeStopActionModal()">Скасувати</button>
-        <button id="stopActionConfirmBtn" class="primary" type="button" onclick="confirmStopAction()">🔴 Поставити на стоп</button>
+        <button class="secondary" onclick="closeStopModal()">Скасувати</button>
+        <button id="stopActionConfirm" class="primary stop-confirm" onclick="confirmStopAction()">● Поставити на стоп</button>
       </div>
     </div>
   </div>
@@ -4468,79 +4421,65 @@ async function removeMenuItemFromStop(stopId){
   }
 }
 
-let stopActionItemId = null;
-let stopActionMode = "put";
-
-function openStopActionModal(itemId){
+function openStopModal(itemId){
   const item = findMenuItem(itemId);
   if(!item) return;
-
   const stop = getActiveStop(itemId);
-  stopActionItemId = Number(itemId);
-  stopActionMode = stop ? "remove" : "put";
-
+  const modal = document.getElementById("stopActionModal");
   const title = document.getElementById("stopActionTitle");
   const subtitle = document.getElementById("stopActionSubtitle");
-  const name = document.getElementById("stopActionItemName");
-  const reasonWrap = document.getElementById("stopActionReasonWrap");
-  const reason = document.getElementById("stopActionReason");
-  const confirm = document.getElementById("stopActionConfirmBtn");
-
-  name.textContent = item.name || "Позиція";
-
-  if(stopActionMode === "remove"){
+  const reasonWrap = document.getElementById("stopReasonWrap");
+  const reason = document.getElementById("stopReasonInput");
+  const confirm = document.getElementById("stopActionConfirm");
+  const hidden = document.getElementById("stopActionItemId");
+  if(!modal || !confirm || !hidden) return;
+  hidden.value = String(itemId);
+  if(stop){
     title.textContent = "Зняти зі стопу";
-    subtitle.textContent = "Позиція знову стане доступною для замовлення.";
+    subtitle.textContent = `«${item.name}» знову стане доступною для замовлення.`;
     reasonWrap.style.display = "none";
     confirm.textContent = "↺ Зняти зі стопу";
+    confirm.className = "primary stop-confirm resolve";
   }else{
     title.textContent = "Поставити на стоп";
-    subtitle.textContent = "Позиція стане недоступною для замовлення.";
+    subtitle.textContent = `Позиція «${item.name}» стане недоступною для замовлення.`;
     reasonWrap.style.display = "block";
     reason.value = "Тимчасово недоступно";
-    confirm.textContent = "🔴 Поставити на стоп";
+    confirm.textContent = "● Поставити на стоп";
+    confirm.className = "primary stop-confirm";
   }
-
-  openModal("stopActionModal");
-
-  if(stopActionMode === "put"){
-    setTimeout(()=>reason.focus(),80);
-  }
+  modal.classList.add("active");
+  setTimeout(()=>{ if(reasonWrap.style.display !== "none") reason.focus(); },50);
 }
 
-function closeStopActionModal(){
-  stopActionItemId = null;
-  closeModal("stopActionModal");
+function closeStopModal(){
+  document.getElementById("stopActionModal")?.classList.remove("active");
 }
 
 async function confirmStopAction(){
-  if(!stopActionItemId) return;
-
-  const itemId = stopActionItemId;
-  const mode = stopActionMode;
-  const item = findMenuItem(itemId);
-  if(!item) return;
-
-  const button = document.getElementById("stopActionConfirmBtn");
-  button.disabled = true;
-
+  const itemId = Number(document.getElementById("stopActionItemId")?.value);
+  if(!itemId) return;
+  const stop = getActiveStop(itemId);
+  const button = document.getElementById("stopActionConfirm");
   try{
-    if(mode === "remove"){
-      const stop = getActiveStop(itemId);
-      if(stop) await removeMenuItemFromStop(stop.id);
+    button.disabled = true;
+    if(stop){
+      await removeMenuItemFromStop(stop.id);
     }else{
-      const reason = document.getElementById("stopActionReason").value.trim() || "Тимчасово недоступно";
+      const reason = (document.getElementById("stopReasonInput")?.value || "").trim() || "Тимчасово недоступно";
       await putMenuItemOnStop(itemId,reason);
     }
-
-    closeStopActionModal();
+    closeStopModal();
+  }catch(error){
+    console.error("STOP ACTION ERROR:",error);
+    showToast("Не вдалося змінити статус стопу: " + error.message);
   }finally{
     button.disabled = false;
   }
 }
 
 async function toggleMenuItemStop(itemId){
-  openStopActionModal(itemId);
+  openStopModal(itemId);
 }
 
 async function renderStopModule(){
