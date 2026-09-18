@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <meta name="description" content="SERVISIUM — Art of Service">
-<title>SERVISIUM | Art of Service · Menu Engine 2.3</title>
+<title>SERVISIUM | Art of Service · Menu Engine 2.5</title>
 
 <style>
 :root{
@@ -931,6 +931,47 @@ h3{
   margin-top:6px;
   font-size:11px;
 }
+
+/* STOP-LIST */
+.stop-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:10px;
+  padding:6px 9px;
+  border-radius:999px;
+  border:1px solid rgba(211,59,87,.35);
+  background:rgba(211,59,87,.10);
+  color:#ef8194;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.5px;
+}
+.stop-badge::before{content:"●";font-size:8px;}
+.menu-card.is-stopped{
+  border-color:rgba(211,59,87,.38);
+  background:linear-gradient(145deg,rgba(211,59,87,.055),var(--surface));
+}
+.menu-card.is-stopped .menu-price{color:#9b9598;text-decoration:line-through;text-decoration-thickness:1px;}
+.menu-card.is-stopped .menu-card-photo{filter:grayscale(.55) brightness(.72);}
+.stop-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.stop-row{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+.stop-row:last-child{border-bottom:0;}
+.stop-thumb{width:48px;height:48px;border-radius:11px;object-fit:cover;background:var(--surface3);border:1px solid var(--line);flex:none;}
+.stop-thumb.placeholder{display:grid;place-items:center;color:#686469;font-size:18px;}
+.stop-row-main{min-width:0;flex:1;}
+.stop-row-main strong{display:block;font-size:13px;}
+.stop-row-main span{display:block;margin-top:4px;color:#777176;font-size:10px;}
+.stop-reason{color:#b9b2b5;font-size:11px;line-height:1.4;max-width:330px;}
+.stop-meta{color:#666267;font-size:9px;white-space:nowrap;}
+.stop-add{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-top:18px;}
+.stop-select{height:42px;min-width:260px;background:var(--surface2);color:#fff;border:1px solid var(--line);border-radius:11px;padding:0 12px;outline:none;}
+.stop-input{height:42px;min-width:260px;flex:1;background:var(--surface2);color:#fff;border:1px solid var(--line);border-radius:11px;padding:0 12px;outline:none;}
+.stop-input:focus,.stop-select:focus{border-color:var(--wine);}
+@media(max-width:900px){.stop-row{align-items:flex-start;flex-wrap:wrap}.stop-reason{max-width:none;width:100%}.stop-meta{margin-left:62px}.stop-add{display:grid;grid-template-columns:1fr}.stop-select,.stop-input{width:100%;min-width:0;}}
 
 /* MODULE PAGE */
 
@@ -2600,6 +2641,7 @@ let restaurants = [];
 let currentRestaurant = null;
 let currentMenu = [];
 let currentCategory = "Усі";
+let currentStopList = [];
 let importedPreviewItems = [];
 let toastTimer = null;
 
@@ -3622,7 +3664,7 @@ function showRestaurantHome(){
 
 /* ================= RESTAURANT MODULE ================= */
 
-function openRestaurantModule(type){
+async function openRestaurantModule(type){
 
   if(!currentRestaurant){
 
@@ -3706,32 +3748,8 @@ function openRestaurantModule(type){
 
 
   if(type === "stop"){
-
-    content = `
-
-      <div class="info-grid">
-
-        <div class="info-box">
-          <div class="kicker">STOP-LIST</div>
-          <div class="big">0</div>
-          <p>позицій зараз недоступні.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">ACCESS</div>
-          <div class="big">ADMIN</div>
-          <p>Внутрішній доступ.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">SENIOR</div>
-          <div class="big">FULL</div>
-          <p>Повний контроль Senior Waiter.</p>
-        </div>
-
-      </div>
-    `;
-
+    await loadStopList();
+    content = await renderStopModule();
   }
 
 
@@ -4100,6 +4118,8 @@ async function loadMenu(){
         : [];
 
 
+    await loadStopList();
+
     renderCategoryTabs();
 
     renderMenu();
@@ -4226,6 +4246,7 @@ document.addEventListener("click", function(event){
     const action = actionButton.dataset.menuAction;
     if(action === "edit") openEditMenuItem(id);
     if(action === "delete") deleteMenuItem(id);
+    if(action === "stop") toggleMenuItemStop(id);
     return;
   }
 
@@ -4249,6 +4270,231 @@ document.addEventListener("keydown", function(event){
   if(Number.isFinite(id)) openMenuItemDetails(id);
 });
 
+
+async function loadStopList(){
+
+  if(!currentRestaurant){
+    currentStopList = [];
+    return;
+  }
+
+  try{
+    const data = await supabaseRequest(
+      `stop_list?select=*&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}&status=eq.active&order=created_at.desc`
+    );
+
+    currentStopList = Array.isArray(data) ? data : [];
+
+  }catch(error){
+    console.error("STOP LIST LOAD ERROR:", error);
+    currentStopList = [];
+  }
+}
+
+function getActiveStop(itemId){
+  const id = Number(itemId);
+  return currentStopList.find(
+    stop => Number(stop.menu_item_id) === id && String(stop.status || "active") === "active"
+  ) || null;
+}
+
+function isMenuItemStopped(itemId){
+  return Boolean(getActiveStop(itemId));
+}
+
+function formatStopDate(value){
+  if(!value) return "";
+  try{
+    return new Date(value).toLocaleString("uk-UA",{
+      day:"2-digit",
+      month:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit"
+    });
+  }catch{
+    return "";
+  }
+}
+
+async function putMenuItemOnStop(itemId, reason = ""){ 
+  if(!currentRestaurant) return;
+
+  const item = findMenuItem(itemId);
+  if(!item){
+    showToast("Позицію не знайдено.");
+    return;
+  }
+
+  if(isMenuItemStopped(itemId)){
+    showToast("Позиція вже на стопі.");
+    return;
+  }
+
+  try{
+    await supabaseRequest("stop_list",{
+      method:"POST",
+      headers:{Prefer:"return=representation"},
+      body:JSON.stringify({
+        restaurant_id:currentRestaurant.id,
+        menu_item_id:item.id,
+        reason:String(reason || "").trim() || "Тимчасово недоступно",
+        status:"active",
+        created_by:"ADMIN"
+      })
+    });
+
+    await loadStopList();
+    renderMenu();
+    if(document.getElementById("restaurantModuleView")?.classList.contains("active")){
+      await openRestaurantModule("stop");
+    }
+    showToast(`«${item.name}» поставлено на стоп.`);
+  }catch(error){
+    console.error("STOP LIST INSERT ERROR:",error);
+    showToast("Не вдалося поставити позицію на стоп: " + error.message);
+  }
+}
+
+async function removeMenuItemFromStop(stopId){
+  if(!currentRestaurant) return;
+
+  const stop = currentStopList.find(x => Number(x.id) === Number(stopId));
+  if(!stop) return;
+
+  try{
+    await supabaseRequest(
+      `stop_list?id=eq.${encodeURIComponent(stopId)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
+      {
+        method:"PATCH",
+        body:JSON.stringify({
+          status:"resolved",
+          resolved_at:new Date().toISOString(),
+          resolved_by:"ADMIN"
+        })
+      }
+    );
+
+    await loadStopList();
+    renderMenu();
+    if(document.getElementById("restaurantModuleView")?.classList.contains("active")){
+      await openRestaurantModule("stop");
+    }
+    showToast("Позицію знято зі стопу.");
+  }catch(error){
+    console.error("STOP LIST UPDATE ERROR:",error);
+    showToast("Не вдалося зняти позицію зі стопу: " + error.message);
+  }
+}
+
+async function toggleMenuItemStop(itemId){
+  const stop = getActiveStop(itemId);
+  if(stop){
+    await removeMenuItemFromStop(stop.id);
+    return;
+  }
+
+  const item = findMenuItem(itemId);
+  if(!item) return;
+
+  const reason = window.prompt(
+    `Причина стопу для «${item.name}»:` ,
+    "Тимчасово недоступно"
+  );
+
+  if(reason === null) return;
+  await putMenuItemOnStop(itemId,reason);
+}
+
+async function renderStopModule(){
+  const view = document.getElementById("restaurantModuleView");
+  if(!view || !currentRestaurant) return;
+
+  await loadStopList();
+
+  const stoppedIds = new Set(currentStopList.map(x => Number(x.menu_item_id)));
+  const availableItems = currentMenu
+    .filter(item => !stoppedIds.has(Number(item.id)))
+    .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"uk"));
+
+  const rows = currentStopList.map(stop => {
+    const item = findMenuItem(stop.menu_item_id);
+    if(!item) return "";
+    const photo = getMenuPhoto(item);
+    return `
+      <div class="stop-row">
+        ${photo
+          ? `<img class="stop-thumb" src="${escapeHtml(photo)}" alt="${escapeHtml(item.name)}">`
+          : `<div class="stop-thumb placeholder">♨</div>`}
+        <div class="stop-row-main">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(item.category || "Інше")} · ${escapeHtml(item.type || "Кухня")}</span>
+        </div>
+        <div class="stop-reason">${escapeHtml(stop.reason || "Тимчасово недоступно")}</div>
+        <div class="stop-meta">${formatStopDate(stop.created_at)}</div>
+        <button type="button" class="danger-btn" onclick="removeMenuItemFromStop(${Number(stop.id)})">Зняти</button>
+      </div>
+    `;
+  }).join("");
+
+  const content = `
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="kicker">ACTIVE STOP</div>
+        <div class="big">${currentStopList.length}</div>
+        <p>позицій зараз недоступні.</p>
+      </div>
+      <div class="info-box">
+        <div class="kicker">ACCESS</div>
+        <div class="big">ADMIN</div>
+        <p>Керування стоп-листом.</p>
+      </div>
+      <div class="info-box">
+        <div class="kicker">SENIOR</div>
+        <div class="big">FULL</div>
+        <p>Повний контроль Senior Waiter.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:15px">
+      <div class="section-head">
+        <div>
+          <h2>Додати на стоп</h2>
+          <div class="section-meta">Внутрішня причина доступна тільки керівним ролям.</div>
+        </div>
+      </div>
+      <div class="stop-add">
+        <select id="stopItemSelect" class="stop-select">
+          <option value="">Оберіть позицію</option>
+          ${availableItems.map(item=>`<option value="${Number(item.id)}">${escapeHtml(item.name)} · ${escapeHtml(item.category || "Інше")}</option>`).join("")}
+        </select>
+        <input id="stopReasonInput" class="stop-input" placeholder="Причина: наприклад, закінчився продукт">
+        <button type="button" class="primary" onclick="addSelectedStop()">🔴 Поставити на стоп</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:15px;padding:0;overflow:hidden">
+      <div style="padding:20px 20px 8px">
+        <h2>Активний Stop-list</h2>
+        <div class="section-meta">Цей список призначений для Admin / Senior Waiter.</div>
+      </div>
+      ${rows || `<div class="empty" style="border:0;border-radius:0;min-height:180px"><div><div class="empty-icon">✓</div><strong>Stop-list порожній</strong><p>Усі позиції доступні.</p></div></div>`}
+    </div>
+  `;
+
+  view.querySelector?.(".module-content");
+  return content;
+}
+
+async function addSelectedStop(){
+  const select = document.getElementById("stopItemSelect");
+  const reason = document.getElementById("stopReasonInput");
+  const itemId = Number(select?.value);
+  if(!itemId){
+    showToast("Оберіть позицію.");
+    return;
+  }
+  await putMenuItemOnStop(itemId,reason?.value || "Тимчасово недоступно");
+}
 
 function renderMenu(){
 
@@ -4399,10 +4645,12 @@ function renderMenu(){
 
 
   grid.innerHTML =
-    filtered.map(item => `
+    filtered.map(item => {
+      const stopped = isMenuItemStopped(item.id);
+      return `
 
       <article
-        class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""}"
+        class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""} ${stopped ? "is-stopped" : ""}"
         tabindex="0"
         data-menu-id="${Number(item.id)}"
         role="button"
@@ -4423,6 +4671,7 @@ function renderMenu(){
 
           <div class="menu-card-actions" onclick="event.stopPropagation()">
             <button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}">✎</button>
+            <button type="button" class="menu-mini-btn ${stopped ? "danger" : ""}" title="${stopped ? "Зняти зі стопу" : "Поставити на стоп"}" data-menu-action="stop" data-menu-id="${Number(item.id)}">${stopped ? "↺" : "●"}</button>
             <button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}">×</button>
           </div>
 
@@ -4434,6 +4683,8 @@ function renderMenu(){
             item.category || "Інше"
           )}
         </span>
+
+        ${stopped ? `<div class="stop-badge">НЕДОСТУПНО</div>` : ""}
 
 
         ${
@@ -4474,7 +4725,8 @@ function renderMenu(){
 
       </article>
 
-    `).join("");
+    `;
+    }).join("");
 
 }
 
