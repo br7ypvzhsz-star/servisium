@@ -796,6 +796,9 @@ h3{
   background:var(--surface);
   color:#777277;
   padding:0 13px;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
 }
 
 .category-tab:hover{
@@ -4165,6 +4168,7 @@ function renderCategoryTabs(){
             : ""
         }"
         data-category="${escapeHtml(category)}"
+        onclick="setMenuCategoryFromButton(this)"
       >
         ${escapeHtml(category)}
       </button>
@@ -4176,11 +4180,21 @@ function renderCategoryTabs(){
 
 function setMenuCategory(category){
 
-  currentCategory = category;
+  currentCategory = String(category || "Усі");
 
   renderCategoryTabs();
 
   renderMenu();
+
+}
+
+function setMenuCategoryFromButton(button){
+
+  if(!button) return;
+
+  const category = button.getAttribute("data-category") || "Усі";
+
+  setMenuCategory(category);
 
 }
 
@@ -4196,7 +4210,7 @@ document.addEventListener("click", function(event){
   const categoryButton = event.target.closest("#categoryTabs .category-tab");
   if(categoryButton){
     event.preventDefault();
-    const category = categoryButton.dataset.category || "Усі";
+    const category = categoryButton.getAttribute("data-category") || "Усі";
     setMenuCategory(category);
     return;
   }
