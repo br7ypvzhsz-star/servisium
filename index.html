@@ -1204,6 +1204,217 @@ h3{
   white-space:nowrap;
 }
 
+
+/* MENU ENGINE 2.0 */
+
+.menu-card{
+  position:relative;
+  overflow:hidden;
+  cursor:pointer;
+}
+
+.menu-card.has-photo{
+  padding-top:0;
+}
+
+.menu-card-photo{
+  width:calc(100% + 34px);
+  height:155px;
+  margin:0 -17px 15px;
+  object-fit:cover;
+  display:block;
+  background:
+    radial-gradient(circle at 80% 20%,rgba(141,23,56,.30),transparent 42%),
+    linear-gradient(145deg,#202024,#0d0d0f);
+  border-bottom:1px solid var(--line);
+}
+
+.menu-card-photo-placeholder{
+  width:calc(100% + 34px);
+  height:155px;
+  margin:0 -17px 15px;
+  display:grid;
+  place-items:center;
+  color:#686469;
+  font-size:30px;
+  background:
+    radial-gradient(circle at 80% 20%,rgba(141,23,56,.24),transparent 42%),
+    linear-gradient(145deg,#19191c,#0c0c0e);
+  border-bottom:1px solid var(--line);
+}
+
+.menu-card-actions{
+  display:flex;
+  gap:6px;
+  opacity:0;
+  transform:translateY(3px);
+  transition:.2s;
+}
+
+.menu-card:hover .menu-card-actions,
+.menu-card:focus-within .menu-card-actions{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.menu-mini-btn{
+  width:32px;
+  height:32px;
+  border:1px solid var(--line2);
+  border-radius:9px;
+  background:rgba(15,15,17,.92);
+  color:#bbb;
+}
+
+.menu-mini-btn:hover{
+  color:#fff;
+  border-color:#55555c;
+}
+
+.menu-mini-btn.danger{
+  color:#df7c8e;
+}
+
+.menu-status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  margin-top:9px;
+  padding:5px 7px;
+  border-radius:7px;
+  background:rgba(79,189,120,.08);
+  border:1px solid rgba(79,189,120,.18);
+  color:#78d497;
+  font-size:8px;
+}
+
+.menu-detail{
+  width:min(820px,100%);
+}
+
+.menu-detail-grid{
+  display:grid;
+  grid-template-columns:minmax(220px,.9fr) minmax(0,1.1fr);
+  gap:22px;
+}
+
+.menu-detail-photo,
+.menu-detail-placeholder{
+  width:100%;
+  min-height:320px;
+  max-height:440px;
+  border-radius:15px;
+  object-fit:cover;
+  display:block;
+  border:1px solid var(--line);
+  background:
+    radial-gradient(circle at 80% 20%,rgba(141,23,56,.28),transparent 42%),
+    linear-gradient(145deg,#19191c,#0b0b0d);
+}
+
+.menu-detail-placeholder{
+  display:grid;
+  place-items:center;
+  color:#676268;
+  font-size:52px;
+}
+
+.menu-detail-content h2{
+  font-size:25px;
+  line-height:1.15;
+}
+
+.menu-detail-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:12px;
+}
+
+.menu-detail-chip{
+  padding:6px 9px;
+  border-radius:8px;
+  background:var(--surface2);
+  border:1px solid var(--line);
+  color:#9f999c;
+  font-size:9px;
+}
+
+.menu-detail-description{
+  margin-top:20px;
+  color:#aaa4a7;
+  font-size:12px;
+  line-height:1.7;
+}
+
+.menu-detail-price{
+  margin-top:20px;
+  font-size:30px;
+  font-weight:850;
+}
+
+.menu-detail-weight{
+  color:#777176;
+  font-size:10px;
+  margin-top:4px;
+}
+
+.menu-detail-actions{
+  display:flex;
+  gap:8px;
+  margin-top:24px;
+  flex-wrap:wrap;
+}
+
+.menu-edit-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0 12px;
+}
+
+.menu-edit-grid .field.full{
+  grid-column:1/-1;
+}
+
+.photo-preview{
+  display:none;
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  border:1px solid var(--line);
+  border-radius:11px;
+  margin-top:9px;
+}
+
+.photo-preview.active{
+  display:block;
+}
+
+@media(max-width:700px){
+  .menu-card-actions{
+    opacity:1;
+    transform:none;
+  }
+
+  .menu-detail-grid{
+    grid-template-columns:1fr;
+  }
+
+  .menu-detail-photo,
+  .menu-detail-placeholder{
+    min-height:210px;
+    max-height:300px;
+  }
+
+  .menu-edit-grid{
+    grid-template-columns:1fr;
+  }
+
+  .menu-edit-grid .field.full{
+    grid-column:auto;
+  }
+}
+
 /* TOAST */
 
 .toast{
@@ -2242,6 +2453,17 @@ h3{
         ></textarea>
       </div>
 
+      <div class="field">
+        <label>ФОТО — ПОСИЛАННЯ</label>
+        <input
+          id="manualPhoto"
+          type="url"
+          placeholder="https://..."
+          oninput="previewManualPhoto()"
+        >
+        <img id="manualPhotoPreview" class="photo-preview" alt="Попередній перегляд">
+      </div>
+
 
       <div class="modal-actions">
 
@@ -2267,6 +2489,76 @@ h3{
   </div>
 </div>
 
+
+<!-- ================= MENU DETAIL MODAL ================= -->
+<div id="menuDetailModal" class="modal-backdrop" onclick="backdropClose(event,'menuDetailModal')">
+  <div class="modal menu-detail">
+    <div class="modal-head">
+      <div>
+        <div class="kicker">MENU ITEM</div>
+        <h2 id="detailModalTitle">Позиція</h2>
+        <p>Повна інформація про позицію меню.</p>
+      </div>
+      <button class="close" onclick="closeModal('menuDetailModal')">×</button>
+    </div>
+    <div class="modal-body" id="menuDetailBody"></div>
+  </div>
+</div>
+
+<!-- ================= EDIT MENU MODAL ================= -->
+<div id="editMenuModal" class="modal-backdrop" onclick="backdropClose(event,'editMenuModal')">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="kicker">MENU ENGINE 2.0</div>
+        <h2 id="editMenuTitle">Редагувати позицію</h2>
+        <p>Зміни збережуться безпосередньо в Supabase.</p>
+      </div>
+      <button class="close" onclick="closeModal('editMenuModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input id="editMenuId" type="hidden">
+      <div class="menu-edit-grid">
+        <div class="field full">
+          <label>НАЗВА</label>
+          <input id="editMenuName" placeholder="Назва позиції">
+        </div>
+        <div class="field">
+          <label>ТИП</label>
+          <select id="editMenuType">
+            <option value="Кухня">Кухня</option>
+            <option value="Бар">Бар</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>КАТЕГОРІЯ</label>
+          <input id="editMenuCategory" placeholder="Наприклад: Гриль">
+        </div>
+        <div class="field">
+          <label>ЦІНА</label>
+          <input id="editMenuPrice" type="number" min="0" step="0.01" placeholder="0">
+        </div>
+        <div class="field">
+          <label>ВАГА / ОБ'ЄМ</label>
+          <input id="editMenuWeight" placeholder="300 г">
+        </div>
+        <div class="field full">
+          <label>ОПИС</label>
+          <textarea id="editMenuDescription" placeholder="Опис позиції..."></textarea>
+        </div>
+        <div class="field full">
+          <label>ФОТО — ПОСИЛАННЯ</label>
+          <input id="editMenuPhoto" type="url" placeholder="https://..." oninput="previewMenuPhoto()">
+          <img id="editMenuPhotoPreview" class="photo-preview" alt="Попередній перегляд">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary" onclick="closeModal('editMenuModal')">Скасувати</button>
+        <button id="editMenuSaveBtn" class="primary" onclick="saveEditedMenuItem()">Зберегти зміни</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ================= TOAST ================= -->
 
@@ -4043,7 +4335,18 @@ function renderMenu(){
   grid.innerHTML =
     filtered.map(item => `
 
-      <article class="menu-card">
+      <article
+        class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""}"
+        tabindex="0"
+        onclick="openMenuItemDetails(${Number(item.id)})"
+        onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openMenuItemDetails(${Number(item.id)})}"
+      >
+
+        ${
+          getMenuPhoto(item)
+            ? `<img class="menu-card-photo" src="${escapeHtml(getMenuPhoto(item))}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;menu-card-photo-placeholder&quot;>♨</div>'">`
+            : `<div class="menu-card-photo-placeholder">♨</div>`
+        }
 
         <div class="menu-card-top">
 
@@ -4051,15 +4354,10 @@ function renderMenu(){
             ${escapeHtml(item.name)}
           </h3>
 
-          <span
-            class="menu-type ${
-              item.type === "Бар"
-                ? "bar"
-                : ""
-            }"
-          >
-            ${escapeHtml(item.type || "Кухня")}
-          </span>
+          <div class="menu-card-actions" onclick="event.stopPropagation()">
+            <button class="menu-mini-btn" title="Редагувати" onclick="openEditMenuItem(${Number(item.id)})">✎</button>
+            <button class="menu-mini-btn danger" title="Видалити" onclick="deleteMenuItem(${Number(item.id)})">×</button>
+          </div>
 
         </div>
 
@@ -4113,6 +4411,230 @@ function renderMenu(){
 
 }
 
+
+/* ================= MENU ENGINE 2.0 ================= */
+
+function getMenuPhoto(item){
+  if(!item) return "";
+  const dbPhoto = String(item.photo_url || item.photo || "").trim();
+  if(dbPhoto) return dbPhoto;
+  try{
+    return String(localStorage.getItem(`servisium_menu_photo_${item.id}`) || "").trim();
+  }catch{
+    return "";
+  }
+}
+
+function setMenuPhotoLocal(id,url){
+  try{
+    const key = `servisium_menu_photo_${id}`;
+    if(url){
+      localStorage.setItem(key,url);
+    }else{
+      localStorage.removeItem(key);
+    }
+  }catch(error){
+    console.warn("Photo local storage unavailable:",error);
+  }
+}
+
+function findMenuItem(id){
+  return currentMenu.find(item => Number(item.id) === Number(id)) || null;
+}
+
+function openMenuItemDetails(id){
+  const item = findMenuItem(id);
+  if(!item) return;
+
+  const photo = getMenuPhoto(item);
+  const body = document.getElementById("menuDetailBody");
+  const title = document.getElementById("detailModalTitle");
+  if(!body || !title) return;
+
+  title.textContent = item.name || "Позиція";
+
+  body.innerHTML = `
+    <div class="menu-detail-grid">
+      <div>
+        ${photo
+          ? `<img class="menu-detail-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(item.name || "Позиція")}" onerror="this.outerHTML='<div class=&quot;menu-detail-placeholder&quot;>♨</div>'>`
+          : `<div class="menu-detail-placeholder">♨</div>`
+        }
+      </div>
+      <div class="menu-detail-content">
+        <h2>${escapeHtml(item.name || "Без назви")}</h2>
+        <div class="menu-detail-meta">
+          <span class="menu-detail-chip">${escapeHtml(item.type || "Кухня")}</span>
+          <span class="menu-detail-chip">${escapeHtml(item.category || "Інше")}</span>
+          ${item.weight ? `<span class="menu-detail-chip">${escapeHtml(item.weight)}</span>` : ""}
+          <span class="menu-detail-chip">● Активна</span>
+        </div>
+        <div class="menu-detail-price">${formatPrice(item.price)}</div>
+        ${item.weight ? `<div class="menu-detail-weight">Порція / об'єм: ${escapeHtml(item.weight)}</div>` : ""}
+        <div class="menu-detail-description">
+          ${item.description ? escapeHtml(item.description) : "Опис для цієї позиції ще не додано."}
+        </div>
+        <div class="menu-detail-actions">
+          <button class="primary" onclick="closeModal('menuDetailModal');openEditMenuItem(${Number(item.id)})">✎ Редагувати</button>
+          <button class="danger-btn" onclick="closeModal('menuDetailModal');deleteMenuItem(${Number(item.id)})">× Видалити</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal("menuDetailModal");
+}
+
+function openEditMenuItem(id){
+  const item = findMenuItem(id);
+  if(!item){
+    showToast("Позицію не знайдено.");
+    return;
+  }
+
+  document.getElementById("editMenuId").value = item.id;
+  document.getElementById("editMenuName").value = item.name || "";
+  document.getElementById("editMenuType").value = item.type === "Бар" ? "Бар" : "Кухня";
+  document.getElementById("editMenuCategory").value = item.category || "Інше";
+  document.getElementById("editMenuPrice").value = item.price ?? "";
+  document.getElementById("editMenuWeight").value = item.weight || "";
+  document.getElementById("editMenuDescription").value = item.description || "";
+  document.getElementById("editMenuPhoto").value = getMenuPhoto(item);
+  previewMenuPhoto();
+
+  openModal("editMenuModal");
+}
+
+function previewMenuPhoto(){
+  const input = document.getElementById("editMenuPhoto");
+  const preview = document.getElementById("editMenuPhotoPreview");
+  if(!input || !preview) return;
+
+  const url = input.value.trim();
+  if(!url){
+    preview.classList.remove("active");
+    preview.removeAttribute("src");
+    return;
+  }
+
+  preview.src = url;
+  preview.classList.add("active");
+  preview.onerror = ()=>{
+    preview.classList.remove("active");
+  };
+}
+
+async function saveEditedMenuItem(){
+  if(!currentRestaurant){
+    showToast("Заклад не вибрано.");
+    return;
+  }
+
+  const id = Number(document.getElementById("editMenuId").value);
+  const item = findMenuItem(id);
+  if(!item){
+    showToast("Позицію не знайдено.");
+    return;
+  }
+
+  const name = document.getElementById("editMenuName").value.trim();
+  const type = document.getElementById("editMenuType").value;
+  const category = document.getElementById("editMenuCategory").value.trim() || "Інше";
+  const priceRaw = document.getElementById("editMenuPrice").value;
+  const weight = document.getElementById("editMenuWeight").value.trim();
+  const description = document.getElementById("editMenuDescription").value.trim();
+  const photo = document.getElementById("editMenuPhoto").value.trim();
+
+  if(!name){
+    showToast("Вкажи назву позиції.");
+    return;
+  }
+
+  let price = null;
+  if(priceRaw !== ""){
+    const parsed = Number(priceRaw);
+    if(!Number.isFinite(parsed) || parsed < 0){
+      showToast("Некоректна ціна.");
+      return;
+    }
+    price = parsed;
+  }
+
+  const button = document.getElementById("editMenuSaveBtn");
+  button.disabled = true;
+  button.innerHTML = `<span class="loading"><span class="spinner"></span>Збереження...</span>`;
+
+  try{
+    const updated = await supabaseRequest(
+      `menu_items?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
+      {
+        method:"PATCH",
+        headers:{Prefer:"return=representation"},
+        body:JSON.stringify({
+          name,
+          type,
+          category,
+          description:description || null,
+          price,
+          weight:weight || null
+        })
+      }
+    );
+
+    const row = Array.isArray(updated) && updated[0] ? updated[0] : null;
+    const index = currentMenu.findIndex(x => Number(x.id) === id);
+    if(index !== -1){
+      currentMenu[index] = row ? {...currentMenu[index],...row} : {
+        ...currentMenu[index],name,type,category,description:description || null,price,weight:weight || null
+      };
+    }
+
+    // photo_url is not part of the current menu_items schema, so keep the
+    // optional preview locally until the dedicated media column/storage is added.
+    setMenuPhotoLocal(id,photo);
+
+    closeModal("editMenuModal");
+    renderCategoryTabs();
+    renderMenu();
+    showToast("Позицію оновлено.");
+
+  }catch(error){
+    console.error("EDIT MENU ERROR:",error);
+    showToast("Помилка оновлення: " + error.message);
+  }finally{
+    button.disabled = false;
+    button.textContent = "Зберегти зміни";
+  }
+}
+
+async function deleteMenuItem(id){
+  const item = findMenuItem(id);
+  if(!item) return;
+
+  const confirmed = window.confirm(
+    `Видалити «${item.name}» з меню?\n\nЦю дію неможливо скасувати.`
+  );
+  if(!confirmed) return;
+
+  try{
+    await supabaseRequest(
+      `menu_items?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
+      {method:"DELETE"}
+    );
+
+    currentMenu = currentMenu.filter(x => Number(x.id) !== Number(id));
+    setMenuPhotoLocal(id,"");
+    renderCategoryTabs();
+    renderMenu();
+    await refreshCurrentRestaurantStats();
+    await refreshMasterStats();
+    showToast("Позицію видалено.");
+
+  }catch(error){
+    console.error("DELETE MENU ERROR:",error);
+    showToast("Помилка видалення: " + error.message);
+  }
+}
 
 /* ================= IMPORT MENU ================= */
 
@@ -4258,7 +4780,10 @@ function normalizeImportedItem(item){
     weight:
       item.weight
         ? String(item.weight).trim()
-        : null
+        : null,
+
+    photo_url:
+      item.photo_url || item.photo || null
 
   };
 
@@ -4695,7 +5220,7 @@ async function saveImportedMenu(){
       }));
 
 
-    await supabaseRequest(
+    const createdImported = await supabaseRequest(
       "menu_items",
       {
         method:"POST",
@@ -4707,6 +5232,17 @@ async function saveImportedMenu(){
         body:JSON.stringify(payload)
       }
     );
+
+    if(Array.isArray(createdImported)){
+      createdImported.forEach(created => {
+        const source = newItems.find(item =>
+          String(item.name).trim().toLowerCase() === String(created.name || "").trim().toLowerCase()
+        );
+        if(source?.photo_url){
+          setMenuPhotoLocal(created.id,source.photo_url);
+        }
+      });
+    }
 
 
     setImportStatus(
@@ -4817,9 +5353,31 @@ function openManualMenuModal(){
     "manualDescription"
   ).value = "";
 
+  document.getElementById(
+    "manualPhoto"
+  ).value = "";
+
+  previewManualPhoto();
+
 
   openModal("manualMenuModal");
 
+}
+
+
+function previewManualPhoto(){
+  const input = document.getElementById("manualPhoto");
+  const preview = document.getElementById("manualPhotoPreview");
+  if(!input || !preview) return;
+  const url = input.value.trim();
+  if(!url){
+    preview.classList.remove("active");
+    preview.removeAttribute("src");
+    return;
+  }
+  preview.src = url;
+  preview.classList.add("active");
+  preview.onerror = ()=>preview.classList.remove("active");
 }
 
 
@@ -4923,7 +5481,7 @@ async function saveManualMenuItem(){
 
   try{
 
-    await supabaseRequest(
+    const createdManual = await supabaseRequest(
       "menu_items",
       {
         method:"POST",
@@ -4954,6 +5512,14 @@ async function saveManualMenuItem(){
         })
       }
     );
+
+    const createdItem = Array.isArray(createdManual) && createdManual[0]
+      ? createdManual[0]
+      : null;
+
+    if(createdItem){
+      setMenuPhotoLocal(createdItem.id, document.getElementById("manualPhoto").value.trim());
+    }
 
 
     closeModal(
