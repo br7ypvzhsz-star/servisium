@@ -2762,8 +2762,12 @@ h3{
       <div class="menu-edit-grid">
         <div class="field full"><label>ІМ'Я</label><input id="staffNameInput" placeholder="Наприклад: Андрій Коваль"></div>
         <div class="field"><label>РОЛЬ</label><select id="staffRoleInput"><option value="WAITER">WAITER</option><option value="SENIOR WAITER">SENIOR WAITER</option><option value="ADMIN">ADMIN</option></select></div>
-        <div class="field"><label>ТЕЛЕФОН / EMAIL</label><input id="staffContactInput" placeholder="Необов'язково"></div>
+        <div class="field"><label>EMAIL</label><input id="staffEmailInput" type="email" placeholder="Необов'язково"></div>
+        <div class="field"><label>PIN-КОД</label><input id="staffPinInput" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="4 цифри"></div>
+        <div class="field"><label>ПІДТВЕРДЖЕННЯ PIN</label><input id="staffPinConfirmInput" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="Повтори PIN"></div>
+        <div class="field full"><label>ТЕЛЕФОН / ДОДАТКОВИЙ КОНТАКТ</label><input id="staffContactInput" placeholder="Необов'язково"></div>
       </div>
+      <div class="personal-note" style="margin-top:10px">PIN складається рівно з 4 цифр. Один PIN не може бути призначений двом активним акаунтам.</div>
       <div class="modal-actions">
         <button class="secondary" onclick="closeModal('personnelModal')">Скасувати</button>
         <button class="primary" onclick="savePersonnelMember()">Додати працівника</button>
@@ -2782,7 +2786,7 @@ h3{
 
 <script>
 /* =========================================================
-   SERVISIUM 2.3
+   SERVISIUM 3.0
    MASTER PANEL + MENU ENGINE
    SUPABASE + EDGE FUNCTION IMPORT
    ========================================================= */
@@ -4761,6 +4765,7 @@ function openPersonnelModal(){
   document.getElementById("staffNameInput").value="";
   document.getElementById("staffEmailInput") && (document.getElementById("staffEmailInput").value="");
   document.getElementById("staffPinInput") && (document.getElementById("staffPinInput").value="");
+  document.getElementById("staffPinConfirmInput") && (document.getElementById("staffPinConfirmInput").value="");
   document.getElementById("staffContactInput").value="";
   document.getElementById("staffRoleInput").value="WAITER";
   document.getElementById("personnelModal")?.classList.add("active");
@@ -4771,21 +4776,46 @@ async function savePersonnelMember(){
   const email=(document.getElementById("staffEmailInput")?.value||"").trim().toLowerCase();
   const contact=(document.getElementById("staffContactInput")?.value||"").trim();
   const role=(document.getElementById("staffRoleInput")?.value||"WAITER").trim();
+  const pin=(document.getElementById("staffPinInput")?.value||"").trim();
+  const pinConfirm=(document.getElementById("staffPinConfirmInput")?.value||"").trim();
+
   if(!name){showToast("Вкажи ім'я працівника.");return;}
-  if(!email || !email.includes("@")){showToast("Вкажи email для акаунта працівника.");return;}
+  if(!/^\d{4}$/.test(pin)){showToast("PIN має містити рівно 4 цифри.");return;}
+  if(pin!==pinConfirm){showToast("PIN-коди не збігаються.");return;}
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast("Перевір email працівника.");return;}
+
   try{
-    const pinInput=document.getElementById("staffPinInput");
-    let pin=(pinInput?.value||"").trim();
-    if(pin && !/^\d{4}$/.test(pin)){showToast("PIN має містити рівно 4 цифри.");return;}
-    if(!pin)pin=String(Math.floor(1000+Math.random()*9000));
     const pin_hash=await sha256Hex(pin);
-    await supabaseRequest("restaurant_staff",{method:"POST",body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),name,email,contact:contact||null,role,status:"active",pin_hash})});
+    const existing=await supabaseRequest(`restaurant_staff?select=id,name,restaurant_id,status&pin_hash=eq.${encodeURIComponent(pin_hash)}&status=eq.active&limit=5`);
+    if(Array.isArray(existing)&&existing.length){
+      showToast("Цей PIN уже використовується активним акаунтом. Обери інший.");
+      return;
+    }
+
+    await supabaseRequest("restaurant_staff",{
+      method:"POST",
+      body:JSON.stringify({
+        restaurant_id:Number(currentRestaurant.id),
+        name,
+        email:email||null,
+        contact:contact||null,
+        role,
+        status:"active",
+        pin_hash
+      })
+    });
+
     closeModal("personnelModal");
     await openRestaurantModule("personnel");
     showToast(`${name} доданий. PIN-код: ${pin}`);
   }catch(error){
     console.error("Personnel insert error:",error);
-    showToast("Не вдалося додати працівника: " + error.message);
+    const msg=String(error?.message||"");
+    if(msg.toLowerCase().includes("duplicate")||msg.toLowerCase().includes("unique")){
+      showToast("Цей PIN уже використовується. Обери інший.");
+    }else{
+      showToast("Не вдалося додати працівника: " + msg);
+    }
   }
 }
 
