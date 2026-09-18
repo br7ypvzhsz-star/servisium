@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <meta name="description" content="SERVISIUM — Art of Service">
-<title>SERVISIUM | Art of Service · Menu Engine 2.5</title>
+<title>SERVISIUM | Art of Service · Menu Engine 3.2</title>
 
 <style>
 :root{
@@ -990,6 +990,10 @@ h3{
 .personnel-empty{padding:40px;text-align:center;color:#777176;border:1px dashed var(--line);border-radius:14px;}
 @media(max-width:900px){.personnel-row{align-items:flex-start;flex-wrap:wrap}.personnel-actions{width:100%;margin-left:58px;}}
 
+/* ROLE ACCESS */
+.role-hidden{display:none !important;}
+
+
 /* MODULE PAGE */
 
 .module-page{
@@ -1818,22 +1822,22 @@ h3{
         <span>Головна</span>
       </button>
 
-      <button id="navRestaurants" onclick="scrollToRestaurants()">
+      <button id="navRestaurants" data-role="ADMIN" onclick="scrollToRestaurants()">
         <span class="nav-icon">▦</span>
         <span>Мої заклади</span>
       </button>
 
-      <button id="navChanges" data-role-admin onclick="openMasterModule('changes')">
+      <button id="navChanges" data-role="ADMIN,SENIOR WAITER" onclick="openMasterModule('changes')">
         <span class="nav-icon">↻</span>
         <span>Зміни</span>
       </button>
 
-      <button id="navNotifications" data-role-admin onclick="openMasterModule('notifications')">
+      <button id="navNotifications" data-role="ADMIN,SENIOR WAITER" onclick="openMasterModule('notifications')">
         <span class="nav-icon">♧</span>
         <span>Сповіщення</span>
       </button>
 
-      <button id="navAnalytics" data-role-admin onclick="openMasterModule('analytics')">
+      <button id="navAnalytics" data-role="ADMIN,SENIOR WAITER" onclick="openMasterModule('analytics')">
         <span class="nav-icon">▥</span>
         <span>Аналітика</span>
       </button>
@@ -1847,7 +1851,7 @@ h3{
         <span>Мій кабінет</span>
       </button>
 
-      <button id="navSettings" data-role-admin onclick="openMasterModule('settings')">
+      <button id="navSettings" data-role="ADMIN" onclick="openMasterModule('settings')">
         <span class="nav-icon">⚙</span>
         <span>Налаштування</span>
       </button>
@@ -1861,7 +1865,7 @@ h3{
 
     <div class="side-foot">
     <button class="secondary" style="width:100%;margin-bottom:10px" type="button" onclick="logoutServisium()">Вийти з акаунта</button>
-      SERVISIUM v2.1.0 · © 2026
+      SERVISIUM v3.2.0 · © 2026
     </div>
 
   </aside>
@@ -2128,7 +2132,7 @@ h3{
           </div>
 
           <button
-            class="secondary"
+            class="secondary" data-role="ADMIN"
             onclick="showMasterView()"
           >
             ← Усі заклади
@@ -2140,7 +2144,7 @@ h3{
         <div class="module-grid">
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
             onclick="openRestaurantModule('menu')"
           >
             <span class="module-icon">♨</span>
@@ -2151,7 +2155,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER"
             onclick="openRestaurantModule('stop')"
           >
             <span class="module-icon">●</span>
@@ -2161,7 +2165,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER"
             onclick="openRestaurantModule('personnel')"
           >
             <span class="module-icon">♙</span>
@@ -2171,7 +2175,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
             onclick="openRestaurantModule('training')"
           >
             <span class="module-icon">◇</span>
@@ -2181,7 +2185,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
             onclick="openRestaurantModule('ai')"
           >
             <span class="module-icon">✦</span>
@@ -2191,7 +2195,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER,WAITER"
             onclick="openRestaurantModule('orders')"
           >
             <span class="module-icon">≡</span>
@@ -2201,7 +2205,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER"
             onclick="openRestaurantModule('knowledge')"
           >
             <span class="module-icon">▣</span>
@@ -2211,7 +2215,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN,SENIOR WAITER"
             onclick="openRestaurantModule('versions')"
           >
             <span class="module-icon">↻</span>
@@ -2221,7 +2225,7 @@ h3{
 
 
           <button
-            class="module"
+            class="module" data-role="ADMIN"
             onclick="openRestaurantModule('settings')"
           >
             <span class="module-icon">⚙</span>
@@ -2919,7 +2923,18 @@ async function loginServisium(){
 async function restoreServisiumSession(){if(restorePinSession()){await loadRestaurants();return true;}try{const raw=localStorage.getItem("servisium_session");if(!raw){showAuthScreen(true);return false;}servisiumSession=JSON.parse(raw);if(!servisiumSession?.access_token){showAuthScreen(true);return false;}const res=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession.access_token}`}});if(!res.ok)throw new Error("session");currentUser=await res.json();await finishAuth();return true;}catch{localStorage.removeItem("servisium_session");servisiumSession=null;currentUser=null;showAuthScreen(true);return false;}}
 async function finishAuth(){showAuthScreen(false);await loadCurrentUserStaff();await loadRestaurants();updateProfileUI();}
 async function loadCurrentUserStaff(){if(currentUserStaff?.id&&!servisiumSession){currentUserRole=currentUserStaff.role||null;applyRoleAccess();return;}currentUserStaff=null;currentUserRole=null;if(!currentUser?.email)return;try{const rows=await supabaseRequest(`restaurant_staff?select=*&email=eq.${encodeURIComponent(String(currentUser.email).toLowerCase())}&status=eq.active&order=created_at.asc`);currentUserStaff=Array.isArray(rows)&&rows.length?rows[0]:null;currentUserRole=currentUserStaff?.role||null;applyRoleAccess();}catch(e){console.warn("Staff profile lookup:",e.message);}}
-function applyRoleAccess(){const role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";document.querySelectorAll("[data-role-admin]").forEach(el=>el.style.display=canManage?"":"none");document.querySelectorAll("[data-role-waiter]").forEach(el=>el.style.display=role?"":"none");}
+function applyRoleAccess(){
+  const role=String(currentUserRole||"").toUpperCase();
+  document.querySelectorAll("[data-role]").forEach(el=>{
+    const allowed=String(el.getAttribute("data-role")||"")
+      .split(",")
+      .map(x=>x.trim().toUpperCase())
+      .filter(Boolean);
+    const visible=allowed.includes(role);
+    el.classList.toggle("role-hidden",!visible);
+    el.setAttribute("aria-hidden",visible?"false":"true");
+  });
+}
 function updateProfileUI(){
   const displayName = (currentUserStaff?.name || currentUser?.name || currentUser?.email?.split("@")[0] || "Користувач").trim();
   const greeting = document.getElementById("masterGreeting");
@@ -3092,6 +3107,17 @@ function hideAllMainViews(){
 
 function showMasterView(){
 
+  const role = String(currentUserRole || "").toUpperCase();
+
+  if(role && role !== "ADMIN"){
+    if(currentRestaurant){
+      showRestaurantHome();
+    }else{
+      showToast("Для цієї ролі Master Panel недоступний.");
+    }
+    return;
+  }
+
   hideAllMainViews();
 
   document
@@ -3106,29 +3132,44 @@ function showMasterView(){
   });
 }
 
-
 function scrollToRestaurants(){
+
+  if(String(currentUserRole || "").toUpperCase() !== "ADMIN"){
+    showMasterView();
+    return;
+  }
 
   showMasterView();
 
   setTimeout(()=>{
-
     document
       .getElementById("restaurantsSection")
       ?.scrollIntoView({
         behavior:"smooth",
         block:"start"
       });
-
   },50);
 
   setActiveNav("navRestaurants");
 }
 
-
 /* ================= MASTER MODULES ================= */
 
 function openMasterModule(type){
+
+  const role=String(currentUserRole||"").toUpperCase();
+  const allowed={
+    changes:["ADMIN","SENIOR WAITER"],
+    notifications:["ADMIN","SENIOR WAITER"],
+    analytics:["ADMIN","SENIOR WAITER"],
+    profile:["ADMIN","SENIOR WAITER","WAITER"],
+    settings:["ADMIN"]
+  };
+  if(!allowed[type]?.includes(role)){
+    showToast("У тебе немає доступу до цього розділу.");
+    if(role!=="ADMIN" && currentRestaurant) showRestaurantHome();
+    return;
+  }
 
   hideAllMainViews();
 
@@ -3168,7 +3209,7 @@ function openMasterModule(type){
     profile:{
       kicker:"PROFILE",
       title:"Профіль",
-      subtitle:"Профіль адміністратора SERVISIUM."
+      subtitle:"Персональний профіль користувача SERVISIUM."
     },
 
     settings:{
@@ -3387,9 +3428,13 @@ async function loadRestaurants(){
 
   try{
 
-    restaurants = await supabaseRequest(
+    const allRestaurants = await supabaseRequest(
       "restaurants?select=*&order=id.asc"
     ) || [];
+    const role=String(currentUserRole||"").toUpperCase();
+    restaurants = role === "ADMIN"
+      ? allRestaurants
+      : allRestaurants.filter(r => currentUserStaff?.restaurant_id && Number(r.id)===Number(currentUserStaff.restaurant_id));
 
     await renderRestaurants();
 
@@ -3833,6 +3878,12 @@ async function createRestaurant(){
 
 async function openRestaurant(id){
 
+  const role=String(currentUserRole||"").toUpperCase();
+  if(role!=="ADMIN" && currentUserStaff?.restaurant_id && Number(id)!==Number(currentUserStaff.restaurant_id)){
+    showToast("Цей заклад недоступний для твого акаунта.");
+    return;
+  }
+
   const restaurant =
     restaurants.find(
       item => Number(item.id) === Number(id)
@@ -3851,6 +3902,7 @@ async function openRestaurant(id){
 
   currentRestaurant = restaurant;
 
+  applyRoleAccess();
 
   hideAllMainViews();
 
@@ -3936,6 +3988,23 @@ function showRestaurantHome(){
 /* ================= RESTAURANT MODULE ================= */
 
 async function openRestaurantModule(type){
+
+  const role=String(currentUserRole||"").toUpperCase();
+  const allowed={
+    menu:["ADMIN","SENIOR WAITER","WAITER"],
+    stop:["ADMIN","SENIOR WAITER"],
+    personnel:["ADMIN","SENIOR WAITER"],
+    training:["ADMIN","SENIOR WAITER","WAITER"],
+    ai:["ADMIN","SENIOR WAITER","WAITER"],
+    orders:["ADMIN","SENIOR WAITER","WAITER"],
+    knowledge:["ADMIN","SENIOR WAITER"],
+    versions:["ADMIN","SENIOR WAITER"],
+    settings:["ADMIN"]
+  };
+  if(!allowed[type]?.includes(role)){
+    showToast("У тебе немає доступу до цього розділу.");
+    return;
+  }
 
   if(!currentRestaurant){
 
@@ -4560,6 +4629,7 @@ function formatStopDate(value){
 }
 
 async function putMenuItemOnStop(itemId, reason = ""){ 
+  if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){showToast("Stop-list доступний тільки ADMIN та SENIOR WAITER.");return;}
   if(!currentRestaurant) return;
 
   const item = findMenuItem(itemId);
@@ -4582,7 +4652,7 @@ async function putMenuItemOnStop(itemId, reason = ""){
         menu_item_id:item.id,
         reason:String(reason || "").trim() || "Тимчасово недоступно",
         status:"active",
-        created_by:"ADMIN"
+        created_by:(currentUserStaff?.name || "ADMIN")
       })
     });
 
@@ -4599,6 +4669,7 @@ async function putMenuItemOnStop(itemId, reason = ""){
 }
 
 async function removeMenuItemFromStop(stopId){
+  if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){showToast("Stop-list доступний тільки ADMIN та SENIOR WAITER.");return;}
   if(!currentRestaurant) return;
 
   const stop = currentStopList.find(x => Number(x.id) === Number(stopId));
@@ -4612,7 +4683,7 @@ async function removeMenuItemFromStop(stopId){
         body:JSON.stringify({
           status:"resolved",
           resolved_at:new Date().toISOString(),
-          resolved_by:"ADMIN"
+          resolved_by:(currentUserStaff?.name || "ADMIN")
         })
       }
     );
@@ -4630,6 +4701,7 @@ async function removeMenuItemFromStop(stopId){
 }
 
 function openStopModal(itemId){
+  if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){showToast("Stop-list доступний тільки ADMIN та SENIOR WAITER.");return;}
   const item = findMenuItem(itemId);
   if(!item) return;
   const stop = getActiveStop(itemId);
@@ -4727,6 +4799,7 @@ function renderPersonnelModule(){
         </div>
         <span class="role-badge ${roleClass(role)}">${escapeHtml(role)}</span>
         <div class="personnel-actions">
+          ${String(currentUserRole||"").toUpperCase()==="ADMIN" ? `
           <select class="personnel-select" onchange="changePersonnelRole(${Number(member.id)},this.value)">
             <option value="WAITER" ${role==="WAITER"?"selected":""}>WAITER</option>
             <option value="SENIOR WAITER" ${role==="SENIOR WAITER"?"selected":""}>SENIOR WAITER</option>
@@ -4734,6 +4807,7 @@ function renderPersonnelModule(){
           </select>
           <button class="secondary" type="button" onclick="togglePersonnelStatus(${Number(member.id)},'${member.status === "inactive" ? "active" : "inactive"}')">${member.status === "inactive" ? "Активувати" : "Вимкнути"}</button>
           <button class="danger-btn" type="button" onclick="deletePersonnelMember(${Number(member.id)})">Видалити</button>
+          ` : `<span class="section-meta">Перегляд персоналу</span>`}
         </div>
       </div>`;
   }).join("");
@@ -4747,7 +4821,7 @@ function renderPersonnelModule(){
     <div class="panel" style="margin-top:15px">
       <div class="personnel-toolbar">
         <div><h2>Команда закладу</h2><div class="section-meta">Ролі визначають доступ до функцій SERVISIUM.</div></div>
-        <button class="primary" type="button" onclick="openPersonnelModal()">+ Додати працівника</button>
+        ${String(currentUserRole||"").toUpperCase()==="ADMIN" ? `<button class="primary" type="button" onclick="openPersonnelModal()">+ Додати працівника</button>` : ""}
       </div>
       <div class="personnel-list">
         ${rows || `<div class="personnel-empty"><strong>Персонал ще не доданий</strong><p>Додай першого працівника та признач роль.</p></div>`}
@@ -4764,6 +4838,7 @@ function renderPersonnelModule(){
 }
 
 function openPersonnelModal(){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"){showToast("Керування персоналом доступне тільки ADMIN.");return;}
   if(!currentRestaurant){showToast("Спочатку відкрий заклад.");return;}
   document.getElementById("staffNameInput").value="";
   document.getElementById("staffEmailInput") && (document.getElementById("staffEmailInput").value="");
@@ -4775,6 +4850,7 @@ function openPersonnelModal(){
 }
 
 async function savePersonnelMember(){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"){showToast("Керування персоналом доступне тільки ADMIN.");return;}
   const name=(document.getElementById("staffNameInput")?.value||"").trim();
   const email=(document.getElementById("staffEmailInput")?.value||"").trim().toLowerCase();
   const contact=(document.getElementById("staffContactInput")?.value||"").trim();
@@ -4823,6 +4899,7 @@ async function savePersonnelMember(){
 }
 
 async function changePersonnelRole(id,role){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"){showToast("Змінювати ролі може тільки ADMIN.");return;}
   try{
     await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"PATCH",body:JSON.stringify({role})});
     await openRestaurantModule("personnel");
@@ -4834,6 +4911,7 @@ async function changePersonnelRole(id,role){
 }
 
 async function togglePersonnelStatus(id,status){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"){showToast("Змінювати статус персоналу може тільки ADMIN.");return;}
   try{
     await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"PATCH",body:JSON.stringify({status})});
     await openRestaurantModule("personnel");
@@ -4845,6 +4923,7 @@ async function togglePersonnelStatus(id,status){
 }
 
 async function deletePersonnelMember(id){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"){showToast("Видаляти персонал може тільки ADMIN.");return;}
   if(!confirm("Видалити працівника із закладу?")) return;
   try{
     await supabaseRequest(`restaurant_staff?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,{method:"DELETE"});
@@ -5121,9 +5200,9 @@ function renderMenu(){
           </h3>
 
           <div class="menu-card-actions" onclick="event.stopPropagation()" style="position:relative;z-index:20;pointer-events:auto;opacity:1;transform:none;">
-            <button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();openEditMenuItem(Number(this.dataset.menuId));">✎</button>
-            <button type="button" class="menu-mini-btn ${stopped ? "danger" : ""}" title="${stopped ? "Зняти зі стопу" : "Поставити на стоп"}" data-menu-action="stop" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();toggleMenuItemStop(Number(this.dataset.menuId));">${stopped ? "↺" : "●"}</button>
-            <button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();deleteMenuItem(Number(this.dataset.menuId));">×</button>
+            ${["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase()) ? `<button type="button" class="menu-mini-btn" title="Редагувати" data-menu-action="edit" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();openEditMenuItem(Number(this.dataset.menuId));">✎</button>` : ""}
+            ${["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase()) ? `<button type="button" class="menu-mini-btn ${stopped ? "danger" : ""}" title="${stopped ? "Зняти зі стопу" : "Поставити на стоп"}" data-menu-action="stop" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();toggleMenuItemStop(Number(this.dataset.menuId));">${stopped ? "↺" : "●"}</button>` : ""}
+            ${String(currentUserRole||"").toUpperCase()==="ADMIN" ? `<button type="button" class="menu-mini-btn danger" title="Видалити" data-menu-action="delete" data-menu-id="${Number(item.id)}" onclick="event.preventDefault();event.stopPropagation();deleteMenuItem(Number(this.dataset.menuId));">×</button>` : ""}
           </div>
 
         </div>
