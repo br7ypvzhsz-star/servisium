@@ -1757,6 +1757,17 @@ h3{
 .sales-table th,.sales-table td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.055);text-align:left;font-size:11px;}
 .sales-table th{color:#777176;font-size:9px;text-transform:uppercase;letter-spacing:1px;}
 .sales-table td strong{font-size:12px;}
+.sales-rank-list{display:grid;gap:12px;margin-top:15px;}
+.sales-rank{padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--surface);}
+.sales-rank-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;}
+.sales-rank-head>div{display:flex;align-items:center;gap:8px;min-width:0;}
+.sales-rank-num{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:rgba(174,18,67,.18);color:#f0a0b8;font-weight:850;font-size:10px;}
+.sales-rank-track{height:5px;margin-top:10px;border-radius:99px;background:#242126;overflow:hidden;}
+.sales-rank-track span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#7b0f35,#c51f55);}
+.sales-rank-meta{margin-top:7px;color:#716a70;font-size:9px;}
+.team-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:15px 0;}
+.section-badge{padding:7px 10px;border:1px solid rgba(196,28,81,.35);border-radius:9px;color:#d98ba4;font-size:8px;font-weight:850;letter-spacing:1px;}
+@media(max-width:700px){.team-summary-grid{grid-template-columns:1fr;}.sales-table{display:block;overflow-x:auto;white-space:nowrap;}}
 .personal-note{color:#686267;font-size:10px;line-height:1.55;}
 @media(max-width:1000px){.personal-stats-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:560px){.pin-key{height:58px}.personal-stats-grid{grid-template-columns:1fr}.sales-table{font-size:10px}.sales-table th,.sales-table td{padding:9px 6px;}}
@@ -2941,42 +2952,77 @@ function updateProfileUI(){
   if(greeting){ greeting.textContent = `Ласкаво просимо, ${displayName}!`; }const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;}
 async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
 
-/* ================= PERSONAL SALES STATS ================= */
+/* ================= PERSONAL + TEAM SALES STATS ================= */
 function monthStartISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths);return d.toISOString();}
 function nextMonthISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths+1);return d.toISOString();}
+function todayStartISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
+function tomorrowStartISO(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+1);return d.toISOString();}
 function money(value){return Number(value||0).toLocaleString("uk-UA",{minimumFractionDigits:0,maximumFractionDigits:2})+" ₴";}
+function formatStatDate(value){const raw=String(value||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw||"—";const [y,m,d]=raw.split("-");return `${d}.${m}.${y}`;}
 async function loadPersonalSalesStats(){
-  const result={total:0,checks:0,avg:0,items:0,byDay:[]},staffId=Number(currentUserStaff?.id||0);if(!staffId)return result;
+  const result={total:0,checks:0,avg:0,items:0,todayTotal:0,todayChecks:0,byDay:[],topItems:[]},staffId=Number(currentUserStaff?.id||0);if(!staffId)return result;
   try{
-    const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&waiter_id=eq.${encodeURIComponent(staffId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc`);
+    const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&waiter_id=eq.${encodeURIComponent(staffId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc&limit=5000`);
     const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()!=="cancelled");
     result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
-    const dayMap={};valid.forEach(o=>{const day=String(o.created_at||"").slice(0,10);dayMap[day]=(dayMap[day]||0)+Number(o.total||0);});
-    result.byDay=Object.entries(dayMap).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
-    try{const ids=valid.map(o=>Number(o.id)).filter(Boolean);if(ids.length){const oi=await supabaseRequest(`order_items?select=menu_item_id,qty,order_id&order_id=in.(${ids.join(",")})`);result.items=(Array.isArray(oi)?oi:[]).reduce((sum,x)=>sum+Number(x.qty||1),0);}}catch(e){console.warn("order_items stats unavailable:",e.message);}
+    const todayStart=todayStartISO(),todayEnd=tomorrowStartISO();
+    const todayOrders=valid.filter(o=>String(o.created_at||"")>=todayStart&&String(o.created_at||"")<todayEnd);
+    result.todayChecks=todayOrders.length;result.todayTotal=todayOrders.reduce((sum,o)=>sum+Number(o.total||0),0);
+    const dayMap={};valid.forEach(o=>{const day=String(o.created_at||"").slice(0,10);if(day)dayMap[day]=(dayMap[day]||0)+Number(o.total||0);});
+    result.byDay=Object.entries(dayMap).sort((a,b)=>b[0].localeCompare(a[0]));
+    const ids=valid.map(o=>Number(o.id)).filter(Boolean);
+    if(ids.length){
+      try{
+        const oi=await supabaseRequest(`order_items?select=menu_item_id,qty,price,order_id&order_id=in.(${ids.join(",")})&limit=10000`);
+        const rows=Array.isArray(oi)?oi:[];result.items=rows.reduce((sum,x)=>sum+Number(x.qty||1),0);
+        const itemMap={};rows.forEach(x=>{const id=Number(x.menu_item_id||0);if(!id)return;if(!itemMap[id])itemMap[id]={menu_item_id:id,qty:0,sales:0};const qty=Number(x.qty||1),price=Number(x.price||0);itemMap[id].qty+=qty;itemMap[id].sales+=qty*price;});
+        const ids2=Object.keys(itemMap).map(Number).filter(Boolean);
+        if(ids2.length){
+          try{const menu=await supabaseRequest(`menu_items?select=id,name,category&restaurant_id=eq.${encodeURIComponent(currentRestaurant?.id||currentUserStaff?.restaurant_id||0)}&id=in.(${ids2.join(",")})&limit=10000`);(Array.isArray(menu)?menu:[]).forEach(m=>{if(itemMap[Number(m.id)]){itemMap[Number(m.id)].name=m.name;itemMap[Number(m.id)].category=m.category;}});}catch(e){console.warn("menu item names unavailable:",e.message);}
+        }
+        result.topItems=Object.values(itemMap).sort((a,b)=>b.qty-a.qty).slice(0,8);
+      }catch(e){console.warn("order_items stats unavailable:",e.message);}
+    }
   }catch(e){console.warn("Personal sales stats unavailable:",e.message);}
   return result;
 }
+async function loadTeamSalesStats(){
+  const result={total:0,checks:0,avg:0,staff:[]},restaurantId=Number(currentRestaurant?.id||currentUserStaff?.restaurant_id||0);if(!restaurantId)return result;
+  try{
+    const staffRows=await supabaseRequest(`restaurant_staff?select=id,name,role,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&status=eq.active&order=name.asc&limit=500`);
+    const staff=Array.isArray(staffRows)?staffRows:[];const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc&limit=10000`);
+    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()!=="cancelled");result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
+    const map={};staff.forEach(s=>map[Number(s.id)]={id:Number(s.id),name:s.name,role:s.role,checks:0,total:0,avg:0});
+    valid.forEach(o=>{const id=Number(o.waiter_id||0);if(!map[id])return;map[id].checks++;map[id].total+=Number(o.total||0);});
+    result.staff=Object.values(map).map(s=>({...s,avg:s.checks?s.total/s.checks:0})).sort((a,b)=>b.total-a.total);
+  }catch(e){console.warn("Team sales stats unavailable:",e.message);}
+  return result;
+}
+function renderTopItems(stats){if(!stats.topItems?.length)return `<div class="personal-note">Поки немає проданих позицій у order_items.</div>`;const max=Math.max(...stats.topItems.map(x=>Number(x.qty||0)),1);return stats.topItems.map((x,i)=>`<div class="sales-rank"><div class="sales-rank-head"><div><span class="sales-rank-num">${i+1}</span><strong>${escapeHtml(x.name||("Позиція #"+x.menu_item_id))}</strong></div><span>${Number(x.qty||0)} шт.</span></div><div class="sales-rank-track"><span style="width:${Math.max(4,Math.round(Number(x.qty||0)/max*100))}%"></span></div><div class="sales-rank-meta">Продажі позиції: ${money(x.sales||0)}${x.category?` · ${escapeHtml(x.category)}`:""}</div></div>`).join("");}
+function renderTeamStats(team){if(!team.staff?.length)return `<div class="personal-note">У цьому закладі поки немає активного персоналу з продажами.</div>`;return `<div class="team-summary-grid"><div class="personal-stat"><div class="label">КАСА ЗАКЛАДУ</div><div class="value">${money(team.total)}</div><div class="sub">поточний місяць</div></div><div class="personal-stat"><div class="label">ЧЕКИ ЗАКЛАДУ</div><div class="value">${team.checks}</div><div class="sub">усі нескасовані</div></div><div class="personal-stat"><div class="label">СЕРЕДНІЙ ЧЕК</div><div class="value">${money(team.avg)}</div><div class="sub">заклад загалом</div></div></div><table class="sales-table"><thead><tr><th>Працівник</th><th>Роль</th><th>Чеки</th><th>Каса</th><th>Середній</th></tr></thead><tbody>${team.staff.map(s=>`<tr><td><strong>${escapeHtml(s.name||"—")}</strong></td><td>${escapeHtml(s.role||"—")}</td><td>${s.checks}</td><td>${money(s.total)}</td><td>${money(s.avg)}</td></tr>`).join("")}</tbody></table>`;}
 async function openPersonalCabinet(){
   hideAllMainViews();setActiveNav("navMyCabinet");const view=document.getElementById("masterModuleView");if(!view)return;view.classList.add("active");
-  const name=currentUserStaff?.name||currentUser?.email||"Працівник",role=currentUserRole||"WAITER";
-  view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">PERSONAL ACCOUNT</div><h1>Мій кабінет</h1><p class="subtitle">${escapeHtml(name)} · ${escapeHtml(role)}</p><div class="panel" style="margin-top:20px"><div class="personal-note">Завантаження персональної статистики за поточний місяць…</div></div></div>`;
-  const stats=await loadPersonalSalesStats();personalStatsCache=stats;
+  const name=currentUserStaff?.name||currentUser?.email||"Працівник",role=String(currentUserRole||"WAITER").toUpperCase();
+  view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">PERSONAL ACCOUNT</div><h1>Мій кабінет</h1><p class="subtitle">${escapeHtml(name)} · ${escapeHtml(role)}</p><div class="panel" style="margin-top:20px"><div class="personal-note">Завантаження статистики продажів…</div></div></div>`;
+  const stats=await loadPersonalSalesStats();personalStatsCache=stats;let team=null;if((role==="ADMIN"||role==="SENIOR WAITER")&&currentRestaurant)team=await loadTeamSalesStats();
   view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">PERSONAL ACCOUNT</div><h1>${escapeHtml(name)}</h1><p class="subtitle">${escapeHtml(role)} · персональна статистика продажів</p>
     <div class="personal-stats-grid" style="margin-top:22px">
-      <div class="personal-stat"><div class="label">ЗАГАЛЬНА КАСА</div><div class="value">${money(stats.total)}</div><div class="sub">поточний місяць</div></div>
-      <div class="personal-stat"><div class="label">ЧЕКИ</div><div class="value">${stats.checks}</div><div class="sub">закриті чеки</div></div>
+      <div class="personal-stat"><div class="label">КАСА СЬОГОДНІ</div><div class="value">${money(stats.todayTotal)}</div><div class="sub">${stats.todayChecks} чеків сьогодні</div></div>
+      <div class="personal-stat"><div class="label">КАСА ЗА МІСЯЦЬ</div><div class="value">${money(stats.total)}</div><div class="sub">поточний місяць</div></div>
+      <div class="personal-stat"><div class="label">ЧЕКИ ЗА МІСЯЦЬ</div><div class="value">${stats.checks}</div><div class="sub">закриті, крім скасованих</div></div>
       <div class="personal-stat"><div class="label">СЕРЕДНІЙ ЧЕК</div><div class="value">${money(stats.avg)}</div><div class="sub">каса ÷ чеки</div></div>
-      <div class="personal-stat"><div class="label">ПРОДАНО ПОЗИЦІЙ</div><div class="value">${stats.items}</div><div class="sub">кількість одиниць</div></div>
     </div>
-    <div class="panel"><div class="section-head"><div><h2>Місячний звіт</h2><div class="section-meta">Продажі цього працівника за ${new Date().toLocaleString("uk-UA",{month:"long",year:"numeric"})}.</div></div></div>
-      ${stats.byDay.length?`<table class="sales-table"><thead><tr><th>Дата</th><th>Продажі</th></tr></thead><tbody>${stats.byDay.map(([day,total])=>`<tr><td>${escapeHtml(day)}</td><td><strong>${money(total)}</strong></td></tr>`).join("")}</tbody></table>`:`<div class="personal-note">Поки немає даних у таблиці orders. Статистика з'явиться автоматично після підключення замовлень.</div>`}
+    <div class="panel"><div class="section-head"><div><h2>Місячний звіт</h2><div class="section-meta">${new Date().toLocaleString("uk-UA",{month:"long",year:"numeric"})} · особисті продажі.</div></div></div>
+      ${stats.byDay.length?`<table class="sales-table"><thead><tr><th>Дата</th><th>Продажі</th></tr></thead><tbody>${stats.byDay.map(([day,total])=>`<tr><td>${formatStatDate(day)}</td><td><strong>${money(total)}</strong></td></tr>`).join("")}</tbody></table>`:`<div class="personal-note">Поки немає даних у таблиці orders. Статистика з'явиться після проведення чеків.</div>`}
     </div>
-    <div class="panel" style="margin-top:15px"><h2>Показники</h2><div class="list-box" style="margin-top:12px">
-      <div class="list-item"><div><strong>Загальна каса офіціанта</strong><span>Сума його чеків за вибраний період.</span></div><span>SALES</span></div>
+    <div class="panel" style="margin-top:15px"><div class="section-head"><div><h2>Найбільш продавані позиції</h2><div class="section-meta">За кількістю проданих одиниць у поточному місяці.</div></div><span class="section-badge">TOP SALES</span></div><div class="sales-rank-list">${renderTopItems(stats)}</div></div>
+    <div class="panel" style="margin-top:15px"><div class="section-head"><div><h2>Твої показники</h2><div class="section-meta">Автоматично рахуються з orders та order_items.</div></div></div><div class="list-box" style="margin-top:12px">
+      <div class="list-item"><div><strong>Каса офіціанта</strong><span>Сума його нескасованих чеків за поточний місяць.</span></div><span>SALES</span></div>
       <div class="list-item"><div><strong>Середній чек</strong><span>Загальна каса ÷ кількість чеків.</span></div><span>AVG</span></div>
-      <div class="list-item"><div><strong>Місячний звіт</strong><span>Продажі та кількість чеків за поточний місяць.</span></div><span>MONTH</span></div>
-    </div></div></div>`;
+      <div class="list-item"><div><strong>Продано позицій</strong><span>Сумарна кількість одиниць із order_items.</span></div><span>${stats.items}</span></div>
+    </div></div>
+    ${team?`<div class="panel" style="margin-top:15px"><div class="section-head"><div><h2>Команда закладу</h2><div class="section-meta">Статистика команди за поточний місяць · доступна ADMIN та SENIOR WAITER.</div></div><span class="section-badge">TEAM</span></div>${renderTeamStats(team)}</div>`:""}
+  </div>`;
 }
 
 /* ================= HELPERS ================= */
