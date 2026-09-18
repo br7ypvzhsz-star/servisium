@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <meta name="description" content="SERVISIUM — Art of Service">
-<title>SERVISIUM | Art of Service · Menu Engine 2.1</title>
+<title>SERVISIUM | Art of Service · Menu Engine 2.3</title>
 
 <style>
 :root{
@@ -2573,7 +2573,7 @@ h3{
 
 <script>
 /* =========================================================
-   SERVISIUM
+   SERVISIUM 2.3
    MASTER PANEL + MENU ENGINE
    SUPABASE + EDGE FUNCTION IMPORT
    ========================================================= */
@@ -4912,61 +4912,182 @@ function normalizeImportedItem(item){
 
 
 
-async function enrichImportedPhotos(items, sourceUrl){
+async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
+
   const sourceItems = Array.isArray(items) ? items : [];
-  if(!sourceItems.length || !sourceUrl) return sourceItems;
 
-  try{
-    const response = await fetch(
-      PHOTO_ENRICH_FUNCTION_URL,
-      {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          apikey:SUPABASE_PUBLISHABLE_KEY,
-          Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-        },
-        body:JSON.stringify({
-          url:sourceUrl,
-          items:sourceItems.map(item => ({
-            name:item.name,
-            category:item.category,
-            type:item.type
-          }))
-        })
-      }
-    );
-
-    const text = await response.text();
-    let data = null;
-    try{ data = text ? JSON.parse(text) : null; }
-    catch{ data = null; }
-
-    if(!response.ok || !data?.success){
-      console.warn("SERVISIUM PHOTO ENRICHMENT:", data?.error || `HTTP ${response.status}`);
-      return sourceItems;
-    }
-
-    const photos = Array.isArray(data.matches) ? data.matches : [];
-    const photoMap = new Map();
-    photos.forEach(match => {
-      const key = String(match?.name || "").trim().toLowerCase();
-      const photo = String(match?.photo_url || "").trim();
-      if(key && photo) photoMap.set(key,photo);
-    });
-
-    return sourceItems.map(item => ({
-      ...item,
-      photo_url:
-        item.photo_url ||
-        photoMap.get(String(item.name || "").trim().toLowerCase()) ||
-        null
-    }));
-  }catch(error){
-    console.warn("SERVISIUM PHOTO ENRICHMENT UNAVAILABLE:", error);
+  if(!sourceItems.length || !sourceUrl){
     return sourceItems;
   }
+
+  const BATCH_SIZE = 40;
+  const TIMEOUT_MS = 90000;
+  const result = sourceItems.map(item => ({...item}));
+  const totalBatches = Math.ceil(sourceItems.length / BATCH_SIZE);
+  let totalPhotos = 0;
+  let completed = 0;
+
+  for(let start = 0; start < sourceItems.length; start += BATCH_SIZE){
+
+    const batch = sourceItems.slice(start, start + BATCH_SIZE);
+    const batchNumber = Math.floor(start / BATCH_SIZE) + 1;
+
+    if(typeof onProgress === "function"){
+      onProgress({
+        batch: batchNumber,
+        totalBatches,
+        processed: Math.min(start, sourceItems.length),
+        total: sourceItems.length,
+        photos: totalPhotos,
+        state: "loading"
+      });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try{
+
+      const response = await fetch(
+        PHOTO_ENRICH_FUNCTION_URL,
+        {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            apikey:SUPABASE_PUBLISHABLE_KEY,
+            Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          },
+          body:JSON.stringify({
+            url:sourceUrl,
+            items:batch.map(item => ({
+              name:item.name,
+              category:item.category,
+              type:item.type
+            }))
+          }),
+          signal:controller.signal
+        }
+      );
+
+      const text = await response.text();
+
+      let data = null;
+
+      try{
+        data = text ? JSON.parse(text) : null;
+      }catch{
+        data = null;
+      }
+
+      if(!response.ok){
+        throw new Error(
+          data?.error ||
+          data?.message ||
+          `HTTP ${response.status}`
+        );
+      }
+
+      if(!data?.success){
+        throw new Error(
+          data?.error ||
+          "Edge Function повернула неуспішну відповідь."
+        );
+      }
+
+      const photos = Array.isArray(data.matches)
+        ? data.matches
+        : [];
+
+      const photoMap = new Map();
+
+      photos.forEach(match => {
+        const key = String(match?.name || "")
+          .trim()
+          .toLowerCase();
+        const photo = String(match?.photo_url || "")
+          .trim();
+
+        if(key && photo){
+          photoMap.set(key, photo);
+        }
+      });
+
+      batch.forEach((item, localIndex) => {
+        const index = start + localIndex;
+        const key = String(item.name || "")
+          .trim()
+          .toLowerCase();
+        const photo = photoMap.get(key) || null;
+
+        if(photo && !result[index].photo_url){
+          result[index].photo_url = photo;
+        }
+      });
+
+      totalPhotos = result.filter(
+        item => !!String(item.photo_url || "").trim()
+      ).length;
+
+      completed += batch.length;
+
+      if(typeof onProgress === "function"){
+        onProgress({
+          batch: batchNumber,
+          totalBatches,
+          processed: completed,
+          total: sourceItems.length,
+          photos: totalPhotos,
+          candidates: Number(data.candidates_found || 0),
+          state: "success"
+        });
+      }
+
+    }catch(error){
+
+      const message = error?.name === "AbortError"
+        ? "Пошук фото перевищив ліміт часу."
+        : (error?.message || "Невідома помилка пошуку фото.");
+
+      console.error(
+        "SERVISIUM PHOTO ENRICHMENT ERROR:",
+        message
+      );
+
+      if(typeof onProgress === "function"){
+        onProgress({
+          batch: batchNumber,
+          totalBatches,
+          processed: completed,
+          total: sourceItems.length,
+          photos: totalPhotos,
+          state: "error",
+          error: message
+        });
+      }
+
+      throw new Error(
+        `Помилка пошуку фото, батч ${batchNumber}/${totalBatches}: ${message}`
+      );
+
+    }finally{
+      clearTimeout(timeout);
+    }
+  }
+
+  if(typeof onProgress === "function"){
+    onProgress({
+      batch: totalBatches,
+      totalBatches,
+      processed: sourceItems.length,
+      total: sourceItems.length,
+      photos: totalPhotos,
+      state: "done"
+    });
+  }
+
+  return result;
 }
+
 
 async function importMenuFromUrl(){
 
@@ -5155,7 +5276,23 @@ async function importMenuFromUrl(){
       `
     );
 
-    items = await enrichImportedPhotos(items,url);
+    items = await enrichImportedPhotos(items,url,(progress)=>{
+      if(progress.state === "loading"){
+        setImportStatus(`
+          Меню знайдено. Шукаємо фото позицій...<br>
+          Батч <strong>${progress.batch}</strong> / ${progress.totalBatches}
+          · Оброблено ${progress.processed} / ${progress.total}
+          · Фото ${progress.photos}
+        `);
+      }else if(progress.state === "success"){
+        setImportStatus(`
+          Шукаємо фото позицій...<br>
+          Батч <strong>${progress.batch}</strong> / ${progress.totalBatches}
+          · Оброблено ${progress.processed} / ${progress.total}
+          · Фото <strong>${progress.photos}</strong>
+        `);
+      }
+    });
 
     importedPreviewItems =
       items;
