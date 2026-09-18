@@ -1879,7 +1879,7 @@ h3{
 
           <div>
             <div class="kicker">MASTER PANEL</div>
-            <h1>Ласкаво просимо, Ян!</h1>
+            <h1 id="masterGreeting">Ласкаво просимо!</h1>
             <p class="subtitle">
               Керуйте закладами. Контролюйте сервіс. Розвивайте систему.
             </p>
@@ -2920,7 +2920,10 @@ async function restoreServisiumSession(){if(restorePinSession()){await loadResta
 async function finishAuth(){showAuthScreen(false);await loadCurrentUserStaff();await loadRestaurants();updateProfileUI();}
 async function loadCurrentUserStaff(){if(currentUserStaff?.id&&!servisiumSession){currentUserRole=currentUserStaff.role||null;applyRoleAccess();return;}currentUserStaff=null;currentUserRole=null;if(!currentUser?.email)return;try{const rows=await supabaseRequest(`restaurant_staff?select=*&email=eq.${encodeURIComponent(String(currentUser.email).toLowerCase())}&status=eq.active&order=created_at.asc`);currentUserStaff=Array.isArray(rows)&&rows.length?rows[0]:null;currentUserRole=currentUserStaff?.role||null;applyRoleAccess();}catch(e){console.warn("Staff profile lookup:",e.message);}}
 function applyRoleAccess(){const role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";document.querySelectorAll("[data-role-admin]").forEach(el=>el.style.display=canManage?"":"none");document.querySelectorAll("[data-role-waiter]").forEach(el=>el.style.display=role?"":"none");}
-function updateProfileUI(){const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;}
+function updateProfileUI(){
+  const displayName = (currentUserStaff?.name || currentUser?.name || currentUser?.email?.split("@")[0] || "Користувач").trim();
+  const greeting = document.getElementById("masterGreeting");
+  if(greeting){ greeting.textContent = `Ласкаво просимо, ${displayName}!`; }const name=currentUserStaff?.name||currentUser?.email||"Профіль";const av=document.getElementById("profileAvatar"),pn=document.getElementById("profileName");if(av)av.textContent=initials(name).slice(0,2);if(pn)pn.textContent=name;}
 async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
 
 /* ================= PERSONAL SALES STATS ================= */
