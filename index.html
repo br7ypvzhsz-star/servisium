@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080809">
 <meta name="description" content="SERVISIUM — Art of Service">
-<title>SERVISIUM | Art of Service · Menu Engine 5.1</title>
+<title>SERVISIUM | Art of Service · Menu Engine 5.2 · AI Vision</title>
 
 <style>
 :root{
@@ -1912,6 +1912,19 @@ h3{
 .smart-room-warning{margin:0 14px 12px;padding:10px 12px;border:1px solid rgba(215,185,135,.28);border-radius:10px;background:rgba(215,185,135,.05);color:#d8bd7c;font-size:9px;line-height:1.45}
 .smart-range{width:100%;accent-color:var(--wine2)}
 
+
+/* SERVISIUM 5.2 · AI HALL VISION */
+.ai-hall-card{margin-top:12px;border:1px solid rgba(179,32,75,.28);background:linear-gradient(145deg,rgba(141,23,56,.08),var(--surface));border-radius:16px;padding:16px}
+.ai-hall-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ai-hall-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:rgba(141,23,56,.13);border:1px solid rgba(141,23,56,.32);color:#e3a4b7;font-size:9px;font-weight:800;letter-spacing:.7px}
+.ai-hall-status{margin-top:10px;color:#8d888b;font-size:10px;line-height:1.55}
+.ai-hall-status.ok{color:#79d49a}.ai-hall-status.warn{color:#e3a0ae}.ai-hall-status.loading{color:#d9bd83}
+.ai-hall-results{margin-top:11px;display:grid;gap:7px;max-height:190px;overflow:auto}
+.ai-hall-result{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.018)}
+.ai-hall-result strong{font-size:11px}.ai-hall-result span{color:#777176;font-size:9px}.ai-conf-high{color:#79d49a!important}.ai-conf-mid{color:#d9bd83!important}.ai-conf-low{color:#e3798d!important}
+.ai-hall-note{margin-top:9px;color:#666267;font-size:9px;line-height:1.5}
+.ai-hall-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+
 </style>
 <script src="https://docs.opencv.org/4.x/opencv.js" async></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
@@ -3520,6 +3533,9 @@ function defaultHallConfig(){return {version:7,style:"DARK",floors:[{id:"f1",nam
 function loadHallConfig(){if(!currentRestaurant)return defaultHallConfig();try{const raw=localStorage.getItem(hallKey());if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.floors)&&Array.isArray(p.tables)){p.floors.forEach(f=>{f.zones=f.zones||[{id:"z"+Date.now(),name:"Основна зона",sort:1}];f.planScale=Number(f.planScale||1.15);f.style=f.style||p.style||"DARK";});if(Number(p.version||0)<7){p.tables=p.tables.filter(t=>!t.autoDetected);p.version=7;}return p;}}}catch(e){console.warn("Hall config read error",e);}return defaultHallConfig();}
 function saveHallConfig(cfg){localStorage.setItem(hallKey(),JSON.stringify(cfg));}
 let hallMode="live",hallFloorId=null,hallZoneId=null,hallSelectedTableId=null,hallDrag=null,hallSmartStep="source",hallSmartStyle="DARK";
+// AI Vision is intentionally routed through a Supabase Edge Function. Never place an OpenAI secret in this HTML.
+const SERVISIUM_AI_HALL_URL=(window.SERVISIUM_AI_HALL_URL||`${SUPABASE_URL}/functions/v1/analyze-hall-ai`);
+
 function hallRole(){return String(currentUserRole||"").toUpperCase();}
 function hallCanEdit(){return hallRole()==="ADMIN";}
 function hallFloor(){const c=loadHallConfig();return c.floors.find(f=>f.id===hallFloorId)||c.floors[0]||null;}
@@ -3706,27 +3722,60 @@ async function hallAnalyzeSpace(){
   const c=loadHallConfig(),f=c.floors.find(x=>x.id===hallFloorId);
   if(!f?.sourceImage){showToast('Спочатку завантаж схему.');return;}
   const status=document.getElementById('hallSmartStatus');
-  if(status){status.className='smart-analysis warn';status.textContent='Читаю номери столів і перевіряю їхню геометрію…';}
+  const aiStatus=document.getElementById('aiHallStatus');
+  if(status){status.className='smart-analysis warn';status.textContent='AI Vision аналізує реальні об’єкти схеми…';}
+  if(aiStatus){aiStatus.className='ai-hall-status loading';aiStatus.textContent='AI визначає столи, номери, форму, місця та координати. Ізольовані цифри не вважаються столами.';}
   try{
-    const ready=await hallWaitForOpenCV();if(!ready)throw new Error('Не завантажився модуль комп’ютерного зору. Перевір інтернет і повтори.');
-    const canvas=await hallImageDataToCanvas(f.sourceImage);
-    const nums=await hallOCRNumbers(f.sourceImage);
-    const space=hallAnalyzeImageContours(canvas);
-    const geometry=space.candidates||[];
-    const anchored=hallMatchNumbersToGeometry(canvas,nums);
-    const room=space.roomHint||null;
-    const analysis={width:canvas.width,height:canvas.height,candidates:anchored,ocrCount:nums.length,geometryCount:geometry.length,numberCount:anchored.length,tableCount:anchored.length,roomHint:room,confidence:anchored.length?'needs-review':'low',strict:true,matchMode:'ocr-number-sequence-with-spatial-anchor'};
-    f.analysis=analysis;f.digitalized=false;saveHallConfig(c);hallSmartStep='layout';renderHallModule();
+    const payload={
+      restaurant_id:currentRestaurant?.id||null,
+      restaurant_name:currentRestaurant?.name||'',
+      floor_name:f.name,
+      image:f.sourceImage,
+      rules:{
+        no_invented_tables:true,
+        no_table_from_isolated_number:true,
+        number_must_be_locally_associated_with_table:true,
+        coordinates_normalized:true,
+        uncertain_items_must_be_marked_needs_verification:true
+      }
+    };
+    const response=await fetch(SERVISIUM_AI_HALL_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`},body:JSON.stringify(payload)});
+    const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null}catch{data=null;}
+    if(!response.ok)throw new Error(data?.error||data?.message||`AI Vision HTTP ${response.status}`);
+    const tables=Array.isArray(data?.tables)?data.tables:[];
+    if(!tables.length)throw new Error('AI не підтвердив жодного реального столу. Вигадані столи не створюються.');
+    const clean=tables.map((q,i)=>({
+      detectedNumber:q.number==null?'':String(q.number).trim(),
+      cx:Math.max(0,Math.min(1,Number(q.x??q.cx??0))),
+      cy:Math.max(0,Math.min(1,Number(q.y??q.cy??0))),
+      w:Math.max(.01,Math.min(1,Number(q.width??q.w??.08))),
+      h:Math.max(.01,Math.min(1,Number(q.height??q.h??.07))),
+      shapeHint:(['circle','oval','rect','square','rounded'].includes(String(q.shape||'').toLowerCase())?String(q.shape).toLowerCase():'square'),
+      capacity:Number([2,4,6,8].includes(Number(q.seats))?q.seats:4),
+      numberConfidence:Number(q.confidence??0),
+      confidence:Number(q.confidence??0),
+      status:q.status==='needs_verification'?'needs_verification':'confirmed',
+      reason:q.reason||'',
+      numberSource:'AI-VISION'
+    })).filter(q=>q.detectedNumber||q.status==='needs_verification');
+    const unique=[];const seen=new Set();
+    for(const q of clean){const key=q.detectedNumber||`unknown-${q.cx.toFixed(3)}-${q.cy.toFixed(3)}`;if(seen.has(key))continue;seen.add(key);unique.push(q);}
+    const confirmed=unique.filter(q=>q.status==='confirmed'&&q.detectedNumber);
+    const uncertain=unique.filter(q=>q.status!=='confirmed'||!q.detectedNumber);
+    const analysis={width:Math.round(Number(data.width||2200)),height:Math.round(Number(data.height||1400)),candidates:unique,ocrCount:0,geometryCount:unique.length,numberCount:confirmed.length,tableCount:confirmed.length,roomHint:data.room||null,confidence:uncertain.length?'needs-review':'confirmed',strict:true,matchMode:'AI-VISION-REAL-OBJECTS',model:data.model||'gpt-5.6-terra',ai:true,analyzedAt:new Date().toISOString(),uncertainCount:uncertain.length};
+    f.analysis=analysis;f.digitalized=false;f.aiAnalysis=data;saveHallConfig(c);hallSmartStep='layout';renderHallModule();
     const s=document.getElementById('hallSmartStatus');
-    if(s){
-      s.className=anchored.length?'smart-analysis ok':'smart-analysis warn';
-      s.innerHTML=anchored.length
-        ? `Знайдено <strong>${nums.length}</strong> числових міток, з них <strong>${anchored.length}</strong> входять у послідовні номери столів. Ізольовані OCR-помилки відкинуті; столи поза нумерацією не створюються.`
-        : 'Не знайдено надійної послідовності номерів столів. Вигадані столи не створюються.';
-    }
-    showToast(anchored.length?`Розпізнано ${anchored.length} столів за послідовною нумерацією.`:'Реальних столів не підтверджено.');
-  }catch(e){console.error(e);const s=document.getElementById('hallSmartStatus');if(s){s.className='smart-analysis warn';s.textContent=e.message||'Не вдалося проаналізувати схему.';}showToast(e.message||'Помилка аналізу.');}
+    if(s){s.className=confirmed.length?'smart-analysis ok':'smart-analysis warn';s.innerHTML=`AI підтвердив <strong>${confirmed.length}</strong> столів${uncertain.length?` та залишив <strong>${uncertain.length}</strong> об’єктів на перевірку`:''}. Нові столи поза схемою не створюються.`;}
+    const ah=document.getElementById('aiHallStatus');
+    if(ah){ah.className='ai-hall-status '+(uncertain.length?'warn':'ok');ah.innerHTML=`AI Vision: <strong>${confirmed.length}</strong> підтверджено · <strong>${uncertain.length}</strong> потребують перевірки. Модель: ${hallEscape(data.model||'gpt-5.6-terra')}.`+(data.room?`<br>Простір: ${hallEscape(data.room)}`:'');}
+    showToast(`AI розпізнав ${confirmed.length} підтверджених столів.`);
+  }catch(e){console.error(e);const msg=e?.message||'Помилка AI Vision.';const s=document.getElementById('hallSmartStatus');if(s){s.className='smart-analysis warn';s.textContent=msg;}const ah=document.getElementById('aiHallStatus');if(ah){ah.className='ai-hall-status warn';ah.textContent=msg;}showToast(msg);}
 }
+function hallApproveAIAnalysis(){
+  if(!hallCanEdit())return;const c=loadHallConfig(),f=c.floors.find(x=>x.id===hallFloorId);if(!f?.analysis?.ai)return;
+  const a=f.analysis; a.candidates=(a.candidates||[]).filter(q=>q.status==='confirmed'&&q.detectedNumber);a.numberCount=a.candidates.length;a.tableCount=a.candidates.length;a.confidence='confirmed';f.analysis=a;saveHallConfig(c);hallSmartStep='layout';renderHallModule();showToast(`Підтверджено ${a.candidates.length} столів для цифровізації.`);
+}
+
 function hallReadSmartParams(){
   const shape=document.getElementById('smartShape')?.value||'auto';
   const capacity=document.getElementById('smartCapacity')?.value||'auto';
@@ -3756,10 +3805,12 @@ function hallGenerateDigital(){
   const existing=c.tables.filter(t=>t.floorId===f.id&&t.zoneId===z.id&&!t.autoDetected);
   c.tables=c.tables.filter(t=>!(t.floorId===f.id&&t.zoneId===z.id&&t.autoDetected));
   const stageW=1100,stageH=700,room={x:70,y:60,w:960,h:580};
-  const sx=room.w/a.width,sy=room.h/a.height,s=Math.min(sx,sy),ox=room.x+(room.w-a.width*s)/2,oy=room.y+(room.h-a.height*s)/2;
+  const aiNormalized=!!a.ai;
+  const sx=aiNormalized?room.w:room.w/a.width,sy=aiNormalized?room.h:room.h/a.height,s=aiNormalized?1:Math.min(sx,sy),ox=aiNormalized?room.x:room.x+(room.w-a.width*s)/2,oy=aiNormalized?room.y:room.y+(room.h-a.height*s)/2;
   const candidates=a.candidates.slice();
   const usedNums=new Set(existing.map(t=>String(t.number)));const created=[];
   for(const q of candidates){
+    if(q.status==='needs_verification')continue;
     let number=String(q.detectedNumber||'').trim();
     if(!number)continue;
     if(usedNums.has(number))continue;
@@ -3775,9 +3826,11 @@ function hallGenerateDigital(){
       w=Math.max(64,Math.min(150,(q.w||90)*base));
       h=Math.max(58,Math.min(125,(q.h||72)*base));
     }
-    const x=Math.max(room.x+6,Math.min(room.x+room.w-w-6,ox+q.cx*s-w/2));
-    const y=Math.max(room.y+6,Math.min(room.y+room.h-h-6,oy+q.cy*s-h/2));
-    created.push({id:'auto'+Date.now()+Math.random().toString(36).slice(2,7),number,capacity,shape:hallShapeClass(shape),floorId:f.id,zoneId:z.id,x,y,width:w,height:h,rotation:0,status:'available',autoDetected:true,sourceCenterX:q.cx,sourceCenterY:q.cy,numberSource:q.numberSource||'OCR',sourceConfidence:q.numberConfidence||0});
+    const qx=aiNormalized?q.cx*room.w:q.cx*s;
+    const qy=aiNormalized?q.cy*room.h:q.cy*s;
+    const x=Math.max(room.x+6,Math.min(room.x+room.w-w-6,ox+qx-w/2));
+    const y=Math.max(room.y+6,Math.min(room.y+room.h-h-6,oy+qy-h/2));
+    created.push({id:'auto'+Date.now()+Math.random().toString(36).slice(2,7),number,capacity,shape:hallShapeClass(shape),floorId:f.id,zoneId:z.id,x,y,width:w,height:h,rotation:0,status:'available',autoDetected:true,sourceCenterX:q.cx,sourceCenterY:q.cy,numberSource:q.numberSource||'AI-VISION',sourceConfidence:q.numberConfidence||0,aiConfirmed:q.status==='confirmed',aiReason:q.reason||''});
   }
   if(!created.length){showToast('Не знайдено підтверджених номерів столів. Нові столи не створені.');return;}
   c.tables.push(...created);f.digitalized=true;f.generatedAt=new Date().toISOString();f.style=hallSmartStyle;
@@ -3801,7 +3854,7 @@ function hallFullWidthPlan(){if(!hallCanEdit())return;const c=loadHallConfig(),f
 function hallRenderDigitalTables(f,z,live=false){const c=loadHallConfig(),tables=c.tables.filter(t=>t.floorId===f?.id&&t.zoneId===z?.id);return tables.map(t=>{const seats=[];const n=Math.max(1,Math.min(12,Number(t.capacity||4)));for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2;const rx=t.width/2+13,ry=t.height/2+13;seats.push(`<i class="smart-seat" style="left:${t.x+t.width/2+Math.cos(a)*rx}px;top:${t.y+t.height/2+Math.sin(a)*ry}px"></i>`);}return `<button type="button" class="smart-table ${hallShapeClass(t.shape)} ${t.status} ${t.id===hallSelectedTableId?'selected':''}" data-builder-table-id="${hallEscape(t.id)}" style="left:${t.x}px;top:${t.y}px;width:${t.width}px;height:${t.height}px;transform:rotate(${t.rotation||0}deg)" ${live?'onclick':`onpointerdown`}="${live?`startTableOrder('${hallEscape(t.id)}')`:`hallTablePointerDown(event,'${hallEscape(t.id)}')`}"><span><b>№ ${hallEscape(t.number)}</b><small>${hallEscape(t.capacity)} місць · ${hallStatusLabel(t.status)}</small></span></button>${seats.join('')}`;}).join('');}
 function hallRenderLive(){const c=loadHallConfig(),f=hallFloor(),z=hallZone();if(f?.digitalized){return `<div class="smart-canvas"><div class="smart-stage style-${hallEscape(f?.style||hallSmartStyle||"DARK")}"><div class="smart-floor"><div class="smart-zone-label">${hallEscape(f.name)} · ${hallEscape(z?.name||'')}</div>${hallRenderDigitalTables(f,z,true)}</div></div></div>`;}const tables=c.tables.filter(t=>t.floorId===f?.id&&t.zoneId===z?.id);return `<div class="hall-live-canvas" style="min-width:980px"><div class="hall-stage zoomed" style="transform:scale(${hallPlanScale(f)})">${tables.map(t=>`<button type="button" class="live-table ${hallShapeClass(t.shape)} ${t.status}" style="left:${t.x}px;top:${t.y}px;width:${t.width}px;height:${t.height}px;transform:rotate(${t.rotation||0}deg)" onclick="startTableOrder('${hallEscape(t.id)}')"><b>№ ${hallEscape(t.number)}</b><span>${hallEscape(t.capacity)} місць · ${hallStatusLabel(t.status)}</span><em>${t.status==="busy"?"Відкрити замовлення":"Відкрити стіл"}</em></button>`).join('')}</div></div>`;}
 function hallRenderSmartBuilder(){const c=loadHallConfig(),f=hallFloor(),z=hallZone();const analysis=f?.analysis;const styles=["CLASSIC","MINIMAL","DARK","LUXURY","INDUSTRIAL","MODERN","CUSTOM"];let step=hallSmartStep;const stepClass=s=>step===s?'active':(["analyze","layout","review"].indexOf(step)>["analyze","layout","review"].indexOf(s)?'done':'');let canvas='';if(f?.digitalized){canvas=`<div class="smart-canvas"><div class="smart-stage style-${hallEscape(f?.style||hallSmartStyle||"DARK")}"><div class="smart-floor"><div class="smart-zone-label">${hallEscape(f.name)} · ${hallEscape(z?.name||'')} · ${hallSmartStyle}</div>${hallRenderDigitalTables(f,z,false)}</div></div></div>`;}else if(f?.sourceImage){canvas=`<div class="hall-canvas"><div class="hall-stage zoomed" style="transform:scale(${hallPlanScale(f)})"><img class="hall-plan" src="${hallEscape(f.sourceImage)}" alt="Вихідна схема" style="opacity:.65;transform:rotate(${Number(f.imageRotation||0)}deg)"><div class="hall-stage-badge">Джерело · тільки для аналізу</div></div></div>`;}else{canvas=`<div class="smart-canvas"><div class="smart-stage style-${hallEscape(f?.style||hallSmartStyle||"DARK")}"><div class="smart-floor"><div class="smart-zone-label">Порожнє цифрове полотно</div></div></div></div>`;}
-return `<div class="smart-hall"><div class="smart-head"><div><h3>Розумний конструктор залу · 5.1</h3><p>Схема → аналіз → цифрова реконструкція → перевірка → публікація.</p></div><div class="smart-actions"><button type="button" class="secondary" onclick="hallExportConfig()">⇩ Експорт</button></div></div><div class="smart-steps"><span class="smart-step ${stepClass('source')}">1 · Джерело</span><span class="smart-step ${stepClass('analyze')}">2 · Аналіз</span><span class="smart-step ${stepClass('layout')}">3 · Розміщення</span><span class="smart-step ${stepClass('review')}">4 · Перевірка</span></div><div class="smart-grid"><div>${canvas}<div class="smart-room-warning">⚠️ Межі приміщення, проходи, двері та службові зони не вважаються підтвердженими лише за фото. Після автогенерації перевір їх перед публікацією.</div></div><div><div class="smart-card"><h4>Джерело простору</h4><p>Оригінальне фото використовується тільки для побудови. Після генерації фінальний зал показує цифрову реконструкцію SERVISIUM.</p><div class="smart-actions"><label class="secondary" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📷 Завантажити схему<input class="hall-file" type="file" accept="image/*" onchange="hallUploadPlan(this)"></label>${f?.sourceImage?`<button type="button" class="secondary" onclick="hallRemovePlan()">Видалити джерело</button>`:''}</div></div><div class="smart-card"><h4>Аналіз простору</h4><p>Комп'ютерний зір шукає геометричні об'єкти. Стіни, проходи та службові зони не позначаються як факти без достатньої впевненості.</p><div class="smart-actions"><button type="button" class="primary" onclick="hallAnalyzeSpace()">✦ Проаналізувати схему</button></div><div id="hallSmartStatus" class="smart-analysis ${analysis?'ok':''}">${analysis?`Підтверджено ${analysis.candidates?.length||0} столів через нумерацію та просторову перевірку. Перед генерацією результат треба перевірити.`:'Очікує аналізу.'}</div></div><div class="smart-card"><h4>Параметри столів</h4><p>Система не вигадує столи. Вона шукає реальну послідовність номерів на схемі та не створює ізольовані OCR-числа.</p><div class="smart-field"><label>Форма</label><select id="smartShape"><option value="auto">Авто за схемою</option><option value="circle">Круглий</option><option value="rounded">Овальний</option><option value="rect">Прямокутний</option><option value="square">Квадратний</option></select></div><div class="smart-field"><label>Місць за столом</label><select id="smartCapacity"><option value="auto">Авто за схемою</option><option value="2">2 місця</option><option value="4">4 місця</option><option value="6">6 місць</option><option value="8">8 місць</option></select></div><div class="smart-ai-note">🔒 Кількість столів вручну більше не задається. Якщо на схемі 24 столи — SERVISIUM має створити 24. Якщо розпізнано 21 — створює 21 і не додає вигадані.</div><div class="smart-actions"><button type="button" class="primary" onclick="hallGenerateDigital()">✨ Створити цифровий зал</button><button type="button" class="secondary" onclick="hallOptimizeDigital()">✨ Оптимізувати зал</button></div>${analysis?.candidates?.length?`<div class="smart-detected-list">${analysis.candidates.map(q=>`<div class="smart-detected-pill ${(q.numberSource==='OCR+NUMBER-SEQUENCE'||q.numberSource==='OCR+GEOMETRY')?'ok':'warn'}">№ ${hallEscape(q.detectedNumber)} · ${q.numberSource==='OCR+GEOMETRY'?'номер + форма':'відкинуто'}</div>`).join('')}</div>`:''}</div><div class="smart-card"><h4>Стиль SERVISIUM</h4><p>Стиль змінює тільки візуальний шар. Геометрія та розташування столів не повинні змінюватися.</p><div class="smart-style-grid">${styles.map(s=>`<button type="button" class="smart-style ${hallSmartStyle===s?'active':''}" onclick="hallSetStyle('${s}')">${s}</button>`).join('')}</div></div></div></div><div class="smart-footer"><span style="margin-right:auto;color:#6f696d;font-size:9px">${f?.digitalized?'Оригінальне зображення приховане. Це цифровий зал SERVISIUM.':'Режим підготовки: джерело ще не є фінальним дизайном.'}</span>${f?.digitalized?`<button type="button" class="secondary" onclick="hallSmartStep='review';renderHallModule()">Оновити перевірку</button>`:''}</div></div>`;}
+return `<div class="smart-hall"><div class="smart-head"><div><h3>Розумний конструктор залу · 5.2 AI Vision</h3><p>Схема → AI Vision → перевірка → цифрова реконструкція → публікація.</p></div><div class="smart-actions"><button type="button" class="secondary" onclick="hallExportConfig()">⇩ Експорт</button></div></div><div class="smart-steps"><span class="smart-step ${stepClass('source')}">1 · Джерело</span><span class="smart-step ${stepClass('analyze')}">2 · Аналіз</span><span class="smart-step ${stepClass('layout')}">3 · Розміщення</span><span class="smart-step ${stepClass('review')}">4 · Перевірка</span></div><div class="smart-grid"><div>${canvas}<div class="smart-room-warning">⚠️ Межі приміщення, проходи, двері та службові зони не вважаються підтвердженими лише за фото. Після автогенерації перевір їх перед публікацією.</div></div><div><div class="smart-card"><h4>Джерело простору</h4><p>Оригінальне фото використовується тільки для побудови. Після генерації фінальний зал показує цифрову реконструкцію SERVISIUM.</p><div class="smart-actions"><label class="secondary" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📷 Завантажити схему<input class="hall-file" type="file" accept="image/*" onchange="hallUploadPlan(this)"></label>${f?.sourceImage?`<button type="button" class="secondary" onclick="hallRemovePlan()">Видалити джерело</button>`:''}</div></div><div class="smart-card"><h4>Аналіз простору</h4><p>AI Vision шукає саме реальні об’єкти столів на схемі: стіл → номер усередині/поруч → форма → місця → координати. Окремі цифри, випадкові позначки та вигадані столи відкидаються.</p><div class="smart-actions"><button type="button" class="primary" onclick="hallAnalyzeSpace()">✦ Проаналізувати AI Vision</button><button type="button" class="secondary" onclick="hallApproveAIAnalysis()">✓ Підтвердити AI-аналіз</button></div><div id="hallSmartStatus" class="smart-analysis ${analysis?'ok':''}">${analysis?`Підтверджено ${analysis.candidates?.length||0} столів через нумерацію та просторову перевірку. Перед генерацією результат треба перевірити.`:'Очікує аналізу.'}</div></div><div class="ai-hall-card"><div class="ai-hall-head"><div><span class="ai-hall-badge">✦ SERVISIUM AI VISION</span><h4 style="margin-top:9px">Розумна реконструкція схеми</h4></div><span style="color:#666267;font-size:9px">AI-first</span></div><div id="aiHallStatus" class="ai-hall-status">AI готовий проаналізувати схему.</div><div class="ai-hall-note">Правило SERVISIUM: AI не має права додавати стіл лише тому, що побачив число. Об’єкт має бути підтверджений як стіл. Якщо впевненості недостатньо — він потрапляє на перевірку.</div></div><div class="smart-card"><h4>Параметри столів</h4><p>Система не вигадує столи. Вона шукає реальну послідовність номерів на схемі та не створює ізольовані OCR-числа.</p><div class="smart-field"><label>Форма</label><select id="smartShape"><option value="auto">Авто за схемою</option><option value="circle">Круглий</option><option value="rounded">Овальний</option><option value="rect">Прямокутний</option><option value="square">Квадратний</option></select></div><div class="smart-field"><label>Місць за столом</label><select id="smartCapacity"><option value="auto">Авто за схемою</option><option value="2">2 місця</option><option value="4">4 місця</option><option value="6">6 місць</option><option value="8">8 місць</option></select></div><div class="smart-ai-note">🔒 Кількість столів вручну більше не задається. Якщо на схемі 24 столи — SERVISIUM має створити 24. Якщо розпізнано 21 — створює 21 і не додає вигадані.</div><div class="smart-actions"><button type="button" class="primary" onclick="hallGenerateDigital()">✨ Створити цифровий зал</button><button type="button" class="secondary" onclick="hallOptimizeDigital()">✨ Оптимізувати зал</button></div>${analysis?.candidates?.length?`<div class="smart-detected-list">${analysis.candidates.map(q=>`<div class="smart-detected-pill ${(q.numberSource==='OCR+NUMBER-SEQUENCE'||q.numberSource==='OCR+GEOMETRY')?'ok':'warn'}">№ ${hallEscape(q.detectedNumber)} · ${q.numberSource==='OCR+GEOMETRY'?'номер + форма':'відкинуто'}</div>`).join('')}</div>`:''}</div><div class="smart-card"><h4>Стиль SERVISIUM</h4><p>Стиль змінює тільки візуальний шар. Геометрія та розташування столів не повинні змінюватися.</p><div class="smart-style-grid">${styles.map(s=>`<button type="button" class="smart-style ${hallSmartStyle===s?'active':''}" onclick="hallSetStyle('${s}')">${s}</button>`).join('')}</div></div></div></div><div class="smart-footer"><span style="margin-right:auto;color:#6f696d;font-size:9px">${f?.digitalized?'Оригінальне зображення приховане. Це цифровий зал SERVISIUM.':'Режим підготовки: джерело ще не є фінальним дизайном.'}</span>${f?.digitalized?`<button type="button" class="secondary" onclick="hallSmartStep='review';renderHallModule()">Оновити перевірку</button>`:''}</div></div>`;}
 function hallRenderBuilder(){const c=loadHallConfig(),f=hallFloor(),z=hallZone(),tables=c.tables.filter(t=>t.floorId===f?.id&&t.zoneId===z?.id),selected=c.tables.find(t=>t.id===hallSelectedTableId);if(f?.digitalized){let sel='';if(selected){sel=`<div class="builder-selection"><div><h3>Стіл № ${hallEscape(selected.number)}</h3><div class="builder-fields"><div class="builder-field"><label>Номер</label><input value="${hallEscape(selected.number)}" onchange="hallUpdateSelected('number',this.value)"></div><div class="builder-field"><label>Місткість</label><input type="number" min="1" max="50" value="${selected.capacity}" onchange="hallUpdateSelected('capacity',this.value)"></div><div class="builder-field"><label>Форма</label><select onchange="hallUpdateSelected('shape',this.value)"><option value="circle" ${selected.shape==='circle'?'selected':''}>Круглий</option><option value="square" ${selected.shape==='square'?'selected':''}>Квадратний</option><option value="rect" ${selected.shape==='rect'?'selected':''}>Прямокутний</option><option value="rounded" ${selected.shape==='rounded'?'selected':''}>Овальний</option></select></div><div class="builder-field"><label>Ширина</label><input type="number" value="${selected.width}" onchange="hallUpdateSelected('width',this.value)"></div><div class="builder-field"><label>Висота</label><input type="number" value="${selected.height}" onchange="hallUpdateSelected('height',this.value)"></div><div class="builder-field"><label>Поворот</label><input type="number" value="${selected.rotation||0}" onchange="hallUpdateSelected('rotation',this.value)"></div></div></div><div class="builder-actions"><button type="button" class="danger-btn" onclick="hallDeleteTable()">Видалити стіл</button><button type="button" class="secondary" onclick="hallCycleStatus('${hallEscape(selected.id)}')">Статус</button></div></div>`;}return hallRenderSmartBuilder()+sel;}return hallRenderSmartBuilder();}
 function renderHallModule(){hideAllMainViews();setActiveNav("navHall");hallSetActiveIds();const c=loadHallConfig(),f=hallFloor(),z=hallZone(),can=hallCanEdit(),container=document.getElementById("restaurantModuleView");if(!container)return;container.classList.add("active");const floors=c.floors.map(x=>`<button type="button" class="hall-floor-tab ${x.id===f?.id?'active':''}" onclick="hallSelectFloor('${hallEscape(x.id)}')">${hallEscape(x.name)}</button>`).join('');const zones=(f?.zones||[]).map(x=>`<button type="button" class="hall-zone-tab ${x.id===z?.id?'active':''}" onclick="hallSelectZone('${hallEscape(x.id)}')">${hallEscape(x.name)}</button>`).join('');const content=hallMode==='builder'?hallRenderBuilder():hallRenderLive();container.innerHTML=`<div class="back-row"><button class="back-btn" onclick="showRestaurantHome()">← Назад до закладу</button></div><div class="section-head"><div><div class="kicker">HALL · ${hallMode==='builder'?'SMART BUILDER':'LIVE'}</div><h2>Зал · ${hallEscape(currentRestaurant?.name||'')}</h2><div class="section-meta">${hallMode==='builder'?'Розумний конструктор: реальна схема → цифрова реконструкція.':'Цифрова схема залу · натисни на стіл, щоб перейти до замовлення.'}</div></div><div class="hall-head-actions"><button type="button" class="secondary" onclick="hallMode='live';renderHallModule()">◉ Зал</button>${can?`<button type="button" class="primary" onclick="hallMode='builder';hallSmartStep='source';renderHallModule()">✦ Конструктор</button>`:''}<button type="button" class="primary" onclick="openTableOrderFromHall()">＋ Нове замовлення</button></div></div>${hallMode==='builder'&&can?`<div class="hall-setup-panel"><div class="hall-setup-grid"><div class="hall-setup-card"><h3>Структура залу</h3><p>Поверхи та зони належать конкретному закладу.</p><div class="hall-setup-actions"><button type="button" class="secondary" onclick="hallAddFloor()">＋ Поверх</button><button type="button" class="secondary" onclick="hallRenameFloor()">Перейменувати</button><button type="button" class="danger-btn" onclick="hallDeleteFloor()">Видалити</button></div></div><div class="hall-setup-card"><h3>Поточна зона</h3><p>${hallEscape(f?.name||'')} · ${hallEscape(z?.name||'')}</p><div class="hall-setup-actions"><button type="button" class="secondary" onclick="hallAddZone()">＋ Зона</button><button type="button" class="secondary" onclick="hallRenameZone()">Перейменувати</button><button type="button" class="danger-btn" onclick="hallDeleteZone()">Видалити</button></div></div></div></div>`:''}<div class="hall-floor-tabs">${floors}${can?`<button type="button" class="hall-floor-tab" onclick="hallAddFloor()">＋ Додати поверх</button>`:''}</div><div class="hall-zone-tabs">${zones}${can?`<button type="button" class="hall-zone-tab" onclick="hallAddZone()">＋ Додати зону</button>`:''}</div>${content}<div class="hall-note">${hallMode==='builder'?'Оригінальна схема використовується як джерело аналізу. Після цифровізації вона приховується з фінального залу. Автоматично визначені об’єкти позначаються як результат аналізу й потребують перевірки.':'Структура залу: поверх → зона → цифровий стіл → замовлення → офіціант → чек.'}</div>`;}
 function openTableOrderFromHall(){openOrdersFromNav();}
