@@ -2994,7 +2994,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=2.4`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=3.0`;
 
 
 /* ================= STATE ================= */
@@ -5968,7 +5968,7 @@ function renderMenu(){
 
 function getMenuPhoto(item){
   if(!item) return "";
-  const dbPhoto = String(item.photo_url || item.photo || "").trim();
+  const dbPhoto = String(item.photo_url || item.photo || item.image_url || item.thumbnail_url || "").trim();
   if(dbPhoto) return dbPhoto;
   try{
     return String(localStorage.getItem(`servisium_menu_photo_${item.id}`) || "").trim();
@@ -6327,7 +6327,7 @@ function setImportStatus(
 function normalizeImportedItem(item){
 
   const name =
-    String(item?.name || "")
+    String(item?.name || item?.title || "")
       .trim();
 
 
@@ -6361,9 +6361,31 @@ function normalizeImportedItem(item){
   }
 
 
+  const sourceId =
+    item?.source_id != null
+      ? String(item.source_id).trim()
+      : (item?.external_id != null
+          ? String(item.external_id).trim()
+          : "");
+
+  const imageUrl =
+    String(
+      item?.photo_url ||
+      item?.image_url ||
+      item?.photo ||
+      item?.thumbnail_url ||
+      ""
+    ).trim() || null;
+
+
   return {
 
     name,
+
+    title:
+      item?.title
+        ? String(item.title).trim()
+        : name,
 
     type:
       item.type === "Бар"
@@ -6376,6 +6398,34 @@ function normalizeImportedItem(item){
         "Інше"
       ).trim() || "Інше",
 
+    category_id:
+      item?.category_id != null
+        ? String(item.category_id)
+        : null,
+
+    menu:
+      item?.menu != null
+        ? String(item.menu).trim()
+        : null,
+
+    menu_id:
+      item?.menu_id != null
+        ? String(item.menu_id)
+        : null,
+
+    external_id:
+      item?.external_id != null
+        ? String(item.external_id)
+        : (sourceId || null),
+
+    source_id:
+      sourceId || null,
+
+    source:
+      item?.source
+        ? String(item.source).trim()
+        : "expz",
+
     description:
       item.description
         ? String(item.description).trim()
@@ -6383,13 +6433,37 @@ function normalizeImportedItem(item){
 
     price,
 
+    min_price:
+      item?.min_price != null
+        ? Number(item.min_price)
+        : price,
+
+    max_price:
+      item?.max_price != null
+        ? Number(item.max_price)
+        : price,
+
     weight:
-      item.weight
+      item.weight !== null &&
+      item.weight !== undefined &&
+      item.weight !== ""
         ? String(item.weight).trim()
         : null,
 
-    photo_url:
-      item.photo_url || item.photo || null
+    unit:
+      item?.unit
+        ? String(item.unit).trim()
+        : null,
+
+    thumbnail_url:
+      item?.thumbnail_url
+        ? String(item.thumbnail_url).trim()
+        : null,
+
+    photo_url: imageUrl,
+
+    active:
+      item?.active !== false
 
   };
 
@@ -6462,10 +6536,19 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
           },
           body:JSON.stringify({
             url:sourceUrl,
+            restaurant_id: currentRestaurant?.id || null,
             items:batch.map(item => ({
               name:item.name,
+              title:item.title || item.name,
               category:item.category,
-              type:item.type
+              type:item.type,
+              menu:item.menu || "",
+              menu_id:item.menu_id || null,
+              category_id:item.category_id || null,
+              source_id:item.source_id || item.external_id || null,
+              external_id:item.external_id || item.source_id || null,
+              image_url:item.photo_url || item.image_url || null,
+              thumbnail_url:item.thumbnail_url || null
             }))
           }),
           signal:controller.signal
@@ -7000,9 +7083,7 @@ async function saveImportedMenu(){
       new Map(
         currentMenu.map(
           item => [
-            String(
-              item.name || ""
-            )
+            String(item.name || "")
               .trim()
               .toLowerCase(),
             item
@@ -7011,60 +7092,64 @@ async function saveImportedMenu(){
       );
 
 
-    const newItems =
-      importedPreviewItems.filter(
-        item =>
-          !existingByName.has(
-            String(
-              item.name || ""
-            )
-              .trim()
-              .toLowerCase()
-          )
+    const existingBySourceId =
+      new Map(
+        currentMenu
+          .filter(item => String(item.source_id || item.external_id || "").trim())
+          .map(item => [
+            String(item.source_id || item.external_id || "").trim(),
+            item
+          ])
       );
 
 
-    /*
-      Important:
-      If the menu was imported before, the item already exists in Supabase.
-      We still update its photo_url when a new photo was found.
-    */
+    const resolveExisting = item => {
+      const sourceId = String(
+        item?.source_id || item?.external_id || ""
+      ).trim();
+
+      if(sourceId && existingBySourceId.has(sourceId)){
+        return existingBySourceId.get(sourceId);
+      }
+
+      return existingByName.get(
+        String(item?.name || "")
+          .trim()
+          .toLowerCase()
+      ) || null;
+    };
+
+
+    const newItems =
+      importedPreviewItems.filter(
+        item => !resolveExisting(item)
+      );
+
+
     const existingPhotoUpdates =
       importedPreviewItems
         .map(item => {
-          const key =
-            String(
-              item.name || ""
-            )
-              .trim()
-              .toLowerCase();
+          const existing = resolveExisting(item);
+          const photo = String(
+            item.photo_url ||
+            item.image_url ||
+            item.thumbnail_url ||
+            ""
+          ).trim();
 
-          const existing =
-            existingByName.get(key);
-
-          const photo =
-            String(
-              item.photo_url ||
-              ""
-            ).trim();
-
-          if(
-            !existing ||
-            !photo
-          ){
+          if(!existing || !photo){
             return null;
           }
 
-          const oldPhoto =
-            String(
-              existing.photo_url ||
-              existing.photo ||
-              ""
-            ).trim();
+          const oldPhoto = String(
+            existing.photo_url ||
+            existing.photo ||
+            existing.image_url ||
+            existing.thumbnail_url ||
+            ""
+          ).trim();
 
-          if(
-            oldPhoto === photo
-          ){
+          if(oldPhoto === photo){
             return null;
           }
 
@@ -7081,7 +7166,7 @@ async function saveImportedMenu(){
 
     if(newItems.length){
 
-      const payloadWithPhotos =
+      const payloadWithMetadata =
         newItems.map(item => ({
           restaurant_id:currentRestaurant.id,
           name:item.name,
@@ -7091,7 +7176,14 @@ async function saveImportedMenu(){
           price:item.price,
           weight:item.weight,
           photo_url:item.photo_url || null,
-          status:"active"
+          status:"active",
+          source:item.source || "expz",
+          source_id:item.source_id || item.external_id || null,
+          menu:item.menu || null,
+          menu_id:item.menu_id || null,
+          category_id:item.category_id || null,
+          unit:item.unit || null,
+          thumbnail_url:item.thumbnail_url || null
         }));
 
 
@@ -7103,38 +7195,65 @@ async function saveImportedMenu(){
             {
               method:"POST",
               headers:{
-                Prefer:
-                  "return=representation"
+                Prefer:"return=representation"
               },
-              body:
-                JSON.stringify(
-                  payloadWithPhotos
-                )
+              body:JSON.stringify(payloadWithMetadata)
             }
           );
 
-      }catch(photoSchemaError){
+      }catch(metadataError){
 
-        createdImported =
-          await supabaseRequest(
-            "menu_items",
-            {
-              method:"POST",
-              headers:{
-                Prefer:
-                  "return=representation"
-              },
-              body:
-                JSON.stringify(
-                  payloadWithPhotos.map(
-                    ({
-                      photo_url,
-                      ...item
-                    }) => item
-                  )
+        console.warn(
+          "SERVISIUM import metadata insert fallback:",
+          metadataError?.message || metadataError
+        );
+
+        const minimalPayload =
+          payloadWithMetadata.map(item => ({
+            restaurant_id:item.restaurant_id,
+            name:item.name,
+            type:item.type,
+            category:item.category,
+            description:item.description,
+            price:item.price,
+            weight:item.weight,
+            photo_url:item.photo_url,
+            status:item.status
+          }));
+
+        try{
+
+          createdImported =
+            await supabaseRequest(
+              "menu_items",
+              {
+                method:"POST",
+                headers:{
+                  Prefer:"return=representation"
+                },
+                body:JSON.stringify(minimalPayload)
+              }
+            );
+
+        }catch(photoSchemaError){
+
+          createdImported =
+            await supabaseRequest(
+              "menu_items",
+              {
+                method:"POST",
+                headers:{
+                  Prefer:"return=representation"
+                },
+                body:JSON.stringify(
+                  minimalPayload.map(({
+                    photo_url,
+                    ...item
+                  }) => item)
                 )
-            }
-          );
+              }
+            );
+        }
       }
     }
 
@@ -7142,57 +7261,48 @@ async function saveImportedMenu(){
     const photoRows = [];
 
 
-    if(
-      Array.isArray(
-        createdImported
-      )
-    ){
+    if(Array.isArray(createdImported)){
 
-      createdImported.forEach(
-        created => {
+      createdImported.forEach(created => {
 
-          const source =
-            newItems.find(
-              item =>
-                String(
-                  item.name
-                )
-                  .trim()
-                  .toLowerCase() ===
-                String(
-                  created.name ||
-                  ""
-                )
-                  .trim()
-                  .toLowerCase()
-            );
+        const source =
+          newItems.find(item => {
+            const sourceId = String(
+              item?.source_id || item?.external_id || ""
+            ).trim();
 
+            const createdSourceId = String(
+              created?.source_id || created?.external_id || ""
+            ).trim();
 
-          if(
-            source?.photo_url
-          ){
+            if(sourceId && createdSourceId){
+              return sourceId === createdSourceId;
+            }
 
-            setMenuPhotoLocal(
-              created.id,
-              source.photo_url
-            );
+            return String(item.name || "")
+              .trim()
+              .toLowerCase() ===
+              String(created.name || "")
+                .trim()
+                .toLowerCase();
+          });
 
+        if(source?.photo_url){
+          setMenuPhotoLocal(
+            created.id,
+            source.photo_url
+          );
 
-            photoRows.push({
-              id:created.id,
-              photo_url:
-                source.photo_url
-            });
-          }
+          photoRows.push({
+            id:created.id,
+            photo_url:source.photo_url
+          });
         }
-      );
+      });
     }
 
 
-    if(
-      existingPhotoUpdates.length
-    ){
-
+    if(existingPhotoUpdates.length){
       await persistPhotoUrls(
         existingPhotoUpdates
       );
@@ -7200,17 +7310,12 @@ async function saveImportedMenu(){
 
 
     if(photoRows.length){
-
       await persistPhotoUrls(
         photoRows
       );
     }
 
 
-    /*
-      Refresh the menu after inserting/updating.
-      This makes the real database state the source of truth.
-    */
     await loadMenu();
 
 
@@ -7239,12 +7344,12 @@ async function saveImportedMenu(){
           "нових позицій"
         )}.<br>
         Оновлено фото:
-        ${existingPhotoUpdates.length +
-          photoRows.length}.<br>
+        ${existingPhotoUpdates.length + photoRows.length}.<br>
         Фото знайдено:
         ${totalPhotosFound}
         з
-        ${importedPreviewItems.length}.
+        ${importedPreviewItems.length}.<br>
+        Фото алкоголю шукаються тільки за точною відповідністю; сумнівні збіги не додаються.
       `,
       "success"
     );
@@ -7302,7 +7407,6 @@ async function saveImportedMenu(){
   }
 
 }
-
 
 /* ================= MANUAL MENU ================= */
 
