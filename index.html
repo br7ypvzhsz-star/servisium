@@ -6717,7 +6717,8 @@ async function importMenuFromUrl(){
           },
 
           body:JSON.stringify({
-            url
+            url,
+            restaurant_id: currentRestaurant.id
           })
         }
       );
@@ -6811,6 +6812,14 @@ async function importMenuFromUrl(){
     );
 
 
+    const importedKitchenCount = Number.isFinite(Number(data?.kitchen))
+      ? Number(data.kitchen)
+      : items.filter(item => item.type === "Кухня").length;
+
+    const importedBarCount = Number.isFinite(Number(data?.bar))
+      ? Number(data.bar)
+      : items.filter(item => item.type === "Бар").length;
+
     setImportStatus(
       `
         <strong>Знайдено ${items.length} ${pluralize(
@@ -6819,12 +6828,8 @@ async function importMenuFromUrl(){
           "позиції",
           "позицій"
         )}.</strong><br>
-        Кухня: ${items.filter(
-          item => item.type === "Кухня"
-        ).length}
-        · Бар: ${items.filter(
-          item => item.type === "Бар"
-        ).length}
+        Кухня: ${importedKitchenCount}
+        · Бар: ${importedBarCount}
         <br>
         Фото знайдено: <strong>${getImportedPhotoCount(items)}</strong> / ${items.length}
         <br>
