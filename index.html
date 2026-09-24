@@ -2994,7 +2994,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=14.0-storage`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=15.0-final`;
 
 
 /* ================= STATE ================= */
@@ -5978,7 +5978,36 @@ function getMenuPhoto(item){
 }
 
 function getImportedPhotoCount(items){
-  return (Array.isArray(items) ? items : []).filter(item => String(item?.photo_url || item?.photo || "").trim()).length;
+  return (
+    Array.isArray(items)
+      ? items
+      : []
+  ).filter(
+    item =>
+      String(
+        item?.photo_url ||
+        item?.photo ||
+        ""
+      ).trim()
+  ).length;
+}
+
+function getImportedStoragePhotoCount(items){
+  return (
+    Array.isArray(items)
+      ? items
+      : []
+  ).filter(
+    item =>
+      String(
+        item?.photo_source ||
+        ""
+      ) === "servisium-storage" &&
+      String(
+        item?.photo_url ||
+        ""
+      ).trim()
+  ).length;
 }
 
 async function persistPhotoUrls(rows){
@@ -6456,105 +6485,213 @@ function normalizeImportedItem(item){
 
 async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
 
-  const sourceItems = Array.isArray(items) ? items : [];
+  const sourceItems =
+    Array.isArray(items)
+      ? items
+      : [];
 
-  if(!sourceItems.length || !sourceUrl){
+  if(!sourceItems.length){
     return sourceItems;
   }
 
   /*
-    SERVISIUM PHOTO ENRICHMENT 2.4
-    - photo search is isolated from menu import
-    - small batches protect the Edge Function from large payloads
-    - one failed batch does NOT destroy the whole menu import
-    - every batch reports progress to the UI
+    SERVISIUM PHOTO ENGINE FINAL V15
+    - full item context
+    - restaurant-scoped request
+    - server returns only successfully stored Storage photos
+    - 20-item batches
+    - long timeout to prevent false client-side batch failures
   */
-  const BATCH_SIZE = 25;
-  const TIMEOUT_MS = 60000;
-  const totalBatches = Math.ceil(sourceItems.length / BATCH_SIZE);
-  const result = sourceItems.map(item => ({...item}));
+
+  const BATCH_SIZE = 20;
+  const TIMEOUT_MS = 180000;
+
+  const totalBatches =
+    Math.ceil(
+      sourceItems.length /
+      BATCH_SIZE
+    );
+
+  const result =
+    sourceItems.map(item => ({
+      ...item,
+      photo_source:
+        item.photo_source ||
+        (
+          item.photo_url
+            ? "source"
+            : ""
+        )
+    }));
+
+  const countTotalPhotos = () =>
+    result.filter(
+      item =>
+        String(
+          item?.photo_url ||
+          item?.photo ||
+          ""
+        ).trim()
+    ).length;
+
+  const countStoragePhotos = () =>
+    result.filter(
+      item =>
+        String(
+          item?.photo_source ||
+          ""
+        ) ===
+        "servisium-storage"
+    ).length;
 
   let completed = 0;
   let successfulBatches = 0;
   let failedBatches = 0;
-  let candidatesFound = 0;
-  let pagesScanned = 0;
 
-  const countPhotos = () => result.filter(
-    item => !!String(item?.photo_url || item?.photo || '').trim()
-  ).length;
+  for(
+    let start = 0;
+    start < sourceItems.length;
+    start += BATCH_SIZE
+  ){
 
-  for(let start = 0; start < sourceItems.length; start += BATCH_SIZE){
+    const batch =
+      sourceItems.slice(
+        start,
+        start + BATCH_SIZE
+      );
 
-    const batch = sourceItems.slice(start, start + BATCH_SIZE);
-    const batchNumber = Math.floor(start / BATCH_SIZE) + 1;
+    const batchNumber =
+      Math.floor(
+        start /
+        BATCH_SIZE
+      ) + 1;
 
-    if(typeof onProgress === 'function'){
+    if(
+      typeof onProgress ===
+      "function"
+    ){
+
       onProgress({
-        state:'loading',
+        state:"loading",
         batch:batchNumber,
         totalBatches,
         processed:completed,
         total:sourceItems.length,
-        photos:countPhotos(),
+        photos:countTotalPhotos(),
+        autoStoredPhotos:
+          countStoragePhotos(),
         successfulBatches,
         failedBatches
       });
+
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const controller =
+      new AbortController();
+
+    const timer =
+      setTimeout(
+        () =>
+          controller.abort(),
+        TIMEOUT_MS
+      );
 
     try{
 
-      const response = await fetch(
-        PHOTO_ENRICH_FUNCTION_URL,
-        {
-          method:'POST',
-          cache:'no-store',
-          headers:{
-            'Content-Type':'application/json',
-            apikey:SUPABASE_PUBLISHABLE_KEY,
-            Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-          },
-          body:JSON.stringify({
-            url:sourceUrl,
-            restaurant_id: currentRestaurant?.id
-              ? String(currentRestaurant.id)
-              : "",
-            items:batch.map(item => ({
-              name:item.name,
-              title:item.title || item.name,
-              category:item.category,
-              category_id:item.category_id ?? null,
-              menu:item.menu ?? null,
-              menu_id:item.menu_id ?? null,
-              type:item.type,
-              description:item.description ?? null,
-              price:item.price ?? null,
-              min_price:item.min_price ?? null,
-              max_price:item.max_price ?? null,
-              weight:item.weight ?? null,
-              unit:item.unit ?? null,
-              image_url:item.image_url ?? null,
-              thumbnail_url:item.thumbnail_url ?? null,
-              photo_url:item.photo_url ?? null,
-              external_id:item.external_id ?? null,
-              source_id:item.source_id ?? item.external_id ?? null,
-              source:item.source ?? "expz",
-              active:item.active !== false,
-              country:item.country ?? null
-            }))
-          }),
-          signal:controller.signal
-        }
-      );
+      const response =
+        await fetch(
+          PHOTO_ENRICH_FUNCTION_URL,
+          {
+            method:"POST",
+            cache:"no-store",
+            headers:{
+              "Content-Type":
+                "application/json",
+              apikey:
+                SUPABASE_PUBLISHABLE_KEY,
+              Authorization:
+                `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            },
+            body:
+              JSON.stringify({
+                url:sourceUrl,
+                restaurant_id:
+                  currentRestaurant?.id
+                    ? String(
+                        currentRestaurant.id
+                      )
+                    : "",
+                items:
+                  batch.map(
+                    item => ({
+                      name:item.name,
+                      title:
+                        item.title ||
+                        item.name,
+                      description:
+                        item.description ??
+                        null,
+                      category:
+                        item.category ??
+                        null,
+                      category_id:
+                        item.category_id ??
+                        null,
+                      menu:
+                        item.menu ??
+                        null,
+                      menu_id:
+                        item.menu_id ??
+                        null,
+                      type:
+                        item.type ??
+                        null,
+                      weight:
+                        item.weight ??
+                        null,
+                      unit:
+                        item.unit ??
+                        null,
+                      image_url:
+                        item.image_url ??
+                        null,
+                      thumbnail_url:
+                        item.thumbnail_url ??
+                        null,
+                      photo_url:
+                        item.photo_url ??
+                        null,
+                      external_id:
+                        item.external_id ??
+                        null,
+                      source_id:
+                        item.source_id ??
+                        item.external_id ??
+                        null,
+                      source:
+                        item.source ??
+                        "expz",
+                      country:
+                        item.country ??
+                        null
+                    })
+                  )
+              }),
+            signal:
+              controller.signal
+          }
+        );
 
-      const raw = await response.text();
+      const raw =
+        await response.text();
+
       let data = null;
 
       try{
-        data = raw ? JSON.parse(raw) : null;
+        data =
+          raw
+            ? JSON.parse(raw)
+            : null;
       }catch{
         data = null;
       }
@@ -6570,42 +6707,95 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
       if(!data?.success){
         throw new Error(
           data?.error ||
-          'Edge Function повернула неуспішну відповідь.'
+          "Photo Engine повернув помилку."
         );
       }
 
-      candidatesFound += Number(data.candidates_found || 0);
-      pagesScanned += Number(data.pages_scanned || 0);
+      const matches =
+        Array.isArray(
+          data.matches
+        )
+          ? data.matches
+          : [];
 
-      const matches = Array.isArray(data.matches)
-        ? data.matches
-        : [];
+      const photoMap =
+        new Map();
 
-      const photoMap = new Map();
+      matches.forEach(
+        match => {
 
-      matches.forEach(match => {
-        const key = String(match?.name || '')
-          .trim()
-          .toLowerCase();
-        const photo = String(match?.photo_url || '')
-          .trim();
+          const key =
+            String(
+              match?.name ||
+              ""
+            )
+              .trim()
+              .toLowerCase();
 
-        if(key && photo){
-          photoMap.set(key, photo);
+          const photo =
+            String(
+              match?.photo_url ||
+              ""
+            ).trim();
+
+          if(
+            key &&
+            photo
+          ){
+
+            photoMap.set(
+              key,
+              {
+                photo_url:
+                  photo,
+                photo_source:
+                  match?.photo_source ||
+                  "servisium-storage"
+              }
+            );
+
+          }
+
         }
-      });
+      );
 
-      batch.forEach((item, localIndex) => {
-        const index = start + localIndex;
-        const key = String(item?.name || '')
-          .trim()
-          .toLowerCase();
-        const photo = photoMap.get(key) || '';
+      batch.forEach(
+        (item, localIndex) => {
 
-        if(photo && !result[index].photo_url){
-          result[index].photo_url = photo;
+          const index =
+            start +
+            localIndex;
+
+          const key =
+            String(
+              item?.name ||
+              ""
+            )
+              .trim()
+              .toLowerCase();
+
+          const found =
+            photoMap.get(key);
+
+          if(
+            found &&
+            found.photo_url
+          ){
+
+            result[
+              index
+            ].photo_url =
+              found.photo_url;
+
+            result[
+              index
+            ].photo_source =
+              found.photo_source;
+
+          }
+
         }
-      });
+      );
 
       successfulBatches += 1;
 
@@ -6614,354 +6804,71 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
       failedBatches += 1;
 
       console.warn(
-        `SERVISIUM PHOTO ENRICHMENT BATCH ${batchNumber}/${totalBatches}:`,
-        error?.message || error
+        `SERVISIUM PHOTO ENGINE batch ${batchNumber}/${totalBatches}:`,
+        error?.message ||
+        error
       );
-
-      /*
-        Do not throw here.
-        The menu itself must still be importable even if photo search
-        temporarily fails for one batch.
-      */
 
     }finally{
 
-      clearTimeout(timeout);
-      completed += batch.length;
+      clearTimeout(
+        timer
+      );
 
-      if(typeof onProgress === 'function'){
+      completed +=
+        batch.length;
+
+      if(
+        typeof onProgress ===
+        "function"
+      ){
+
         onProgress({
-          state:'progress',
+          state:"progress",
           batch:batchNumber,
           totalBatches,
           processed:completed,
           total:sourceItems.length,
-          photos:countPhotos(),
+          photos:
+            countTotalPhotos(),
+          autoStoredPhotos:
+            countStoragePhotos(),
           successfulBatches,
-          failedBatches,
-          candidatesFound,
-          pagesScanned
+          failedBatches
         });
+
       }
 
     }
+
   }
 
-  const photosFound = countPhotos();
+  if(
+    typeof onProgress ===
+    "function"
+  ){
 
-  console.info(
-    'SERVISIUM PHOTO ENRICHMENT 2.4 COMPLETE',
-    {
-      sourceUrl,
-      items:sourceItems.length,
-      completed,
-      photosFound,
-      successfulBatches,
-      failedBatches,
-      candidatesFound,
-      pagesScanned
-    }
-  );
-
-  if(typeof onProgress === 'function'){
     onProgress({
-      state:'done',
+      state:"done",
       batch:totalBatches,
       totalBatches,
-      processed:sourceItems.length,
-      total:sourceItems.length,
-      photos:photosFound,
+      processed:
+        sourceItems.length,
+      total:
+        sourceItems.length,
+      photos:
+        countTotalPhotos(),
+      autoStoredPhotos:
+        countStoragePhotos(),
       successfulBatches,
-      failedBatches,
-      candidatesFound,
-      pagesScanned
+      failedBatches
     });
+
   }
 
   return result;
-}
-
-async function importMenuFromUrl(){
-
-  if(!currentRestaurant){
-
-    setImportStatus(
-      "Не вибрано заклад.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  const input =
-    document.getElementById(
-      "importUrl"
-    );
-
-
-  const url =
-    input.value.trim();
-
-
-  if(!url){
-
-    setImportStatus(
-      "Встав посилання на меню.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  let parsedUrl;
-
-
-  try{
-
-    parsedUrl =
-      new URL(url);
-
-  }catch{
-
-    setImportStatus(
-      "Посилання некоректне. Приклад: https://menu.ps.me/...",
-      "error"
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !["http:","https:"]
-      .includes(parsedUrl.protocol)
-  ){
-
-    setImportStatus(
-      "Дозволені тільки HTTP/HTTPS посилання.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  const button =
-    document.getElementById(
-      "importBtn"
-    );
-
-
-  button.disabled = true;
-
-
-  button.innerHTML = `
-    <span class="loading">
-      <span class="spinner"></span>
-      Аналіз меню...
-    </span>
-  `;
-
-
-  setImportStatus(
-    `
-      SERVISIUM завантажує сторінку,
-      шукає структуру меню, фото та готує позиції...
-    `
-  );
-
-
-  document
-    .getElementById("importPreview")
-    .classList.remove("active");
-
-
-  try{
-
-    const response =
-      await fetch(
-        IMPORT_FUNCTION_URL,
-        {
-          method:"POST",
-
-          headers:{
-            "Content-Type":"application/json",
-            apikey:SUPABASE_PUBLISHABLE_KEY,
-            Authorization:
-              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-          },
-
-          body:JSON.stringify({
-            url,
-            restaurant_id: currentRestaurant.id
-          })
-        }
-      );
-
-
-    const text =
-      await response.text();
-
-
-    let data = null;
-
-
-    try{
-
-      data =
-        text
-          ? JSON.parse(text)
-          : null;
-
-    }catch{
-
-      data = {
-        error:text
-      };
-
-    }
-
-
-    if(!response.ok){
-
-      throw new Error(
-        data?.error ||
-        data?.message ||
-        `HTTP ${response.status}`
-      );
-
-    }
-
-
-    if(!data?.success){
-
-      throw new Error(
-        data?.error ||
-        "SERVISIUM не знайшов позицій меню."
-      );
-
-    }
-
-
-    let items =
-      Array.isArray(data.items)
-        ? data.items
-            .map(normalizeImportedItem)
-            .filter(Boolean)
-        : [];
-
-
-    if(!items.length){
-
-      throw new Error(
-        "SERVISIUM не отримав жодної позиції меню."
-      );
-
-    }
-
-
-    setImportStatus(
-      `
-        Меню знайдено. Тепер шукаємо фото позицій...
-      `
-    );
-
-    items = await enrichImportedPhotos(items,url,(progress)=>{
-      if(progress.state === "loading" || progress.state === "progress"){
-        setImportStatus(`
-          <strong>Шукаємо фото позицій...</strong><br>
-          Батч <strong>${progress.batch}</strong> / ${progress.totalBatches}
-          · Оброблено ${progress.processed} / ${progress.total}
-          · Фото <strong>${progress.photos}</strong>
-          · Успішних батчів <strong>${progress.successfulBatches || 0}</strong>
-          ${progress.failedBatches ? `<br>Помилок батчів: ${progress.failedBatches}` : ``}
-        `);
-      }
-    });
-
-    importedPreviewItems =
-      items;
-
-
-    renderImportPreview(
-      items
-    );
-
-
-    const importedKitchenCount = Number.isFinite(Number(data?.kitchen))
-      ? Number(data.kitchen)
-      : items.filter(item => item.type === "Кухня").length;
-
-    const importedBarCount = Number.isFinite(Number(data?.bar))
-      ? Number(data.bar)
-      : items.filter(item => item.type === "Бар").length;
-
-    setImportStatus(
-      `
-        <strong>Знайдено ${items.length} ${pluralize(
-          items.length,
-          "позицію",
-          "позиції",
-          "позицій"
-        )}.</strong><br>
-        Кухня: ${importedKitchenCount}
-        · Бар: ${importedBarCount}
-        <br>
-        Фото підготовлено: <strong>${getImportedPhotoCount(items)}</strong> / ${items.length}
-        <br>
-        Пошук фото завершено. Нижче попередній перегляд. Натисни
-        «Зберегти в меню».
-      `,
-      "success"
-    );
-
-
-    button.textContent =
-      "Зберегти в меню";
-
-
-    button.disabled = false;
-
-
-    button.onclick =
-      saveImportedMenu;
-
-
-  }catch(error){
-
-    console.error(
-      "SERVISIUM IMPORT ERROR:",
-      error
-    );
-
-
-    setImportStatus(
-      `
-        <strong>Імпорт не завершено.</strong><br>
-        ${escapeHtml(
-          error.message ||
-          "Невідома помилка."
-        )}
-      `,
-      "error"
-    );
-
-
-    button.disabled = false;
-
-    button.textContent =
-      "Спробувати ще раз";
-
-    button.onclick =
-      importMenuFromUrl;
-
-  }
 
 }
-
 
 function renderImportPreview(items){
 
@@ -6990,7 +6897,7 @@ function renderImportPreview(items){
 
   list.innerHTML =
     items
-      .slice(0,200)
+      .slice(0,items.length)
       .map(item => `
 
         <div class="preview-item">
@@ -7320,10 +7227,13 @@ async function saveImportedMenu(){
         Оновлено фото:
         ${existingPhotoUpdates.length +
           photoRows.length}.<br>
-        Фото знайдено:
+        Фото в меню:
         ${totalPhotosFound}
         з
         ${importedPreviewItems.length}.
+        <br>
+        Автофото Storage:
+        ${getImportedStoragePhotoCount(importedPreviewItems)}.
       `,
       "success"
     );
