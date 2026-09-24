@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.1-gemini-vision`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.3-gemini-vision-fixed`;
 
 
 /* ================= STATE ================= */
@@ -7288,6 +7288,12 @@ const totalBatches =
     The previous V41 referenced block-scoped counters from another
     function, causing: "qualityReplacements is not defined".
   */
+  /*
+    IMPORTANT:
+    These counters are local to enrichImportedPhotos().
+    Copy them into the GLOBAL stats object before the function returns.
+    importMenuFromUrl() may only read lastPhotoEngineStats.
+  */
   lastPhotoEngineStats = {
     qualityReplacements,
     visionChecked,
@@ -7979,6 +7985,66 @@ async function importMenuFromUrl(){
     );
 
 
+    const photoStats =
+      (
+        lastPhotoEngineStats &&
+        typeof lastPhotoEngineStats ===
+          "object"
+      )
+        ? lastPhotoEngineStats
+        : {
+            qualityReplacements:0,
+            visionChecked:0,
+            visionReplacements:0,
+            visionError:"",
+            photos:
+              getImportedPhotoCount(
+                items
+              ),
+            autoStoredPhotos:
+              typeof getImportedStoragePhotoCount ===
+              "function"
+                ? getImportedStoragePhotoCount(
+                    items
+                  )
+                : 0
+          };
+
+    const qualityReplacementCount =
+      Number(
+        photoStats.qualityReplacements ||
+        0
+      );
+
+    const visionCheckedCount =
+      Number(
+        photoStats.visionChecked ||
+        0
+      );
+
+    const visionReplacementCount =
+      Number(
+        photoStats.visionReplacements ||
+        0
+      );
+
+    const visionErrorText =
+      String(
+        photoStats.visionError ||
+        ""
+      ).trim();
+
+    const visionErrorHtml =
+      visionErrorText
+        ? (
+            "<br>⚠️ Gemini Vision: <strong>" +
+            escapeHtml(
+              visionErrorText
+            ) +
+            "</strong>"
+          )
+        : "";
+
     setImportStatus(`
       <strong>
         Знайдено ${items.length}
@@ -8030,32 +8096,22 @@ async function importMenuFromUrl(){
 
       Якісно замінено фото:
       <strong>
-        ${lastPhotoEngineStats.qualityReplacements}
+        ${qualityReplacementCount}
       </strong>
 
       <br>
 
       Gemini Vision перевірив:
       <strong>
-        ${lastPhotoEngineStats.visionChecked}
+        ${visionCheckedCount}
       </strong>
 
       · замінено:
       <strong>
-        ${lastPhotoEngineStats.visionReplacements}
+        ${visionReplacementCount}
       </strong>
 
-      ${
-        visionError
-          ? `
-            <br>
-            ⚠️ Gemini Vision:
-            <strong>
-              ${lastPhotoEngineStats.visionError}
-            </strong>
-          `
-          : ""
-      }
+      ${visionErrorHtml}
 
       <br>
 
