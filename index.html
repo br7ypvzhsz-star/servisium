@@ -1336,10 +1336,42 @@ h3{
 
 .preview-item{
   display:grid;
-  grid-template-columns:1fr auto;
+  grid-template-columns:64px minmax(0,1fr) auto;
+  align-items:center;
   gap:12px;
-  padding:10px 14px;
+  min-height:74px;
+  padding:9px 14px;
   border-top:1px solid rgba(255,255,255,.045);
+}
+
+.import-photo-thumb,
+.import-photo-placeholder{
+  width:64px;
+  height:64px;
+  min-width:64px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#151518;
+  display:block;
+  object-fit:contain;
+  object-position:center;
+}
+
+.import-photo-thumb{
+  padding:4px;
+}
+
+.import-photo-placeholder{
+  display:grid;
+  place-items:center;
+  color:#676267;
+  font-size:22px;
+}
+
+.preview-item strong{
+  display:block;
+  font-size:11px;
+  line-height:1.3;
 }
 
 .preview-item strong{
@@ -2994,7 +3026,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=15.0-final`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=16.0-final`;
 
 
 /* ================= STATE ================= */
@@ -6903,8 +6935,8 @@ function renderImportPreview(items){
         <div class="preview-item">
 
           ${item.photo_url
-            ? `<img class="import-photo-thumb" src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;import-photo-placeholder&quot;>♨</div>'">`
-            : `<div class="import-photo-placeholder">♨</div>`
+            ? `<img class="import-photo-thumb" src="${escapeHtml(item.photo_url)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;import-photo-placeholder&quot;>📷</div>'">`
+            : `<div class="import-photo-placeholder">📷</div>`
           }
 
           <div style="flex:1;min-width:0">
@@ -6928,6 +6960,11 @@ function renderImportPreview(items){
                       item.weight
                     )
                   : ""
+              }
+              ${
+                item.photo_url
+                  ? " · Фото: OK"
+                  : " · Фото: не знайдено"
               }
             </small>
 
