@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.3-gemini-vision-fixed`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.6-gemini-vision-scope-safe`;
 
 
 /* ================= STATE ================= */
@@ -6719,10 +6719,13 @@ const totalBatches =
   let completed = 0;
   let successfulBatches = 0;
   let failedBatches = 0;
-  let qualityReplacements = 0;
-  let visionChecked = 0;
-  let visionReplacements = 0;
-  let visionError = "";
+
+  const photoEngineRunStats = {
+    qualityReplacements: 0,
+    visionChecked: 0,
+    visionReplacements: 0,
+    visionError: ""
+  };
 
   async function requestPhotoBatch(
     batch,
@@ -7046,7 +7049,8 @@ const totalBatches =
         photos:countTotalPhotos(),
         autoStoredPhotos:
           countStoragePhotos(),
-        qualityReplacements,
+        qualityReplacements:
+          photoEngineRunStats.qualityReplacements,
         successfulBatches,
         failedBatches
       });
@@ -7274,7 +7278,8 @@ const totalBatches =
           countTotalPhotos(),
         autoStoredPhotos:
           countStoragePhotos(),
-        qualityReplacements,
+        qualityReplacements:
+          photoEngineRunStats.qualityReplacements,
         successfulBatches,
         failedBatches
       });
@@ -7295,10 +7300,14 @@ const totalBatches =
     importMenuFromUrl() may only read lastPhotoEngineStats.
   */
   lastPhotoEngineStats = {
-    qualityReplacements,
-    visionChecked,
-    visionReplacements,
-    visionError,
+    qualityReplacements:
+      photoEngineRunStats.qualityReplacements,
+    visionChecked:
+      photoEngineRunStats.visionChecked,
+    visionReplacements:
+      photoEngineRunStats.visionReplacements,
+    visionError:
+      photoEngineRunStats.visionError,
     photos:
       countTotalPhotos(),
     autoStoredPhotos:
