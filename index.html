@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=37.0-stable`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=38.0-quality`;
 
 
 /* ================= STATE ================= */
@@ -6548,6 +6548,24 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
       BATCH_SIZE
     );
 
+  const qualityAuditStorageKey =
+    `servisium_photo_quality_v38_${String(
+      currentRestaurant?.id ||
+      ""
+    ).trim()}`;
+
+  let qualityAuditPending = false;
+
+  try{
+    qualityAuditPending =
+      localStorage.getItem(
+        qualityAuditStorageKey
+      ) !== "done";
+  }catch{
+    qualityAuditPending = false;
+  }
+
+
   const result =
     sourceItems.map(
       item => ({
@@ -6689,6 +6707,10 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
             body:
               JSON.stringify({
                 url:sourceUrl,
+                quality_refresh:
+                  Boolean(
+                    qualityAuditPending
+                  ),
                 restaurant_id:
                   currentRestaurant?.id
                     ? String(
@@ -7138,6 +7160,19 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
       });
 
     }
+
+  }
+
+  if(
+    qualityAuditPending
+  ){
+
+    try{
+      localStorage.setItem(
+        qualityAuditStorageKey,
+        "done"
+      );
+    }catch{}
 
   }
 
