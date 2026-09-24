@@ -3047,6 +3047,15 @@ let personalStatsCache = null;
 let importedPreviewItems = [];
 let toastTimer = null;
 
+let lastPhotoEngineStats = {
+  qualityReplacements: 0,
+  visionChecked: 0,
+  visionReplacements: 0,
+  visionError: "",
+  photos: 0,
+  autoStoredPhotos: 0
+};
+
 
 /* ================= SUPABASE REQUEST ================= */
 
@@ -4558,6 +4567,15 @@ async function createRestaurant(){
     document.getElementById(
       "createRestaurantBtn"
     );
+
+  lastPhotoEngineStats = {
+    qualityReplacements: 0,
+    visionChecked: 0,
+    visionReplacements: 0,
+    visionError: "",
+    photos: 0,
+    autoStoredPhotos: 0
+  };
 
   button.disabled = true;
 
@@ -7265,6 +7283,22 @@ const totalBatches =
 
   }
 
+  /*
+    Expose final Photo Engine statistics to importMenuFromUrl().
+    The previous V41 referenced block-scoped counters from another
+    function, causing: "qualityReplacements is not defined".
+  */
+  lastPhotoEngineStats = {
+    qualityReplacements,
+    visionChecked,
+    visionReplacements,
+    visionError,
+    photos:
+      countTotalPhotos(),
+    autoStoredPhotos:
+      countStoragePhotos()
+  };
+
   if(
     qualityAuditPending
   ){
@@ -7996,19 +8030,19 @@ async function importMenuFromUrl(){
 
       Якісно замінено фото:
       <strong>
-        ${qualityReplacements}
+        ${lastPhotoEngineStats.qualityReplacements}
       </strong>
 
       <br>
 
       Gemini Vision перевірив:
       <strong>
-        ${visionChecked}
+        ${lastPhotoEngineStats.visionChecked}
       </strong>
 
       · замінено:
       <strong>
-        ${visionReplacements}
+        ${lastPhotoEngineStats.visionReplacements}
       </strong>
 
       ${
@@ -8017,7 +8051,7 @@ async function importMenuFromUrl(){
             <br>
             ⚠️ Gemini Vision:
             <strong>
-              ${visionError}
+              ${lastPhotoEngineStats.visionError}
             </strong>
           `
           : ""
