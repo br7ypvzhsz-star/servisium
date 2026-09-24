@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=36.0-stable`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=37.0-stable`;
 
 
 /* ================= STATE ================= */
@@ -7169,64 +7169,287 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
 }
 
 
-function mergeExistingMenuPhotosIntoImportedItems(
+
+function getPhotoCacheStorageKey(){
+  const restaurantId =
+    String(
+      currentRestaurant?.id ||
+      ""
+    ).trim();
+
+  return restaurantId
+    ? `servisium_photo_cache_v37_${restaurantId}`
+    : "servisium_photo_cache_v37_no_restaurant";
+}
+
+function photoCacheItemKey(item){
+  return String(
+    item?.source_id ||
+    item?.external_id ||
+    item?.name ||
+    item?.title ||
+    ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g," ");
+}
+
+function loadLocalPhotoCache(){
+
+  try{
+
+    const raw =
+      localStorage.getItem(
+        getPhotoCacheStorageKey()
+      );
+
+    if(!raw){
+      return {};
+    }
+
+    const parsed =
+      JSON.parse(
+        raw
+      );
+
+    return (
+      parsed &&
+      typeof parsed ===
+        "object"
+    )
+      ? parsed
+      : {};
+
+  }catch{
+    return {};
+  }
+
+}
+
+function saveLocalPhotoCache(
+  cache
+){
+
+  try{
+
+    localStorage.setItem(
+      getPhotoCacheStorageKey(),
+      JSON.stringify(
+        cache
+      )
+    );
+
+  }catch{
+    /*
+      Browser storage can be unavailable/full.
+      Photo Engine itself must keep working.
+    */
+  }
+
+}
+
+function updateLocalPhotoCacheFromItems(
   items
 ){
 
   if(
-    !Array.isArray(items) ||
-    !Array.isArray(currentMenu) ||
-    !currentMenu.length
+    !Array.isArray(items)
   ){
-    return items;
+    return;
   }
 
-  const existingByName =
-    new Map();
+  const cache =
+    loadLocalPhotoCache();
 
-  currentMenu.forEach(
-    existing => {
+  let changed = false;
 
-      const name =
-        String(
-          existing?.name ||
-          ""
-        )
-          .trim()
-          .toLowerCase();
+  items.forEach(
+    item => {
 
       const photo =
         String(
-          existing?.photo_url ||
-          existing?.photo ||
+          item?.photo_url ||
+          item?.photo ||
           ""
         ).trim();
 
+      const key =
+        photoCacheItemKey(
+          item
+        );
+
       if(
-        name &&
-        photo
+        !key ||
+        !photo
+      ){
+        return;
+      }
+
+      const source =
+        String(
+          item?.photo_source ||
+          ""
+        ).trim();
+
+      /*
+        Cache both Storage and successful external preview URLs.
+        A cached URL is only used as an already-found photo;
+        it is never presented as "autoStorage" unless the backend
+        actually marked it as Storage.
+      */
+      const existing =
+        cache[key];
+
+      if(
+        !existing ||
+        existing.photo_url !== photo
       ){
 
-        existingByName.set(
-          name,
-          {
-            photo_url:
-              photo,
-            photo_source:
-              String(
-                existing?.photo_source ||
-                "existing-menu"
-              )
-          }
-        );
+        cache[key] = {
+          photo_url:
+            photo,
+          photo_source:
+            source ||
+            "photo-cache",
+          saved_at:
+            new Date().toISOString(),
+          name:
+            String(
+              item?.name ||
+              item?.title ||
+              ""
+            ).trim(),
+          source_id:
+            String(
+              item?.source_id ||
+              item?.external_id ||
+              ""
+            ).trim()
+        };
+
+        changed = true;
 
       }
 
     }
   );
 
+  if(changed){
+    saveLocalPhotoCache(
+      cache
+    );
+  }
+
+}
+
+function clearLocalPhotoCache(){
+
+  try{
+    localStorage.removeItem(
+      getPhotoCacheStorageKey()
+    );
+  }catch{}
+
+}
+
+
+function mergeExistingMenuPhotosIntoImportedItems(
+  items
+){
+
+  if(
+    !Array.isArray(items)
+  ){
+    return items;
+  }
+
+  const cache =
+    loadLocalPhotoCache();
+
+  const existingByKey =
+    new Map();
+
+  const existingByName =
+    new Map();
+
+  if(
+    Array.isArray(
+      currentMenu
+    )
+  ){
+
+    currentMenu.forEach(
+      existing => {
+
+        const key =
+          photoCacheItemKey(
+            existing
+          );
+
+        const name =
+          String(
+            existing?.name ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
+        const photo =
+          String(
+            existing?.photo_url ||
+            existing?.photo ||
+            ""
+          ).trim();
+
+        if(
+          key &&
+          photo
+        ){
+          existingByKey.set(
+            key,
+            {
+              photo_url:
+                photo,
+              photo_source:
+                String(
+                  existing?.photo_source ||
+                  "existing-menu"
+                )
+            }
+          );
+        }
+
+        if(
+          name &&
+          photo
+        ){
+          existingByName.set(
+            name,
+            {
+              photo_url:
+                photo,
+              photo_source:
+                String(
+                  existing?.photo_source ||
+                  "existing-menu"
+                )
+            }
+          );
+        }
+
+      }
+    );
+
+  }
+
   return items.map(
     item => {
+
+      const key =
+        photoCacheItemKey(
+          item
+        );
 
       const name =
         String(
@@ -7237,30 +7460,50 @@ function mergeExistingMenuPhotosIntoImportedItems(
           .trim()
           .toLowerCase();
 
-      const existing =
-        existingByName.get(
-          name
-        );
-
-      /*
-        Existing DB photo wins only when the fresh Expz import
-        has no photo. A new confirmed photo from the current import
-        is never overwritten here.
-      */
-      if(
-        existing &&
-        !String(
+      const currentPhoto =
+        String(
           item?.photo_url ||
+          item?.photo ||
           ""
-        ).trim()
+        ).trim();
+
+      if(
+        currentPhoto
+      ){
+
+        return item;
+
+      }
+
+      const cached =
+        (
+          key &&
+          cache[key]
+        )
+          ? cache[key]
+          : (
+              name &&
+              existingByName.get(
+                name
+              )
+            )
+              ? existingByName.get(
+                  name
+                )
+              : null;
+
+      if(
+        cached &&
+        cached.photo_url
       ){
 
         return {
           ...item,
           photo_url:
-            existing.photo_url,
+            cached.photo_url,
           photo_source:
-            existing.photo_source
+            cached.photo_source ||
+            "photo-cache"
         };
 
       }
@@ -7271,7 +7514,6 @@ function mergeExistingMenuPhotosIntoImportedItems(
   );
 
 }
-
 
 async function importMenuFromUrl(){
 
@@ -7542,6 +7784,21 @@ async function importMenuFromUrl(){
         items
       );
 
+    /*
+      V37:
+      Any successful result is now accumulated locally per restaurant.
+      A later Expz re-import cannot erase it merely because a public
+      image search returned a different/no result.
+    */
+    updateLocalPhotoCacheFromItems(
+      items
+    );
+
+    items =
+      mergeExistingMenuPhotosIntoImportedItems(
+        items
+      );
+
     importedPreviewItems =
       items;
 
@@ -7597,6 +7854,16 @@ async function importMenuFromUrl(){
             : 0
         }
       </strong>
+
+      <br>
+
+      Локальний фото-кеш:
+      <strong>
+        ${Object.keys(
+          loadLocalPhotoCache()
+        ).length}
+      </strong>
+      позицій.
 
       <br>
 
@@ -7990,6 +8257,13 @@ async function saveImportedMenu(){
       This makes the real database state the source of truth.
     */
     await loadMenu();
+
+    /*
+      Persist the actual saved menu state into the same local photo cache.
+    */
+    updateLocalPhotoCacheFromItems(
+      currentMenu
+    );
 
 
     const totalPhotosFound =
