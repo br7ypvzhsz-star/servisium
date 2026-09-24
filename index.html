@@ -2994,7 +2994,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=4.0`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=8.0-free`;
 
 
 /* ================= STATE ================= */
@@ -6547,6 +6547,8 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
               category_id:item.category_id || null,
               source_id:item.source_id || item.external_id || null,
               external_id:item.external_id || item.source_id || null,
+              description:item.description || "",
+              weight:item.weight || item.volume || "",
               image_url:item.photo_url || item.image_url || null,
               thumbnail_url:item.thumbnail_url || null
             }))
@@ -7789,5 +7791,3 @@ document.addEventListener(
 
 </body>
 </html>
-
-          
