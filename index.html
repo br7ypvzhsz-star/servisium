@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=35.0-final`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=36.0-stable`;
 
 
 /* ================= STATE ================= */
@@ -7168,6 +7168,111 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
 
 }
 
+
+function mergeExistingMenuPhotosIntoImportedItems(
+  items
+){
+
+  if(
+    !Array.isArray(items) ||
+    !Array.isArray(currentMenu) ||
+    !currentMenu.length
+  ){
+    return items;
+  }
+
+  const existingByName =
+    new Map();
+
+  currentMenu.forEach(
+    existing => {
+
+      const name =
+        String(
+          existing?.name ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const photo =
+        String(
+          existing?.photo_url ||
+          existing?.photo ||
+          ""
+        ).trim();
+
+      if(
+        name &&
+        photo
+      ){
+
+        existingByName.set(
+          name,
+          {
+            photo_url:
+              photo,
+            photo_source:
+              String(
+                existing?.photo_source ||
+                "existing-menu"
+              )
+          }
+        );
+
+      }
+
+    }
+  );
+
+  return items.map(
+    item => {
+
+      const name =
+        String(
+          item?.name ||
+          item?.title ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const existing =
+        existingByName.get(
+          name
+        );
+
+      /*
+        Existing DB photo wins only when the fresh Expz import
+        has no photo. A new confirmed photo from the current import
+        is never overwritten here.
+      */
+      if(
+        existing &&
+        !String(
+          item?.photo_url ||
+          ""
+        ).trim()
+      ){
+
+        return {
+          ...item,
+          photo_url:
+            existing.photo_url,
+          photo_source:
+            existing.photo_source
+        };
+
+      }
+
+      return item;
+
+    }
+  );
+
+}
+
+
 async function importMenuFromUrl(){
 
   if(!currentRestaurant){
@@ -7365,6 +7470,17 @@ async function importMenuFromUrl(){
     }
 
 
+    /*
+      V36 STABILITY:
+      restore already-saved photos from this restaurant BEFORE calling
+      external photo search. The external search may vary from run to run;
+      a photo already saved in SERVISIUM must never disappear from preview.
+    */
+    items =
+      mergeExistingMenuPhotosIntoImportedItems(
+        items
+      );
+
     setImportStatus(`
       Меню знайдено.
       Тепер запускаємо Photo Engine для алкогольних позицій...
@@ -7420,6 +7536,11 @@ async function importMenuFromUrl(){
         }
       );
 
+
+    items =
+      mergeExistingMenuPhotosIntoImportedItems(
+        items
+      );
 
     importedPreviewItems =
       items;
