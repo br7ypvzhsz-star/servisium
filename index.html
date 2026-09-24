@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=39.0-quality-audit`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=40.0-quality-replacement`;
 
 
 /* ================= STATE ================= */
@@ -6571,7 +6571,7 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
   const MAX_WEAK_RETRIES = 2;
 
   const qualityAuditStorageKey =
-    `servisium_photo_quality_v39_${String(
+    `servisium_photo_quality_v40_${String(
       currentRestaurant?.id ||
       ""
     ).trim()}`;
@@ -6689,6 +6689,7 @@ const totalBatches =
   let completed = 0;
   let successfulBatches = 0;
   let failedBatches = 0;
+  let qualityReplacements = 0;
 
   async function requestPhotoBatch(
     batch,
@@ -6830,7 +6831,12 @@ const totalBatches =
 
       return {
         ok:true,
-        matches
+        matches,
+        qualityReplacements:
+          Number(
+            data?.quality_replacements ||
+            0
+          )
       };
 
     }catch(error){
@@ -6988,6 +6994,7 @@ const totalBatches =
         photos:countTotalPhotos(),
         autoStoredPhotos:
           countStoragePhotos(),
+        qualityReplacements,
         successfulBatches,
         failedBatches
       });
@@ -6999,6 +7006,12 @@ const totalBatches =
         batch,
         batchNumber,
         totalBatches
+      );
+
+    qualityReplacements +=
+      Number(
+        primary?.qualityReplacements ||
+        0
       );
 
     let matchedCount =
@@ -7104,6 +7117,12 @@ const totalBatches =
               totalBatches
             );
 
+          qualityReplacements +=
+            Number(
+              retryResult?.qualityReplacements ||
+              0
+            );
+
           if(
             retryResult.ok
           ){
@@ -7169,6 +7188,7 @@ const totalBatches =
           countTotalPhotos(),
         autoStoredPhotos:
           countStoragePhotos(),
+        qualityReplacements,
         successfulBatches,
         failedBatches
       });
@@ -7902,6 +7922,13 @@ async function importMenuFromUrl(){
               )
             : 0
         }
+      </strong>
+
+      <br>
+
+      Якісно замінено фото:
+      <strong>
+        ${qualityReplacements}
       </strong>
 
       <br>
