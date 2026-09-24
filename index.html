@@ -2736,6 +2736,7 @@ h3{
 
         <button
           id="importBtn"
+          type="button"
           class="primary"
           onclick="importMenuFromUrl()"
         >
@@ -6901,6 +6902,374 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
   return result;
 
 }
+
+async function importMenuFromUrl(){
+
+  if(!currentRestaurant){
+
+    setImportStatus(
+      "Не вибрано заклад.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  const input =
+    document.getElementById(
+      "importUrl"
+    );
+
+
+  const url =
+    input.value.trim();
+
+
+  if(!url){
+
+    setImportStatus(
+      "Встав посилання на меню.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  let parsedUrl;
+
+  try{
+
+    parsedUrl =
+      new URL(url);
+
+  }catch{
+
+    setImportStatus(
+      "Посилання некоректне. Приклад: https://menu.ps.me/...",
+      "error"
+    );
+
+    return;
+  }
+
+
+  if(
+    !["http:","https:"]
+      .includes(
+        parsedUrl.protocol
+      )
+  ){
+
+    setImportStatus(
+      "Дозволені тільки HTTP/HTTPS посилання.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  const button =
+    document.getElementById(
+      "importBtn"
+    );
+
+
+  button.disabled = true;
+
+  button.innerHTML = `
+    <span class="loading">
+      <span class="spinner"></span>
+      Аналіз меню...
+    </span>
+  `;
+
+
+  setImportStatus(`
+    SERVISIUM завантажує меню,
+    структурує позиції та запускає пошук фото...
+  `);
+
+
+  document
+    .getElementById(
+      "importPreview"
+    )
+    .classList.remove(
+      "active"
+    );
+
+
+  try{
+
+    const response =
+      await fetch(
+        IMPORT_FUNCTION_URL,
+        {
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json",
+
+            apikey:
+              SUPABASE_PUBLISHABLE_KEY,
+
+            Authorization:
+              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          },
+
+          body:
+            JSON.stringify({
+              url,
+
+              restaurant_id:
+                currentRestaurant?.id
+                  ? String(
+                      currentRestaurant.id
+                    )
+                  : ""
+            })
+        }
+      );
+
+
+    const raw =
+      await response.text();
+
+    let data = null;
+
+    try{
+
+      data =
+        raw
+          ? JSON.parse(raw)
+          : null;
+
+    }catch{
+
+      data = {
+        error:
+          raw
+      };
+
+    }
+
+
+    if(!response.ok){
+
+      throw new Error(
+        data?.error ||
+        data?.message ||
+        `HTTP ${response.status}`
+      );
+
+    }
+
+
+    if(!data?.success){
+
+      throw new Error(
+        data?.error ||
+        "SERVISIUM не знайшов позицій меню."
+      );
+
+    }
+
+
+    let items =
+      Array.isArray(
+        data.items
+      )
+        ? data.items
+            .map(
+              normalizeImportedItem
+            )
+            .filter(Boolean)
+        : [];
+
+
+    if(!items.length){
+
+      throw new Error(
+        "SERVISIUM не отримав жодної позиції меню."
+      );
+
+    }
+
+
+    setImportStatus(`
+      Меню знайдено.
+      Тепер запускаємо Photo Engine для алкогольних позицій...
+    `);
+
+
+    items =
+      await enrichImportedPhotos(
+        items,
+        url,
+        progress => {
+
+          if(
+            progress.state ===
+              "loading" ||
+            progress.state ===
+              "progress"
+          ){
+
+            setImportStatus(`
+              <strong>Шукаємо фото позицій...</strong><br>
+              Батч <strong>${progress.batch}</strong> /
+              ${progress.totalBatches}
+              · Оброблено
+              ${progress.processed} /
+              ${progress.total}
+              · Фото
+              <strong>${progress.photos}</strong>
+              ${
+                progress.autoStoredPhotos !==
+                undefined
+                  ? `
+                    · Storage
+                    <strong>
+                      ${progress.autoStoredPhotos}
+                    </strong>
+                  `
+                  : ""
+              }
+              ${
+                progress.failedBatches
+                  ? `
+                    <br>
+                    Помилок батчів:
+                    ${progress.failedBatches}
+                  `
+                  : ""
+              }
+            `);
+
+          }
+
+        }
+      );
+
+
+    importedPreviewItems =
+      items;
+
+
+    renderImportPreview(
+      items
+    );
+
+
+    setImportStatus(`
+      <strong>
+        Знайдено ${items.length}
+        ${pluralize(
+          items.length,
+          "позицію",
+          "позиції",
+          "позицій"
+        )}.
+      </strong>
+      <br>
+
+      Кухня:
+      ${items.filter(
+        item =>
+          item.type ===
+          "Кухня"
+      ).length}
+
+      · Бар:
+      ${items.filter(
+        item =>
+          item.type ===
+          "Бар"
+      ).length}
+
+      <br>
+
+      Фото підготовлено:
+      <strong>
+        ${getImportedPhotoCount(items)}
+      </strong>
+      /
+      ${items.length}
+
+      · автофото Storage:
+      <strong>
+        ${
+          typeof getImportedStoragePhotoCount ===
+          "function"
+            ? getImportedStoragePhotoCount(
+                items
+              )
+            : 0
+        }
+      </strong>
+
+      <br>
+
+      Пошук фото завершено.
+      Нижче попередній перегляд.
+      Натисни «Зберегти в меню».
+    `,"success");
+
+
+    button.textContent =
+      "Зберегти в меню";
+
+
+    button.disabled =
+      false;
+
+
+    button.onclick =
+      saveImportedMenu;
+
+
+  }catch(error){
+
+    console.error(
+      "SERVISIUM IMPORT ERROR:",
+      error
+    );
+
+
+    setImportStatus(
+      `
+        <strong>
+          Імпорт не завершено.
+        </strong>
+        <br>
+        ${escapeHtml(
+          error?.message ||
+          "Невідома помилка."
+        )}
+      `,
+      "error"
+    );
+
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "Спробувати ще раз";
+
+
+    button.onclick =
+      importMenuFromUrl;
+
+  }
+
+}
+
 
 function renderImportPreview(items){
 
