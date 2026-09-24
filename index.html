@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=38.0-quality`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=39.0-quality-audit`;
 
 
 /* ================= STATE ================= */
@@ -6025,22 +6025,50 @@ function getImportedPhotoCount(items){
   ).length;
 }
 
-function getImportedStoragePhotoCount(items){
+function getImportedStoragePhotoCount(
+  items
+){
+
   return (
     Array.isArray(items)
       ? items
       : []
   ).filter(
-    item =>
-      String(
-        item?.photo_source ||
-        ""
-      ) === "servisium-storage" &&
-      String(
-        item?.photo_url ||
-        ""
-      ).trim()
+    item => {
+
+      const photo =
+        String(
+          item?.photo_url ||
+          item?.photo ||
+          ""
+        ).trim();
+
+      const source =
+        String(
+          item?.photo_source ||
+          ""
+        ).trim();
+
+      return (
+        Boolean(
+          photo
+        ) &&
+        (
+          source ===
+            "servisium-storage" ||
+          /\/storage\/v1\/object\/public\//i
+            .test(
+              photo
+            ) ||
+          /supabase/i.test(
+            photo
+          )
+        )
+      );
+
+    }
   ).length;
+
 }
 
 async function persistPhotoUrls(rows){
@@ -6542,29 +6570,19 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
   const TIMEOUT_MS = 180000;
   const MAX_WEAK_RETRIES = 2;
 
-  const totalBatches =
-    Math.ceil(
-      sourceItems.length /
-      BATCH_SIZE
-    );
-
   const qualityAuditStorageKey =
-    `servisium_photo_quality_v38_${String(
+    `servisium_photo_quality_v39_${String(
       currentRestaurant?.id ||
       ""
     ).trim()}`;
 
-  let qualityAuditPending = false;
+  let qualityAuditPending = true;
 
-  try{
-    qualityAuditPending =
-      localStorage.getItem(
-        qualityAuditStorageKey
-      ) !== "done";
-  }catch{
-    qualityAuditPending = false;
-  }
-
+const totalBatches =
+    Math.ceil(
+      sourceItems.length /
+      BATCH_SIZE
+    );
 
   const result =
     sourceItems.map(
@@ -6707,10 +6725,6 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
             body:
               JSON.stringify({
                 url:sourceUrl,
-                quality_refresh:
-                  Boolean(
-                    qualityAuditPending
-                  ),
                 restaurant_id:
                   currentRestaurant?.id
                     ? String(
