@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=40.0-quality-replacement`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.1-gemini-vision`;
 
 
 /* ================= STATE ================= */
@@ -6571,12 +6571,24 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
   const MAX_WEAK_RETRIES = 2;
 
   const qualityAuditStorageKey =
-    `servisium_photo_quality_v40_${String(
+    `servisium_photo_quality_v41_${String(
       currentRestaurant?.id ||
       ""
     ).trim()}`;
 
-  let qualityAuditPending = true;
+  let qualityAuditPending = false;
+
+  try{
+    qualityAuditPending =
+      localStorage.getItem(
+        qualityAuditStorageKey
+      ) !== "done";
+  }catch{
+    /*
+      First V41 run should audit if localStorage is unavailable.
+    */
+    qualityAuditPending = true;
+  }
 
 const totalBatches =
     Math.ceil(
@@ -6690,6 +6702,9 @@ const totalBatches =
   let successfulBatches = 0;
   let failedBatches = 0;
   let qualityReplacements = 0;
+  let visionChecked = 0;
+  let visionReplacements = 0;
+  let visionError = "";
 
   async function requestPhotoBatch(
     batch,
@@ -6726,6 +6741,10 @@ const totalBatches =
             body:
               JSON.stringify({
                 url:sourceUrl,
+                quality_vision_audit:
+                  Boolean(
+                    qualityAuditPending
+                  ),
                 restaurant_id:
                   currentRestaurant?.id
                     ? String(
@@ -6836,6 +6855,21 @@ const totalBatches =
           Number(
             data?.quality_replacements ||
             0
+          ),
+        visionChecked:
+          Number(
+            data?.vision_checked ||
+            0
+          ),
+        visionReplacements:
+          Number(
+            data?.vision_replacements ||
+            0
+          ),
+        visionError:
+          String(
+            data?.vision_error ||
+            ""
           )
       };
 
@@ -7014,6 +7048,28 @@ const totalBatches =
         0
       );
 
+    visionChecked +=
+      Number(
+        primary?.visionChecked ||
+        0
+      );
+
+    visionReplacements +=
+      Number(
+        primary?.visionReplacements ||
+        0
+      );
+
+    if(
+      !visionError &&
+      primary?.visionError
+    ){
+      visionError =
+        String(
+          primary.visionError
+        );
+    }
+
     let matchedCount =
       primary.ok
         ? applyMatches(
@@ -7120,6 +7176,18 @@ const totalBatches =
           qualityReplacements +=
             Number(
               retryResult?.qualityReplacements ||
+              0
+            );
+
+          visionChecked +=
+            Number(
+              retryResult?.visionChecked ||
+              0
+            );
+
+          visionReplacements +=
+            Number(
+              retryResult?.visionReplacements ||
               0
             );
 
@@ -7930,6 +7998,30 @@ async function importMenuFromUrl(){
       <strong>
         ${qualityReplacements}
       </strong>
+
+      <br>
+
+      Gemini Vision перевірив:
+      <strong>
+        ${visionChecked}
+      </strong>
+
+      · замінено:
+      <strong>
+        ${visionReplacements}
+      </strong>
+
+      ${
+        visionError
+          ? `
+            <br>
+            ⚠️ Gemini Vision:
+            <strong>
+              ${visionError}
+            </strong>
+          `
+          : ""
+      }
 
       <br>
 
