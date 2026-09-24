@@ -3027,7 +3027,7 @@ const IMPORT_FUNCTION_URL =
   `${SUPABASE_URL}/functions/v1/import-menu`;
 
 const PHOTO_ENRICH_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=41.6-gemini-vision-scope-safe`;
+  `${SUPABASE_URL}/functions/v1/enrich-menu-photos?v=42.0-gemini-vision-forced`;
 
 
 /* ================= STATE ================= */
@@ -6588,25 +6588,7 @@ async function enrichImportedPhotos(items, sourceUrl, onProgress = null){
   const TIMEOUT_MS = 180000;
   const MAX_WEAK_RETRIES = 2;
 
-  const qualityAuditStorageKey =
-    `servisium_photo_quality_v41_${String(
-      currentRestaurant?.id ||
-      ""
-    ).trim()}`;
-
-  let qualityAuditPending = false;
-
-  try{
-    qualityAuditPending =
-      localStorage.getItem(
-        qualityAuditStorageKey
-      ) !== "done";
-  }catch{
-    /*
-      First V41 run should audit if localStorage is unavailable.
-    */
-    qualityAuditPending = true;
-  }
+  const qualityAuditPending = true;
 
 const totalBatches =
     Math.ceil(
@@ -7051,6 +7033,10 @@ const totalBatches =
           countStoragePhotos(),
         qualityReplacements:
           photoEngineRunStats.qualityReplacements,
+        visionChecked:
+          photoEngineRunStats.visionChecked,
+        visionReplacements:
+          photoEngineRunStats.visionReplacements,
         successfulBatches,
         failedBatches
       });
@@ -7064,29 +7050,29 @@ const totalBatches =
         totalBatches
       );
 
-    qualityReplacements +=
+    photoEngineRunStats.qualityReplacements +=
       Number(
         primary?.qualityReplacements ||
         0
       );
 
-    visionChecked +=
+    photoEngineRunStats.visionChecked +=
       Number(
         primary?.visionChecked ||
         0
       );
 
-    visionReplacements +=
+    photoEngineRunStats.visionReplacements +=
       Number(
         primary?.visionReplacements ||
         0
       );
 
     if(
-      !visionError &&
+      !photoEngineRunStats.visionError &&
       primary?.visionError
     ){
-      visionError =
+      photoEngineRunStats.visionError =
         String(
           primary.visionError
         );
@@ -7195,23 +7181,33 @@ const totalBatches =
               totalBatches
             );
 
-          qualityReplacements +=
+          photoEngineRunStats.qualityReplacements +=
             Number(
               retryResult?.qualityReplacements ||
               0
             );
 
-          visionChecked +=
+          photoEngineRunStats.visionChecked +=
             Number(
               retryResult?.visionChecked ||
               0
             );
 
-          visionReplacements +=
+          photoEngineRunStats.visionReplacements +=
             Number(
               retryResult?.visionReplacements ||
               0
             );
+
+          if(
+            !photoEngineRunStats.visionError &&
+            retryResult?.visionError
+          ){
+            photoEngineRunStats.visionError =
+              String(
+                retryResult.visionError
+              );
+          }
 
           if(
             retryResult.ok
@@ -7280,6 +7276,10 @@ const totalBatches =
           countStoragePhotos(),
         qualityReplacements:
           photoEngineRunStats.qualityReplacements,
+        visionChecked:
+          photoEngineRunStats.visionChecked,
+        visionReplacements:
+          photoEngineRunStats.visionReplacements,
         successfulBatches,
         failedBatches
       });
@@ -7313,19 +7313,6 @@ const totalBatches =
     autoStoredPhotos:
       countStoragePhotos()
   };
-
-  if(
-    qualityAuditPending
-  ){
-
-    try{
-      localStorage.setItem(
-        qualityAuditStorageKey,
-        "done"
-      );
-    }catch{}
-
-  }
 
   if(
     typeof onProgress ===
@@ -8110,7 +8097,12 @@ async function importMenuFromUrl(){
 
       <br>
 
-      Gemini Vision перевірив:
+      Gemini Vision:
+      <strong>
+        аудит увімкнено
+      </strong>
+
+      · перевірив:
       <strong>
         ${visionCheckedCount}
       </strong>
