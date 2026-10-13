@@ -3273,7 +3273,15 @@ function monthStartISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHour
 function nextMonthISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths+1);return d.toISOString();}
 function todayStartISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
 function tomorrowStartISO(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+1);return d.toISOString();}
-function money(value){return Number(value||0).toLocaleString("uk-UA",{minimumFractionDigits:0,maximumFractionDigits:2})+" ₴";}
+function venueFormat(){
+  const r=(typeof currentRestaurant!=="undefined"&&currentRestaurant)||{};
+  return {currency:r.currency||"UAH",locale:r.locale||"uk-UA"};
+}
+function money(value){
+  const {currency,locale}=venueFormat();
+  try{return new Intl.NumberFormat(locale,{style:"currency",currency,minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(value||0));}
+  catch{return Number(value||0).toLocaleString("uk-UA",{minimumFractionDigits:0,maximumFractionDigits:2})+" ₴";}
+}
 function formatStatDate(value){const raw=String(value||"").slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw||"—";const [y,m,d]=raw.split("-");return `${d}.${m}.${y}`;}
 async function loadPersonalSalesStats(){
   const result={total:0,checks:0,avg:0,items:0,todayTotal:0,todayChecks:0,byDay:[],topItems:[]},staffId=Number(currentUserStaff?.id||0);if(!staffId)return result;
@@ -3510,7 +3518,7 @@ function formatPrice(value){
 
   const number = Number(value);
 
-  return `${number.toLocaleString("uk-UA")} ₴`;
+  return money(number);
 }
 
 
