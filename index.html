@@ -2820,7 +2820,7 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
 
       <div class="field">
 
-        <label>ПОСИЛАННЯ НА МЕНЮ</label>
+        <label>ПОСИЛАННЯ НА МЕНЮ (EXPZ АБО БУДЬ-ЯКИЙ САЙТ)</label>
 
         <input
           id="importUrl"
@@ -2829,6 +2829,15 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
           autocomplete="off"
         >
 
+      </div>
+
+      <div class="field">
+        <label>АБО ФАЙЛ: CSV · XLSX · JSON · PDF · ФОТО МЕНЮ</label>
+        <input
+          id="importFile"
+          type="file"
+          accept=".csv,.xlsx,.xls,.json,.pdf,image/*"
+        >
       </div>
 
 
@@ -2869,7 +2878,7 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
           id="importBtn"
           type="button"
           class="primary"
-          onclick="importMenuFromUrl()"
+          onclick="importMenuSmart()"
         >
           Імпортувати
         </button>
@@ -6995,6 +7004,115 @@ function openEditMenuItem(id){
   openModal("editMenuModal");
 }
 
+/* ================= UNIVERSAL MENU IMPORT (tasks 67–69) =================
+   CSV / XLSX / JSON are parsed in the browser (no AI); PDF, photos and any https page
+   go through ai-menu-assist (only positions present in the source). Everything ends in
+   the same preview → saveImportedMenu → import_menu_items (no duplicates: a stable
+   source_id from type+category+name, so re-importing the same file changes nothing). */
+const SHEETJS_URL="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+const IMPORT_COLS={
+  name:["name","назва","title","позиція","страва","найменування","item","товар","напій"],
+  description:["description","опис","склад","desc","примітка"],
+  category:["category","категорія","розділ","group","група","section","меню"],
+  price:["price","ціна","вартість","cost","сума","грн"],
+  weight:["weight","вага","об'єм","обʼєм","обєм","вихід","portion","volume","порція"],
+  type:["type","тип","kind","станція","відділ"]
+};
+function stableSourceId(it){
+  const s=`${it.type||""}|${String(it.category||"").trim().toLowerCase()}|${String(it.name||"").trim().toLowerCase()}`;
+  let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}
+  return "f"+h.toString(36);
+}
+function guessType(v,category,name){
+  const s=`${v||""} ${category||""} ${name||""}`.toLowerCase();
+  return /бар|напо|напій|drink|bar|вино|wine|пиво|beer|коктейл|cocktail|кава|coffee|чай|tea|сік|juice|вода|water|віскі|whisk|горілк|vodka|ром|rum|джин|gin|текіл|лікер|ігрист|шампан|просеко/.test(s)?"Бар":"Кухня";
+}
+function parseCsv(text){
+  const first=text.split(/\r?\n/)[0]||"";
+  const d=[";","\t",","].sort((a,b)=>first.split(b).length-first.split(a).length)[0];
+  const rows=[];let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=ch;continue;}
+    if(ch==='"')q=true;else if(ch===d){row.push(cell);cell="";}
+    else if(ch==="\n"||ch==="\r"){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);rows.push(row);row=[];cell="";}
+    else cell+=ch;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows.filter(r=>r.some(c=>String(c).trim()));
+}
+function rowsToItems(rows){
+  if(!rows.length)return [];
+  const header=rows[0].map(h=>String(h||"").trim().toLowerCase());
+  const col={};Object.entries(IMPORT_COLS).forEach(([k,names])=>{const i=header.findIndex(h=>names.some(n=>h===n||h.startsWith(n)));if(i>=0)col[k]=i;});
+  if(col.name===undefined)throw new Error("Не знайдено колонку з назвою позиції (name / назва).");
+  return rows.slice(1).map(r=>{
+    const get=k=>col[k]!==undefined?String(r[col[k]]??"").trim():"";
+    const price=Number(get("price").replace(/\s/g,"").replace(",",".").replace(/[^0-9.]/g,""));
+    const category=get("category")||"Інше",name=get("name");
+    return {name,description:get("description")||null,category,price:Number.isFinite(price)&&price>0?price:null,weight:get("weight")||null,type:guessType(get("type"),category,name)};
+  }).filter(i=>i.name);
+}
+function jsonToItems(data){
+  const arr=Array.isArray(data)?data:Array.isArray(data?.items)?data.items:Array.isArray(data?.menu)?data.menu:[];
+  if(!arr.length)throw new Error("JSON має бути масивом позицій або {items:[…]}.");
+  return arr.map(o=>{
+    const pick=k=>{const key=Object.keys(o||{}).find(x=>IMPORT_COLS[k].includes(String(x).toLowerCase()));return key?o[key]:undefined;};
+    const name=String(pick("name")??"").trim(),category=String(pick("category")??"Інше").trim()||"Інше";
+    const price=Number(String(pick("price")??"").replace(",","."));
+    return {name,description:pick("description")?String(pick("description")):null,category,price:Number.isFinite(price)&&price>0?price:null,weight:pick("weight")?String(pick("weight")):null,type:guessType(pick("type"),category,name)};
+  }).filter(i=>i.name);
+}
+function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]||"");r.onerror=()=>rej(new Error("Не вдалося прочитати файл."));r.readAsDataURL(file);});}
+async function callMenuAssist(payload){
+  await ensureFreshToken();
+  const r=await fetch(`${SUPABASE_URL}/functions/v1/ai-menu-assist`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`,"Content-Type":"application/json"},
+    body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),...payload})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.success)throw new Error(j.message||j.error||`HTTP ${r.status}`);
+  return j;
+}
+function finishUniversalPreview(items,source,note){
+  importedPreviewItems=items.map(it=>normalizeImportedItem({...it,source,source_id:stableSourceId(it)})).filter(Boolean);
+  renderImportPreview(importedPreviewItems);
+  const kitchen=importedPreviewItems.filter(i=>i.type==="Кухня").length;
+  setImportStatus(`<strong>Знайдено ${importedPreviewItems.length} позицій.</strong><br>Кухня: ${kitchen} · Бар: ${importedPreviewItems.length-kitchen}${note?`<br>${escapeHtml(note)}`:""}<br>Перевір попередній перегляд і натисни «Зберегти в меню». Повторний імпорт того самого джерела не створить дублів.`,"success");
+  const button=document.getElementById("importBtn");button.textContent="Зберегти в меню";button.disabled=false;button.onclick=saveImportedMenu;
+}
+async function importMenuSmart(){
+  if(!currentRestaurant){setImportStatus("Не вибрано заклад.","error");return;}
+  const file=document.getElementById("importFile")?.files?.[0];
+  const url=String(document.getElementById("importUrl")?.value||"").trim();
+  if(!file&&(!url||/(^|\.)expz\.menu$/i.test((()=>{try{return new URL(url).hostname;}catch{return "";}})())))return importMenuFromUrl();
+  const button=document.getElementById("importBtn");button.disabled=true;
+  try{
+    if(file){
+      const ext=(file.name.split(".").pop()||"").toLowerCase();
+      setImportStatus(`Читаю файл «${escapeHtml(file.name)}»…`);
+      let items,note="";
+      if(ext==="csv"){items=rowsToItems(parseCsv(await file.text()));}
+      else if(ext==="json"){items=jsonToItems(JSON.parse(await file.text()));}
+      else if(ext==="xlsx"||ext==="xls"){
+        if(!window.XLSX){const ok=await loadScriptOnce(SHEETJS_URL);if(!ok||!window.XLSX)throw new Error("Не вдалося завантажити бібліотеку Excel.");}
+        const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+        items=rowsToItems(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""}));
+      }else if(ext==="pdf"||file.type.startsWith("image/")){
+        if(file.size>10*1024*1024)throw new Error("Файл завеликий (до 10 МБ).");
+        setImportStatus("SERVISIUM AI розпізнає меню з документа… (до хвилини)");
+        const j=await callMenuAssist({action:"extract_menu_document",mime:file.type||"application/pdf",data:await fileToBase64(file),filename:file.name});
+        items=j.items;note=j.notes?`AI: ${j.notes}`:"";
+      }else throw new Error("Непідтримуваний формат. Потрібно CSV, XLSX, JSON, PDF або фото.");
+      if(!items.length)throw new Error("У файлі не знайдено позицій.");
+      finishUniversalPreview(items,`file:${file.name}`.slice(0,120),note);
+    }else{
+      setImportStatus("SERVISIUM AI читає сторінку меню…");
+      const j=await callMenuAssist({action:"extract_menu_url",url});
+      if(!j.items.length)throw new Error("На сторінці не знайдено позицій меню.");
+      finishUniversalPreview(j.items,`url:${j.host}`,[j.notes?`AI: ${j.notes}`:"",j.dropped_not_on_page?`Відкинуто позицій, яких немає на сторінці: ${j.dropped_not_on_page}`:""].filter(Boolean).join(" · "));
+    }
+  }catch(e){setImportStatus(`<strong>Імпорт не завершено.</strong><br>${escapeHtml(e.message)}`,"error");button.disabled=false;}
+}
+
 /* ================= ONBOARDING CHECKLIST (task 41) =================
    RESTAURANT → HALL → STAFF → MENU → CATEGORIES → TECH DATA → ALLERGENS → PHOTOS → READY.
    Every step is computed on the server from real data; AI helps inside the steps,
@@ -9613,7 +9731,7 @@ document.addEventListener(
 
           event.preventDefault();
 
-          importMenuFromUrl();
+          importMenuSmart();
 
         }
 
