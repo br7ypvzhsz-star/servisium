@@ -31,6 +31,8 @@
 | T048 | TODO | views статистики переведено в `security_invoker` міграцією 04 (не застосована) |
 | T018, T020 | PARTIAL (код готовий) | `saveImportedMenu()` тепер викликає RPC `import_menu_items` (збіг за source_id, далі за назвою+категорією; журнал `import_runs` з diff; позиції, яких немає в джерелі, не видаляються). Синтаксис перевірено `node --check`. Живий тест можливий лише після cutover (RPC вимагає сесію ADMIN/SENIOR WAITER) |
 
+| T024, T013/T065 (захист функцій) | PARTIAL → функції закрито | analyze-hall-ai v12 і enrich-menu-photos v53 вимагають сесію закладу (401/403 без входу); similarity() виправлено |
+
 Наступний крок: cutover за `docs/DEPLOY_RUNBOOK.md` (потрібен дозвіл власника на зміни продакшн-БД і злиття в `main`).
 
 ## P0 — аудит і стабільність
