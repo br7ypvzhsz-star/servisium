@@ -195,6 +195,7 @@ returns bigint language plpgsql security definer set search_path = '' as $$
 declare sid bigint;
 begin
   if not private.is_admin(p_restaurant_id) then raise exception 'forbidden' using errcode = '42501'; end if;
+  if not private.tenant_writable(p_restaurant_id) then raise exception 'subscription_inactive' using errcode = '42501'; end if;
   if p_role not in ('ADMIN', 'SENIOR WAITER', 'WAITER') then raise exception 'invalid_role' using errcode = '22023'; end if;
   if p_pin !~ '^\d{4}$' then raise exception 'invalid_pin' using errcode = '22023'; end if;
   if coalesce(btrim(p_name), '') = '' then raise exception 'name_required' using errcode = '22023'; end if;
@@ -230,6 +231,7 @@ language plpgsql security definer set search_path = '' as $$
 declare oid bigint; tot numeric := 0; rec record;
 begin
   if not private.is_member(p_restaurant_id) then raise exception 'forbidden' using errcode = '42501'; end if;
+  if not private.tenant_writable(p_restaurant_id) then raise exception 'subscription_inactive' using errcode = '42501'; end if;
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then raise exception 'empty_order' using errcode = '22023'; end if;
   if not exists (select 1 from public.restaurant_staff w where w.id = p_waiter_id and w.restaurant_id = p_restaurant_id and w.status = 'active') then
     raise exception 'invalid_waiter' using errcode = '22023';
