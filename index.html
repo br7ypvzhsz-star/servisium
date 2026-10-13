@@ -1094,6 +1094,9 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.hall-stats-bar{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13px;}
+.assistant-turn{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);display:grid;gap:6px;}
+.assistant-q{font-weight:700;opacity:.85;}.assistant-a{line-height:1.5;}
 .training-list{display:grid;gap:12px;max-height:62vh;overflow:auto;}
 .training-q{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;}
 .training-q.ok{border-color:rgba(79,189,120,.6);}.training-q.bad{border-color:rgba(255,80,105,.6);}
@@ -4214,7 +4217,8 @@ async function hallPullFromServer(rid,{statusesOnly=false}={}){
     if(cfg&&Array.isArray(cfg.tables)){
       const st=await supabaseRequest(`hall_table_status?select=table_id,status,guests&restaurant_id=eq.${rid}`);
       const map={};(Array.isArray(st)?st:[]).forEach(s=>{map[s.table_id]=s;});
-      cfg.tables.forEach(t=>{const s=map[t.id];if(s){t.status=s.status;t.guests=s.guests;}});
+      /* the server is the source of truth: no status row = available */
+      cfg.tables.forEach(t=>{const s=map[t.id];if(s){t.status=s.status;t.guests=s.guests;}else{t.status="available";t.guests=null;}});
       localStorage.setItem(`servisium_hall_builder_v49_${rid}`,JSON.stringify(cfg));
       hallSync.rid=rid;hallSync.lastStatuses=hallStatusMap(cfg);
     }
@@ -5620,34 +5624,8 @@ async function openRestaurantModule(type){
 
   else if(type === "ai"){
 
-    content = `
-
-      <div class="panel" style="padding:0;border:0;background:transparent">
-
-        <div class="info-box" style="min-height:160px">
-
-          <div class="kicker">SERVISIUM AI</div>
-
-          <div
-            style="
-              font-size:24px;
-              font-weight:800;
-              margin-top:10px;
-            "
-          >
-            Я знаю цей ресторан.
-          </div>
-
-          <p style="margin-top:10px;max-width:700px">
-            AI буде відповідати на питання офіціанта
-            тільки з підтвердженої бази конкретного закладу.
-            Дані інших ресторанів не змішуються.
-          </p>
-
-        </div>
-
-      </div>
-    `;
+    if(!currentMenu.length){try{await loadMenu();}catch{}}
+    content = renderAssistantModule();
 
   }
 
@@ -6987,6 +6965,65 @@ function openEditMenuItem(id){
   renderIngredientEditor();
 
   openModal("editMenuModal");
+}
+
+/* ================= SEATING ANALYTICS BAR (task 44) ================= */
+let hallStatsTimer=null;
+const _renderHallModuleBase=renderHallModule;
+renderHallModule=function(){_renderHallModuleBase();clearTimeout(hallStatsTimer);hallStatsTimer=setTimeout(renderHallStatsBar,600);};
+async function renderHallStatsBar(){
+  if(!currentRestaurant||!document.getElementById("navHall")?.classList.contains("active"))return;
+  let s=null;try{s=await rpc("hall_stats",{p_restaurant_id:Number(currentRestaurant.id)});}catch{}
+  const view=document.getElementById("restaurantModuleView");if(!view)return;
+  let bar=document.getElementById("hallStatsBar");
+  if(!s||!Number(s.tables_total)){bar?.remove();return;}
+  if(!bar){bar=document.createElement("div");bar.id="hallStatsBar";bar.className="hall-stats-bar";view.prepend(bar);}
+  const st=s.by_status||{};
+  bar.innerHTML=`<span><b>${s.seats_total}</b> місць · <b>${s.tables_total}</b> столів</span>
+    <span>Зайнято: <b>${s.seats_occupied}</b> місць (${(st.busy||0)+(st.partial||0)+(st.awaiting_payment||0)} ст.) · гостей <b>${s.guests_now}</b></span>
+    <span>Вільно: <b>${s.seats_free}</b> місць (${st.available||0} ст.)${s.max_free_table?` · найбільший вільний на ${s.max_free_table}`:""}</span>
+    <span>Резерв: <b>${s.seats_reserved}</b> · заблоковано/прибирання: <b>${s.seats_blocked}</b></span>`;
+}
+
+/* ================= SERVISIUM AI ASSISTANT (tasks 26–31, 45; Waiter Quick Mode) =================
+   Answers only from this venue's data (menu, stop list, hall). Items are validated
+   on the server; allergen answers never promise safety. */
+let assistantLog=[],assistantBusy=false,assistantAllergens=[];
+const ASSISTANT_QUICK=["Що порадити до стейка з вин?","Що є без глютену за даними меню?","Скільки зараз вільних місць?","Чи можна посадити групу з 6?","Які десерти є?","Що зараз у стоп-листі?"];
+function renderAssistantModule(){
+  const log=assistantLog.map(e=>`<div class="assistant-turn">
+    <div class="assistant-q">❓ ${escapeHtml(e.q)}</div>
+    ${e.loading?`<div class="personal-note">SERVISIUM AI думає…</div>`:e.error?`<div class="personal-note">${escapeHtml(e.error)}</div>`:`
+    <div class="assistant-a">${escapeHtml(e.r.answer)}</div>
+    ${(e.r.items||[]).length?`<div class="list-box">${e.r.items.map(i=>`<div class="list-item" style="cursor:pointer" onclick="openMenuItemDetails(${Number(i.menu_item_id)})"><div><strong>${escapeHtml(i.name)}</strong><span>${escapeHtml(i.category||"")}${i.note?` · ${escapeHtml(i.note)}`:""}${i.in_stop_list?" · ⛔ у стоп-листі":""}</span></div><span>${money(i.price||0)}</span></div>`).join("")}</div>`:""}
+    ${e.r.guest_phrase?`<div class="section-meta">💬 «${escapeHtml(e.r.guest_phrase)}»</div>`:""}
+    ${e.r.needs_clarification?`<div class="section-meta">⚠ ${escapeHtml(e.r.needs_clarification)}</div>`:""}
+    <div class="section-meta">Дані: меню${e.r.used_hall?", зал":""} цього закладу · впевненість: ${({high:"висока",medium:"середня",low:"низька"})[e.r.confidence]||"—"} · ${e.secs} с</div>`}
+  </div>`).reverse().join("");
+  return `<div class="panel"><div class="section-head"><div><div class="kicker">SERVISIUM AI · QUICK MODE</div><h2>Асистент офіціанта</h2>
+      <div class="section-meta">Відповідає лише з меню, стоп-листа й залу цього закладу. Не вигадує склад і не гарантує відсутність алергенів.</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="assistantInput" class="text-input" style="flex:1;min-width:220px" placeholder="Напр.: що порадити до риби з вин до 1500 грн?" onkeydown="if(event.key==='Enter')askAssistant()">
+      <button class="primary" onclick="askAssistant()">Запитати</button></div>
+    <div class="allergen-guest-bar">${ASSISTANT_QUICK.map(q=>`<button class="secondary" onclick="askAssistant(this.textContent)">${escapeHtml(q)}</button>`).join("")}</div>
+    <label class="field-label">АЛЕРГЕНИ ГОСТЯ (ВРАХОВУЮТЬСЯ У ВІДПОВІДІ)</label>
+    <div class="allergen-guest-bar">${ALLERGENS.map(a=>`<label class="allergen-chip ${assistantAllergens.includes(a.code)?"on":""}"><input type="checkbox" ${assistantAllergens.includes(a.code)?"checked":""} onchange="assistantAllergens=this.checked?[...assistantAllergens,'${a.code}']:assistantAllergens.filter(c=>c!=='${a.code}');this.parentElement.classList.toggle('on',this.checked)">${escapeHtml(a.label)}</label>`).join("")}</div>
+    <div id="assistantLog">${log||`<div class="personal-note">Постав питання про меню, поєднання, алергени чи зал.</div>`}</div></div>`;
+}
+function rerenderAssistant(){const el=document.getElementById("assistantLog");if(!el)return;const tmp=document.createElement("div");tmp.innerHTML=renderAssistantModule();const fresh=tmp.querySelector("#assistantLog");if(fresh)el.innerHTML=fresh.innerHTML;}
+async function askAssistant(text){
+  const input=document.getElementById("assistantInput");const q=String(text||input?.value||"").trim();if(!q||assistantBusy)return;
+  if(input)input.value="";
+  const entry={q,loading:true};assistantLog.push(entry);assistantLog=assistantLog.slice(-15);assistantBusy=true;rerenderAssistant();
+  const t0=Date.now();
+  try{
+    await ensureFreshToken();
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`,"Content-Type":"application/json"},
+      body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),question:q,guest_allergens:assistantAllergens})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.success)throw new Error(j.message||j.error||`HTTP ${r.status}`);
+    entry.r=j;
+  }catch(e){entry.error=`SERVISIUM AI: ${e.message}`;}
+  entry.loading=false;entry.secs=((Date.now()-t0)/1000).toFixed(1);assistantBusy=false;rerenderAssistant();
 }
 
 /* ================= TRAINING (tasks 24–25, T050–T051) =================
