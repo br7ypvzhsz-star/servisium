@@ -3161,6 +3161,7 @@ function setServisiumSession(data){
   const expiresAt=data.expires_at||(Math.floor(Date.now()/1000)+(data.expires_in||3600));
   servisiumSession={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:expiresAt,user:data.user||servisiumSession?.user||null};
   try{localStorage.setItem("servisium_session",JSON.stringify(servisiumSession));}catch{}
+  try{if(typeof rt!=="undefined"&&rt.client)rt.client.realtime.setAuth(servisiumSession.access_token);}catch{}
 }
 async function ensureFreshToken(){
   if(!servisiumSession?.access_token)return;
@@ -3656,7 +3657,7 @@ async function openTablePanel(tableRef){
   document.body.appendChild(modal);
   await refreshTablePanel();
   clearInterval(tablePanel.timer);
-  tablePanel.timer=setInterval(()=>{if(!document.getElementById("tablePanelModal")){clearInterval(tablePanel.timer);return;}if(!document.hidden&&!tablePanel.busy)refreshTablePanel();},10000);
+  tablePanel.timer=setInterval(()=>{if(!document.getElementById("tablePanelModal")){clearInterval(tablePanel.timer);return;}if(rt.connected)return;if(!document.hidden&&!tablePanel.busy)refreshTablePanel();},10000);
 }
 function closeTablePanel(){clearInterval(tablePanel.timer);document.getElementById("tablePanelModal")?.remove();hallPullFromServer(Number(currentRestaurant?.id),{statusesOnly:true});}
 
@@ -4147,10 +4148,60 @@ async function hallPullFromServer(rid,{statusesOnly=false}={}){
   }
 }
 
+/* ================= REALTIME (tasks 35, 43, 49, 52) =================
+   supabase-js only for the Realtime socket (REST stays on supabaseRequest).
+   postgres_changes honour RLS, so the device only hears its own venue.
+   Polling stays as a fallback while the socket is not SUBSCRIBED. */
+const SUPABASE_JS_URL="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+let rt={client:null,channel:null,rid:null,connected:false,timers:{},readySeen:new Set()};
+async function realtimeConnect(rid){
+  if(!servisiumSession?.access_token||!rid)return;
+  if(rt.rid===rid&&rt.channel)return;
+  if(!window.supabase?.createClient){
+    const ok=await loadScriptOnce(SUPABASE_JS_URL);
+    if(!ok||!window.supabase?.createClient){console.warn("Realtime library unavailable — polling only");return;}
+  }
+  if(!rt.client)rt.client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  rt.client.realtime.setAuth(servisiumSession.access_token);
+  if(rt.channel){try{await rt.client.removeChannel(rt.channel);}catch{}rt.channel=null;}
+  rt.rid=rid;rt.connected=false;rt.readySeen=new Set();
+  const ch=rt.client.channel(`venue-${rid}`),filter=`restaurant_id=eq.${rid}`;
+  ["hall_table_status","hall_configs","orders","order_items","stop_list","menu_items"].forEach(table=>
+    ch.on("postgres_changes",{event:"*",schema:"public",table,filter},p=>realtimeOnChange(table,p)));
+  ch.subscribe(status=>{rt.connected=status==="SUBSCRIBED";});
+  rt.channel=ch;
+}
+function rtDebounce(key,fn,ms=400){clearTimeout(rt.timers[key]);rt.timers[key]=setTimeout(fn,ms);}
+function ordersViewVisible(){return [...document.querySelectorAll("h2")].some(h=>h.textContent==="Відкриті столи"&&h.offsetParent);}
+function realtimeOnChange(table,payload){
+  if(!currentRestaurant||Number(currentRestaurant.id)!==rt.rid)return;
+  const rid=rt.rid,hallActive=document.getElementById("navHall")?.classList.contains("active");
+  if((table==="hall_table_status"||table==="hall_configs")&&hallActive&&!hallDrag){
+    rtDebounce("hall",()=>hallPullFromServer(rid,{statusesOnly:table==="hall_table_status"&&hallSync.pulledRid===rid}));
+  }
+  if(table==="orders"||table==="order_items"||table==="hall_table_status"){
+    if(document.getElementById("tablePanelModal")&&!tablePanel.busy)rtDebounce("panel",()=>refreshTablePanel());
+    if(ordersViewVisible())rtDebounce("orders",()=>{if(!String(document.activeElement?.id||"").startsWith("rf_"))refreshOrdersView();},700);
+  }
+  if(table==="order_items"&&payload?.new?.status==="ready")notifyItemReady(payload.new);
+  if(table==="stop_list")rtDebounce("stop",()=>loadStopList().catch(()=>{}));
+  if(table==="menu_items")rtDebounce("menu",()=>{if(!document.querySelector("#editMenuModal.active"))loadMenu().catch(()=>{});},1500);
+}
+/* reminder to the waiter whose line became ready (task 52) */
+function notifyItemReady(item){
+  if(!item?.id||rt.readySeen.has(item.id))return;
+  rt.readySeen.add(item.id);
+  if(Number(item.waiter_id)!==Number(currentUserStaff?.id))return;
+  const order=openOrdersCache.find(o=>Number(o.id)===Number(item.order_id));
+  showToast(`Готово до видачі: ${item.menu_name||"позиція"} — ${tableLabel(order?.table_ref)}`);
+  try{navigator.vibrate?.([120,60,120]);}catch{}
+}
+
 function hallStartPolling(){
   clearInterval(hallSync.pollTimer);
   hallSync.pollTimer=setInterval(()=>{
     if(document.hidden||!currentRestaurant)return;
+    if(rt.connected&&rt.rid===Number(currentRestaurant.id))return;
     if(!document.getElementById("navHall")?.classList.contains("active"))return;
     const rid=Number(currentRestaurant.id);
     hallPullFromServer(rid,{statusesOnly:hallSync.pulledRid===rid});
@@ -5278,6 +5329,7 @@ async function openRestaurant(id){
   hallSync.pulledRid = null;
   hallPullFromServer(Number(restaurant.id));
   hallStartPolling();
+  realtimeConnect(Number(restaurant.id));
 
   applyRoleAccess();
 
