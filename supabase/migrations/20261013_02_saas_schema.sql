@@ -207,7 +207,7 @@ create policy import_runs_read on public.import_runs for select to authenticated
 create or replace function public.import_menu_items(p_restaurant_id bigint, p_source text, p_source_url text, p_items jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
-  it jsonb; v_id bigint; v_old public.menu_items%rowtype; v_hash text; nm text; sid text; price numeric;
+  it jsonb; v_id bigint; v_old public.menu_items%rowtype; v_hash text; nm text; sid text; v_price numeric;
   c int := 0; u int := 0; n int := 0; a int := 0; missing int := 0; run_id bigint;
   diff jsonb := '[]'::jsonb; seen bigint[] := '{}';
 begin
@@ -222,9 +222,9 @@ begin
     if nm = '' then continue; end if;
     sid := nullif(btrim(coalesce(it->>'source_id', it->>'external_id', '')), '');
     begin
-      price := nullif(replace(regexp_replace(coalesce(it->>'price', ''), '[^0-9.,]', '', 'g'), ',', '.'), '')::numeric;
-    exception when others then price := null; end;
-    v_hash := md5(concat_ws('|', nm, coalesce(it->>'description', ''), coalesce(price::text, ''), coalesce(it->>'category', ''),
+      v_price := nullif(replace(regexp_replace(coalesce(it->>'price', ''), '[^0-9.,]', '', 'g'), ',', '.'), '')::numeric;
+    exception when others then v_price := null; end;
+    v_hash := md5(concat_ws('|', nm, coalesce(it->>'description', ''), coalesce(v_price::text, ''), coalesce(it->>'category', ''),
                             coalesce(it->>'weight', ''), coalesce(it->>'menu', ''), coalesce(it->>'type', '')));
     v_id := null;
     if sid is not null then
@@ -243,7 +243,7 @@ begin
       insert into public.menu_items(restaurant_id, name, type, category, description, price, weight, photo_url, country, menu, menu_id,
                                     category_id, unit, thumbnail_url, source, source_id, currency, metadata, content_hash, last_seen_at)
       values (p_restaurant_id, nm, coalesce(nullif(it->>'type', ''), 'Кухня'), coalesce(nullif(it->>'category', ''), 'Інше'),
-              nullif(it->>'description', ''), price, nullif(it->>'weight', ''), nullif(it->>'photo_url', ''), nullif(it->>'country', ''),
+              nullif(it->>'description', ''), v_price, nullif(it->>'weight', ''), nullif(it->>'photo_url', ''), nullif(it->>'country', ''),
               nullif(it->>'menu', ''), nullif(it->>'menu_id', ''), nullif(it->>'category_id', ''), nullif(it->>'unit', ''),
               nullif(it->>'thumbnail_url', ''), p_source, sid, nullif(it->>'currency', ''), coalesce(it->'metadata', '{}'::jsonb), v_hash, now())
       returning id into v_id;
@@ -257,7 +257,7 @@ begin
           type = coalesce(nullif(it->>'type', ''), type),
           category = coalesce(nullif(it->>'category', ''), category),
           description = coalesce(nullif(it->>'description', ''), description),
-          price = coalesce(price, menu_items.price),
+          price = coalesce(v_price, menu_items.price),
           weight = coalesce(nullif(it->>'weight', ''), weight),
           photo_url = coalesce(nullif(photo_url, ''), nullif(it->>'photo_url', '')),     -- never overwrite an existing photo
           menu = coalesce(nullif(it->>'menu', ''), menu),
@@ -272,7 +272,7 @@ begin
           u := u + 1;
           if jsonb_array_length(diff) < 200 then
             diff := diff || jsonb_build_object('op', 'update', 'id', v_id, 'name', nm,
-              'price', case when price is distinct from v_old.price then jsonb_build_array(v_old.price, price) end);
+              'price', case when v_price is distinct from v_old.price then jsonb_build_array(v_old.price, v_price) end);
           end if;
         else
           n := n + 1;

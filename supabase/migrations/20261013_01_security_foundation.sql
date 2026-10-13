@@ -160,7 +160,6 @@ create or replace function public.svc_pin_login_record(p_ip text, p_ok boolean) 
 language plpgsql security definer set search_path = '' as $$
 begin
   insert into private.login_attempts(ip, ok) values (p_ip, p_ok);
-  delete from private.login_attempts where created_at < now() - interval '7 days';
 end $$;
 
 create or replace function public.svc_pin_find_staff(p_pin text)
