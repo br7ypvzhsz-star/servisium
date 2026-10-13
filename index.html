@@ -1094,6 +1094,19 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.smart-obstacle{display:flex;align-items:center;justify-content:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;z-index:1;pointer-events:none;}
+.smart-obstacle.unsure{border-style:dashed;opacity:.75;}
+.smart-obstacle.obst-door,.smart-obstacle.obst-entrance{border-color:rgba(79,189,120,.6);background:rgba(79,189,120,.1);color:#8bd6a4;}
+.smart-obstacle.obst-stairs{border-color:rgba(145,168,224,.6);background:rgba(145,168,224,.1);color:#aabbe6;}
+.smart-obstacle.obst-bar,.smart-obstacle.obst-station{border-color:rgba(215,185,135,.6);background:rgba(215,185,135,.1);color:#e0c79c;}
+.geom-list{display:grid;gap:6px;max-height:50vh;overflow:auto;}
+.geom-row{display:grid;grid-template-columns:130px 1fr repeat(4,70px) auto auto;gap:6px;align-items:center;}
+.geom-row.unsure{outline:1px dashed rgba(240,192,64,.6);border-radius:8px;}
+@media (max-width:760px){.geom-row{grid-template-columns:1fr 1fr 1fr;}}
+.auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
+.auto-preview{position:relative;margin:12px auto;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:#111115;max-width:100%;overflow:hidden;}
+.ap-obst{position:absolute;background:rgba(191,29,83,.25);border:1px solid rgba(191,29,83,.6);}
+.ap-table{position:absolute;background:#2a2a30;border:1px solid #9b98a0;border-radius:4px;font-size:9px;font-style:normal;color:#eee;display:flex;align-items:center;justify-content:center;}
 .hall-stats-bar{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13px;}
 .assistant-turn{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);display:grid;gap:6px;}
 .assistant-q{font-weight:700;opacity:.85;}.assistant-a{line-height:1.5;}
@@ -6972,10 +6985,158 @@ function openEditMenuItem(id){
   openModal("editMenuModal");
 }
 
+/* ================= HALL GEOMETRY + AUTO PLACEMENT (tasks 59–63) =================
+   Obstacles live on the floor (floor.geometry.obstacles, px in the 990×610 digital floor).
+   AI may PROPOSE them from the uploaded plan (marked «потребує перевірки»); the admin
+   confirms, edits or adds them by hand. Auto placement never puts a table on an obstacle
+   or its clearance zone, keeps aisles, and only replaces tables after confirmation. */
+const HALL_FLOOR_W=990,HALL_FLOOR_H=610,HALL_PAD=18;
+const OBSTACLE_LABEL={wall:"Стіна",door:"Двері",entrance:"Вхід",stairs:"Сходи",bar:"Бар",station:"Станція",wc:"Санвузол",kitchen:"Кухня",service:"Службова зона",column:"Колона",window:"Вікно",other:"Інше"};
+const OBSTACLE_CLEARANCE={door:70,entrance:90,stairs:70,wc:40,bar:55,station:45,kitchen:50,service:30,wall:15,column:25,window:5,other:30};
+const TABLE_SIZES={2:[70,70],4:[110,80],6:[160,90],8:[210,100]};
+let hallAutoSpec={2:0,4:6,6:2,8:0,aisle:60,start:1,variant:0};
+function floorObstacles(f){return Array.isArray(f?.geometry?.obstacles)?f.geometry.obstacles:[];}
+function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function grow(r,m){return {x:r.x-m,y:r.y-m,w:r.w+2*m,h:r.h+2*m};}
+function hallRenderObstacles(f){
+  return floorObstacles(f).map(o=>`<div class="smart-obstacle obst-${hallEscape(o.type)} ${o.status==="needs_verification"?"unsure":""}" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px"><span>${hallEscape(o.label||OBSTACLE_LABEL[o.type]||"")}${o.status==="needs_verification"?" ?":""}</span></div>`).join("");
+}
+const _hallRenderDigitalTablesBase=hallRenderDigitalTables;
+hallRenderDigitalTables=function(f,z,live){return hallRenderObstacles(f)+_hallRenderDigitalTablesBase(f,z,live);};
+
+/* conflicts: a table on an obstacle clearance zone or on another table */
+function hallConflicts(f,z){
+  const tables=loadHallConfig().tables.filter(t=>t.floorId===f?.id&&t.zoneId===z?.id),obs=floorObstacles(f),out=[];
+  tables.forEach((t,i)=>{
+    const r={x:t.x,y:t.y,w:t.width,h:t.height};
+    const hit=obs.find(o=>rectsOverlap(r,grow({x:o.x,y:o.y,w:o.w,h:o.h},Math.round((OBSTACLE_CLEARANCE[o.type]||20)/2))));
+    if(hit)out.push(`№ ${t.number} — на зоні «${OBSTACLE_LABEL[hit.type]||hit.type}»`);
+    tables.slice(i+1).forEach(u=>{if(rectsOverlap(r,{x:u.x,y:u.y,w:u.width,h:u.height}))out.push(`№ ${t.number} перекриває № ${u.number}`);});
+    if(t.x<0||t.y<0||t.x+t.width>HALL_FLOOR_W||t.y+t.height>HALL_FLOOR_H)out.push(`№ ${t.number} виходить за межі залу`);
+  });
+  return out;
+}
+
+/* ---------- auto placement ---------- */
+function hallComputeLayout(spec,obstacles){
+  const list=[];[8,6,4,2].forEach(s=>{for(let i=0;i<Number(spec[s]||0);i++)list.push(s);});
+  const v=Number(spec.variant||0),rotate=v%2===1,order=Math.floor(v/2)%4,aisle=Math.max(30,Number(spec.aisle||60));
+  const blocked=obstacles.map(o=>grow({x:o.x,y:o.y,w:o.w,h:o.h},OBSTACLE_CLEARANCE[o.type]||20));
+  const placed=[],step=10;let missing=0;
+  for(const seats of list){
+    let [w,h]=TABLE_SIZES[seats];if(rotate&&seats>=6)[w,h]=[h,w];
+    const xs=[],ys=[];
+    for(let x=HALL_PAD;x<=HALL_FLOOR_W-HALL_PAD-w;x+=step)xs.push(x);
+    for(let y=HALL_PAD+16;y<=HALL_FLOOR_H-HALL_PAD-h;y+=step)ys.push(y);
+    const X=order===1||order===3?[...xs].reverse():xs,Y=order>=2?[...ys].reverse():ys;
+    let spot=null;
+    outer:for(const y of Y)for(const x of X){
+      const r={x,y,w,h};
+      if(blocked.some(b=>rectsOverlap(r,b)))continue;
+      if(placed.some(p=>rectsOverlap(grow(r,aisle/2),grow(p,aisle/2-1))))continue;
+      spot=r;break outer;
+    }
+    if(spot)placed.push({...spot,seats});else missing++;
+  }
+  return {placed,missing};
+}
+function openHallGeometry(){
+  if(!hallCanEdit()){showToast("Редагувати зал може ADMIN.");return;}
+  document.getElementById("hallGeometryModal")?.remove();
+  const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="hallGeometryModal";
+  m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">HALL · GEOMETRY</div><h2>Геометрія залу</h2><div class="section-meta">Двері, сходи, бар, станції, санвузли, службові зони. Розміри — у пікселях цифрового залу (${HALL_FLOOR_W}×${HALL_FLOOR_H}). AI лише пропонує; невпевнене позначено «?».</div></div><button class="icon-btn" onclick="document.getElementById('hallGeometryModal').remove();renderHallModule()">×</button></div><div id="hallGeometryBody"></div></div>`;
+  document.body.appendChild(m);renderHallGeometry();
+}
+function renderHallGeometry(msg=""){
+  const box=document.getElementById("hallGeometryBody");if(!box)return;
+  const f=hallFloor(),obs=floorObstacles(f);
+  box.innerHTML=`${msg?`<div class="personal-note">${escapeHtml(msg)}</div>`:""}
+    <div class="geom-list">${obs.length?obs.map((o,i)=>`<div class="geom-row ${o.status==="needs_verification"?"unsure":""}">
+      <select onchange="hallGeomSet(${i},'type',this.value)">${Object.entries(OBSTACLE_LABEL).map(([k,l])=>`<option value="${k}" ${o.type===k?"selected":""}>${l}</option>`).join("")}</select>
+      <input value="${escapeHtml(o.label||"")}" placeholder="Підпис" onchange="hallGeomSet(${i},'label',this.value)">
+      ${["x","y","w","h"].map(k=>`<input type="number" title="${k}" value="${Math.round(o[k])}" onchange="hallGeomSet(${i},'${k}',Number(this.value))">`).join("")}
+      ${o.status==="needs_verification"?`<button class="secondary" onclick="hallGeomSet(${i},'status','confirmed')">✓</button>`:""}
+      <button class="secondary" onclick="hallGeomRemove(${i})">✕</button></div>`).join(""):`<div class="section-meta">Перешкод ще не позначено.</div>`}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      <button class="secondary" onclick="hallGeomAdd()">＋ Додати елемент</button>
+      <button class="secondary" ${f?.sourceImage?"":"disabled title='Спершу завантаж схему залу'"} onclick="hallGeomAi()">✦ Розпізнати з плану (AI)</button>
+      ${obs.some(o=>o.status==="needs_verification")?`<button class="primary" onclick="hallGeomConfirmAll()">Підтвердити всі</button>`:""}
+    </div>`;
+}
+function hallGeomMutate(fn){const c=loadHallConfig(),f=c.floors.find(x=>x.id===hallFloorId);if(!f)return;f.geometry=f.geometry||{obstacles:[]};f.geometry.obstacles=f.geometry.obstacles||[];fn(f.geometry.obstacles);saveHallConfig(c);renderHallGeometry();}
+function hallGeomSet(i,k,v){hallGeomMutate(o=>{if(!o[i])return;if(["x","y","w","h"].includes(k)){v=Math.max(0,Math.round(Number(v)||0));if(k==="w"||k==="h")v=Math.max(5,v);}o[i][k]=v;o[i].source=o[i].source||"manual";});}
+function hallGeomRemove(i){hallGeomMutate(o=>o.splice(i,1));}
+function hallGeomAdd(){hallGeomMutate(o=>o.push({id:"o"+Date.now(),type:"door",label:"",x:HALL_FLOOR_W/2-40,y:HALL_PAD,w:80,h:20,status:"confirmed",source:"manual"}));}
+function hallGeomConfirmAll(){hallGeomMutate(o=>o.forEach(x=>{if(x.status==="needs_verification")x.status="confirmed";}));}
+async function hallGeomAi(){
+  const f=hallFloor();if(!f?.sourceImage)return;
+  renderHallGeometry("SERVISIUM AI аналізує план…");
+  try{
+    await ensureFreshToken();
+    const r=await fetch(SERVISIUM_AI_HALL_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`},
+      body:JSON.stringify({mode:"geometry",image:f.sourceImage,restaurant_id:Number(currentRestaurant.id),floor_name:f.name})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.success)throw new Error(j.error||`HTTP ${r.status}`);
+    const add=(j.obstacles||[]).map(o=>({id:"o"+Date.now()+Math.random().toString(36).slice(2,5),type:o.type,label:o.label||"",
+      x:Math.round(o.x*HALL_FLOOR_W),y:Math.round(o.y*HALL_FLOOR_H),w:Math.max(5,Math.round(o.width*HALL_FLOOR_W)),h:Math.max(5,Math.round(o.height*HALL_FLOOR_H)),
+      status:o.status==="confirmed"?"confirmed":"needs_verification",confidence:o.confidence,source:"ai"}));
+    hallGeomMutate(list=>{for(let k=list.length-1;k>=0;k--)if(list[k].source==="ai"&&list[k].status==="needs_verification")list.splice(k,1);list.push(...add);});
+    renderHallGeometry(`AI запропонував ${add.length} елем.${j.needs_verification_count?`, з них ${j.needs_verification_count} потребують перевірки («?»)`:""}. Перевір і підтвердь.`);
+  }catch(e){renderHallGeometry(`AI: ${e.message}. Можна позначити елементи вручну.`);}
+}
+function openHallAutoPlace(){
+  if(!hallCanEdit()){showToast("Редагувати зал може ADMIN.");return;}
+  document.getElementById("hallAutoModal")?.remove();
+  const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="hallAutoModal";
+  m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">HALL · AUTO LAYOUT</div><h2>Автоматична розстановка</h2><div class="section-meta">Столи не ставляться на двері, сходи, бар, станції, санвузли та їх зони підходу; між столами — прохід. Застосовується лише після підтвердження.</div></div><button class="icon-btn" onclick="document.getElementById('hallAutoModal').remove()">×</button></div><div id="hallAutoBody"></div></div>`;
+  document.body.appendChild(m);renderHallAutoPlace();
+}
+function renderHallAutoPlace(){
+  const box=document.getElementById("hallAutoBody");if(!box)return;
+  const f=hallFloor(),res=hallComputeLayout(hallAutoSpec,floorObstacles(f));
+  const seats=res.placed.reduce((s,p)=>s+p.seats,0),want=[2,4,6,8].reduce((s,k)=>s+Number(hallAutoSpec[k]||0),0);
+  const inp=(k,l)=>`<label class="field-label">${l}<input type="number" min="0" max="60" class="text-input" value="${hallAutoSpec[k]}" onchange="hallAutoSpec['${k}']=Math.max(0,Number(this.value)||0);renderHallAutoPlace()"></label>`;
+  const scale=0.36;
+  box.innerHTML=`<div class="auto-grid">${inp(2,"Столи на 2")}${inp(4,"Столи на 4")}${inp(6,"Столи на 6")}${inp(8,"Столи на 8")}${inp("aisle","Прохід, px")}${inp("start","Перший номер")}</div>
+    <div class="auto-preview" style="width:${HALL_FLOOR_W*scale}px;height:${HALL_FLOOR_H*scale}px">
+      ${floorObstacles(f).map(o=>`<i class="ap-obst" style="left:${o.x*scale}px;top:${o.y*scale}px;width:${o.w*scale}px;height:${o.h*scale}px"></i>`).join("")}
+      ${res.placed.map((p,i)=>`<i class="ap-table" style="left:${p.x*scale}px;top:${p.y*scale}px;width:${p.w*scale}px;height:${p.h*scale}px">${Number(hallAutoSpec.start)+i}</i>`).join("")}
+    </div>
+    <div class="section-meta">Розставлено ${res.placed.length} з ${want} столів · ${seats} місць${res.missing?` · ⚠ не вмістилось: ${res.missing} — зменш кількість або прохід`:""}${floorObstacles(f).length?"":" · ⚠ перешкоди не позначені — спершу «Геометрія залу»"}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      <button class="secondary" onclick="hallAutoSpec.variant=(Number(hallAutoSpec.variant)+1)%8;renderHallAutoPlace()">↻ Оптимізувати (інший варіант)</button>
+      <button class="primary" ${res.placed.length?"":"disabled"} onclick="hallAutoApply()">Застосувати до зони</button>
+    </div>`;
+}
+function hallAutoApply(){
+  const c=loadHallConfig(),f=c.floors.find(x=>x.id===hallFloorId),z=f?.zones?.find(x=>x.id===hallZoneId);if(!f||!z)return;
+  const existing=c.tables.filter(t=>t.floorId===f.id&&t.zoneId===z.id).length;
+  if(existing&&!confirm(`Замінити ${existing} столів цієї зони новою розстановкою? Статуси столів буде скинуто.`))return;
+  const res=hallComputeLayout(hallAutoSpec,floorObstacles(f));
+  c.tables=c.tables.filter(t=>!(t.floorId===f.id&&t.zoneId===z.id));
+  res.placed.forEach((p,i)=>c.tables.push({id:"t"+Date.now()+i+Math.random().toString(36).slice(2,5),number:String(Number(hallAutoSpec.start)+i),capacity:p.seats,
+    shape:p.seats===2?"square":"rectangle",floorId:f.id,zoneId:z.id,x:p.x,y:p.y,width:p.w,height:p.h,rotation:0,status:"available",autoPlaced:true}));
+  f.digitalized=true;
+  saveHallConfig(c);document.getElementById("hallAutoModal")?.remove();renderHallModule();
+  showToast(`Розставлено ${res.placed.length} столів.`);
+}
+function renderHallEditTools(){
+  const view=document.getElementById("restaurantModuleView");if(!view)return;
+  document.getElementById("hallEditTools")?.remove();
+  if(!hallCanEdit()||hallMode!=="builder")return;
+  const f=hallFloor(),z=hallZone(),conflicts=hallConflicts(f,z);
+  const bar=document.createElement("div");bar.id="hallEditTools";bar.className="hall-stats-bar";
+  bar.innerHTML=`<button class="secondary" onclick="openHallGeometry()">▦ Геометрія залу (${floorObstacles(f).length})</button>
+    <button class="secondary" onclick="openHallAutoPlace()">⊞ Авторозстановка</button>
+    <span>${conflicts.length?`⚠ Конфлікти: ${escapeHtml(conflicts.slice(0,4).join("; "))}${conflicts.length>4?` … ще ${conflicts.length-4}`:""}`:"✓ Конфліктів немає"}</span>`;
+  const stats=document.getElementById("hallStatsBar");
+  if(stats)stats.after(bar);else view.prepend(bar);
+}
+
 /* ================= SEATING ANALYTICS BAR (task 44) ================= */
 let hallStatsTimer=null;
 const _renderHallModuleBase=renderHallModule;
-renderHallModule=function(){_renderHallModuleBase();clearTimeout(hallStatsTimer);hallStatsTimer=setTimeout(renderHallStatsBar,600);};
+renderHallModule=function(){_renderHallModuleBase();renderHallEditTools();clearTimeout(hallStatsTimer);hallStatsTimer=setTimeout(renderHallStatsBar,600);};
 async function renderHallStatsBar(){
   if(!currentRestaurant||!document.getElementById("navHall")?.classList.contains("active"))return;
   let s=null;try{s=await rpc("hall_stats",{p_restaurant_id:Number(currentRestaurant.id)});}catch{}

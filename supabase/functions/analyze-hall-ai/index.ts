@@ -117,6 +117,69 @@ CORE RULES:
 10. When uncertain prefer needs_verification over guessing. Return JSON only, per the schema.
 Accuracy of the reconstruction matters more than a tidy result.`;
 
+// ---- geometry mode (task 60): room obstacles, not tables ----
+const OBSTACLE_TYPES = ["wall", "door", "entrance", "stairs", "bar", "station", "wc", "kitchen", "service", "column", "window", "other"];
+const geometrySchema = {
+  type: "object",
+  properties: {
+    obstacles: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: OBSTACLE_TYPES },
+          label: { type: "string", description: "Text written on the plan for this element, or empty." },
+          x: { type: "number", minimum: 0, maximum: 1, description: "Normalized LEFT edge." },
+          y: { type: "number", minimum: 0, maximum: 1, description: "Normalized TOP edge." },
+          width: { type: "number", minimum: 0, maximum: 1 },
+          height: { type: "number", minimum: 0, maximum: 1 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+        },
+        required: ["type", "label", "x", "y", "width", "height", "confidence"],
+      },
+    },
+    notes: { type: "string" },
+  },
+  required: ["obstacles", "notes"],
+};
+const GEOMETRY_INSTRUCTION = `
+You are SERVISIUM Hall Geometry. From a restaurant floor-plan image, return the NON-TABLE structures as axis-aligned boxes.
+Types: door, entrance, stairs, bar (counter), station (waiter/service station), wc, kitchen, service (staff-only / storage),
+column, window, wall (only thick interior wall segments), other.
+RULES: never invent elements; do not return guest tables or chairs; boxes are normalized to the whole image
+(x,y = top-left corner); if unsure of the type or extent, still return it with low confidence. Return JSON only.`;
+
+async function analyzeGeometry(image: { mimeType: string; data: string }, floorName: string) {
+  const body = {
+    systemInstruction: { parts: [{ text: GEOMETRY_INSTRUCTION }] },
+    contents: [{ role: "user", parts: [{ text: `Floor: ${String(floorName).slice(0, 80) || "Main floor"}. Return the structures.` }, { inline_data: { mime_type: image.mimeType, data: image.data } }] }],
+    generationConfig: { responseMimeType: "application/json", responseSchema: geometrySchema },
+  };
+  for (const model of [...new Set(FALLBACK_MODELS)]) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY! }, body: JSON.stringify(body),
+    });
+    if (!r.ok) continue;
+    try {
+      const env = await r.json();
+      const text = (env?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p?.text ?? "").join("");
+      const out = JSON.parse(text);
+      const obstacles = (Array.isArray(out?.obstacles) ? out.obstacles : []).map((o: any) => {
+        const confidence = clamp01(o?.confidence);
+        return {
+          type: OBSTACLE_TYPES.includes(o?.type) ? o.type : "other",
+          label: String(o?.label ?? "").slice(0, 40),
+          x: clamp01(o?.x), y: clamp01(o?.y),
+          width: Math.max(0.005, Math.min(1, Number(o?.width) || 0.05)), height: Math.max(0.005, Math.min(1, Number(o?.height) || 0.05)),
+          confidence, status: confidence >= 0.75 ? "confirmed" : "needs_verification",
+        };
+      });
+      return { model, obstacles, notes: String(out?.notes ?? "").slice(0, 500) };
+    } catch { continue; }
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -136,6 +199,18 @@ serve(async (req) => {
     if (!allowed) return jsonResponse({ success: false, error: "forbidden" }, 403);
 
     const normalized = normalizeImage(image);
+
+    if (payload?.mode === "geometry") {
+      const g = await analyzeGeometry(normalized, floor_name);
+      if (!g) return jsonResponse({ success: false, error: "AI is temporarily unavailable. Try again." }, 503);
+      return jsonResponse({
+        success: true, mode: "geometry", provider: "gemini", model: g.model, restaurant_id, floor_name,
+        obstacles: g.obstacles, notes: g.notes,
+        needs_verification_count: g.obstacles.filter((o: any) => o.status === "needs_verification").length,
+        rules: { no_invented_elements: true, coordinates_normalized: true, uncertain_items_marked_needs_verification: true },
+      });
+    }
+
     const userPrompt = `Analyze this restaurant floor plan.
 Restaurant: ${String(restaurant_name).slice(0, 120) || "Unknown"}
 Floor: ${String(floor_name).slice(0, 80) || "Main floor"}
