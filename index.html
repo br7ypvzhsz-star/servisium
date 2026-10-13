@@ -3116,13 +3116,42 @@ let lastPhotoEngineStats = {
 
 /* ================= SUPABASE REQUEST ================= */
 
-async function supabaseRequest(path, options = {}) {
+async function refreshServisiumSession(){
+  const rt=servisiumSession?.refresh_token;
+  if(!rt)return false;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});
+    if(!res.ok)return false;
+    const data=await res.json();
+    if(!data?.access_token)return false;
+    setServisiumSession(data);
+    return true;
+  }catch{return false;}
+}
+function setServisiumSession(data){
+  const expiresAt=data.expires_at||(Math.floor(Date.now()/1000)+(data.expires_in||3600));
+  servisiumSession={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:expiresAt,user:data.user||servisiumSession?.user||null};
+  try{localStorage.setItem("servisium_session",JSON.stringify(servisiumSession));}catch{}
+}
+async function ensureFreshToken(){
+  if(!servisiumSession?.access_token)return;
+  if((servisiumSession.expires_at||0)-60<Math.floor(Date.now()/1000)){
+    const ok=await refreshServisiumSession();
+    if(!ok){expireServisiumSession();throw new Error("Сесія завершилась. Увійди знову.");}
+  }
+}
+function expireServisiumSession(){
+  try{localStorage.removeItem("servisium_session");}catch{}
+  servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;
+  showAuthScreen(true);
+}
 
+async function supabaseRequest(path, options = {}, _retried = false) {
+  await ensureFreshToken();
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/${path}`,
     {
       ...options,
-
       headers:{
         apikey:SUPABASE_PUBLISHABLE_KEY,
         Authorization:`Bearer ${servisiumSession?.access_token || SUPABASE_PUBLISHABLE_KEY}`,
@@ -3131,34 +3160,21 @@ async function supabaseRequest(path, options = {}) {
       }
     }
   );
-
-
+  if(response.status===401&&servisiumSession&&!_retried){
+    if(await refreshServisiumSession())return supabaseRequest(path,options,true);
+    expireServisiumSession();
+  }
   const text = await response.text();
-
   let data = null;
-
-  try{
-    data = text ? JSON.parse(text) : null;
-  }catch{
-    data = text;
-  }
-
-
+  try{ data = text ? JSON.parse(text) : null; }catch{ data = text; }
   if(!response.ok){
-
-    throw new Error(
-      data?.message ||
-      data?.hint ||
-      data?.details ||
-      data?.error ||
-      `HTTP ${response.status}`
-    );
-
+    const m=String(data?.message||"");
+    if(m==="subscription_inactive")throw new Error("Підписка закладу неактивна. Зверніться до адміністратора.");
+    throw new Error(data?.message||data?.hint||data?.details||data?.error||`HTTP ${response.status}`);
   }
-
-
   return data;
 }
+function rpc(name,args){return supabaseRequest(`rpc/${name}`,{method:"POST",body:JSON.stringify(args||{})});}
 
 
 
@@ -3178,36 +3194,52 @@ async function verifyPinLogin(){
   const pin=currentPin;
   if(!/^\d{4}$/.test(pin)){setAuthError("PIN має містити рівно 4 цифри.");return;}
   try{
-    const hash=await sha256Hex(pin);
-    const rows=await supabaseRequest(`restaurant_staff?select=id,restaurant_id,name,email,auth_user_id,role,status,pin_hash&pin_hash=eq.${encodeURIComponent(hash)}&status=eq.active&limit=5`);
-    const staff=Array.isArray(rows)&&rows.length?rows[0]:null;
-    if(!staff){pinClear();setAuthError("Невірний PIN-код.");return;}
-    currentUserStaff=staff;currentUserRole=staff.role||"WAITER";currentUser={email:staff.email||"",id:staff.auth_user_id||null};
-    localStorage.setItem("servisium_pin_staff",JSON.stringify({id:staff.id,restaurant_id:staff.restaurant_id,name:staff.name,email:staff.email||"",role:staff.role||"WAITER",auth_user_id:staff.auth_user_id||null}));
-    showAuthScreen(false);document.getElementById("emailAuthScreen")?.classList.add("hidden");applyRoleAccess();await loadRestaurants();updateProfileUI();
-    if(staff.restaurant_id){const rest=restaurants.find(r=>Number(r.id)===Number(staff.restaurant_id));if(rest)await openRestaurant(rest.id);}
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/pin-login`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({pin})});
+    const data=await res.json().catch(()=>({}));
+    if(res.status===429){pinClear();setAuthError("Забагато спроб. Спробуй за кілька хвилин.");return;}
+    if(!res.ok||!data?.access_token){pinClear();setAuthError(res.status===401?"Невірний PIN-код.":"Помилка входу. Спробуй ще раз.");return;}
+    setServisiumSession(data);
+    document.getElementById("emailAuthScreen")?.classList.add("hidden");
+    await finishAuth();
   }catch(e){console.error("PIN login error:",e);setAuthError("Помилка входу: "+e.message);pinClear();}
 }
-function restorePinSession(){
-  try{const raw=localStorage.getItem("servisium_pin_staff");if(!raw)return false;const staff=JSON.parse(raw);if(!staff?.id)return false;
-    currentUserStaff=staff;currentUserRole=staff.role||"WAITER";currentUser={email:staff.email||"",id:staff.auth_user_id||null};applyRoleAccess();updateProfileUI();showAuthScreen(false);document.getElementById("emailAuthScreen")?.classList.add("hidden");return true;
-  }catch{return false;}
-}
-function openSignupMode(){openEmailAuthMode();const card=document.querySelector("#emailAuthScreen .auth-card");if(!card)return;card.querySelector(".auth-heading").textContent="Створити ADMIN акаунт";card.querySelector(".auth-copy").textContent="Створення технічного акаунта через Supabase Auth. Після цього ADMIN може створювати персональні профілі та PIN-коди.";const btn=document.getElementById("authLoginBtn");btn.textContent="Зареєструватися";btn.onclick=signupServisium;}
-async function signupServisium(){
-  const email=(document.getElementById("authEmail")?.value||"").trim().toLowerCase(),password=document.getElementById("authPassword")?.value||"";setEmailAuthError("");
-  if(!email||!password){setEmailAuthError("Введи email та пароль.");return;}if(password.length<6){setEmailAuthError("Пароль має містити щонайменше 6 символів.");return;}
-  const btn=document.getElementById("authLoginBtn");btn.disabled=true;btn.textContent="Створюємо...";
-  try{const res=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error(data?.msg||data?.message||data?.error_description||"Не вдалося створити акаунт.");if(data?.access_token){servisiumSession=data;currentUser=data.user||null;localStorage.setItem("servisium_session",JSON.stringify(data));await finishAuth();return;}setEmailAuthError("Акаунт створено. Якщо потрібне підтвердження email — підтверди його, потім увійди.");}catch(e){setEmailAuthError(e.message);}finally{btn.disabled=false;btn.textContent="Зареєструватися";}
-}
+function openSignupMode(){openEmailAuthMode();}
+async function signupServisium(){setEmailAuthError("Самостійна реєстрація вимкнена. Акаунти створює адміністратор закладу.");}
 async function loginServisium(){
   const email=(document.getElementById("authEmail")?.value||"").trim().toLowerCase(),password=document.getElementById("authPassword")?.value||"";setEmailAuthError("");
   if(!email||!password){setEmailAuthError("Введи email та пароль.");return;}const btn=document.getElementById("authLoginBtn");btn.disabled=true;btn.textContent="Входимо...";
-  try{const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error(data?.error_description||data?.msg||"Невірний email або пароль.");servisiumSession=data;currentUser=data.user||null;localStorage.setItem("servisium_session",JSON.stringify(data));await finishAuth();}catch(e){setEmailAuthError(e.message);localStorage.removeItem("servisium_session");}finally{btn.disabled=false;btn.textContent="Увійти";}
+  try{const res=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password})});const data=await res.json();if(!res.ok)throw new Error("Невірний email або пароль.");setServisiumSession(data);currentUser=data.user||null;await finishAuth();}catch(e){setEmailAuthError(e.message);localStorage.removeItem("servisium_session");}finally{btn.disabled=false;btn.textContent="Увійти";}
 }
-async function restoreServisiumSession(){if(restorePinSession()){await loadRestaurants();return true;}try{const raw=localStorage.getItem("servisium_session");if(!raw){showAuthScreen(true);return false;}servisiumSession=JSON.parse(raw);if(!servisiumSession?.access_token){showAuthScreen(true);return false;}const res=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession.access_token}`}});if(!res.ok)throw new Error("session");currentUser=await res.json();await finishAuth();return true;}catch{localStorage.removeItem("servisium_session");servisiumSession=null;currentUser=null;showAuthScreen(true);return false;}}
-async function finishAuth(){showAuthScreen(false);await loadCurrentUserStaff();await loadRestaurants();updateProfileUI();}
-async function loadCurrentUserStaff(){if(currentUserStaff?.id&&!servisiumSession){currentUserRole=currentUserStaff.role||null;applyRoleAccess();return;}currentUserStaff=null;currentUserRole=null;if(!currentUser?.email)return;try{const rows=await supabaseRequest(`restaurant_staff?select=*&email=eq.${encodeURIComponent(String(currentUser.email).toLowerCase())}&status=eq.active&order=created_at.asc`);currentUserStaff=Array.isArray(rows)&&rows.length?rows[0]:null;currentUserRole=currentUserStaff?.role||null;applyRoleAccess();}catch(e){console.warn("Staff profile lookup:",e.message);}}
+async function restoreServisiumSession(){
+  try{
+    try{localStorage.removeItem("servisium_pin_staff");}catch{}
+    const raw=localStorage.getItem("servisium_session");
+    if(!raw){showAuthScreen(true);return false;}
+    servisiumSession=JSON.parse(raw);
+    if(!servisiumSession?.access_token){showAuthScreen(true);return false;}
+    await ensureFreshToken();
+    await finishAuth();
+    return true;
+  }catch{
+    expireServisiumSession();
+    return false;
+  }
+}
+async function finishAuth(){showAuthScreen(false);await loadCurrentUserStaff();await loadRestaurants();updateProfileUI();
+  if(currentUserStaff?.restaurant_id&&!currentRestaurant){const rest=restaurants.find(r=>Number(r.id)===Number(currentUserStaff.restaurant_id));if(rest)await openRestaurant(rest.id);}
+}
+let currentProfile=null;
+async function loadCurrentUserStaff(){
+  currentUserStaff=null;currentUserRole=null;
+  try{
+    currentProfile=await rpc("my_profile");
+    const list=Array.isArray(currentProfile?.staff)?currentProfile.staff:[];
+    currentUserStaff=list[0]||null;
+    currentUserRole=currentProfile?.is_platform_admin?"ADMIN":(currentUserStaff?.role||null);
+    currentUser={email:currentUserStaff?.email||servisiumSession?.user?.email||"",id:servisiumSession?.user?.id||null};
+    applyRoleAccess();
+  }catch(e){console.warn("Profile lookup:",e.message);}
+}
 function applyRoleAccess(){
   const role=String(currentUserRole||"").toUpperCase();
   document.querySelectorAll("[data-role]").forEach(el=>{
@@ -3234,7 +3266,7 @@ function updateProfileUI(){
         : "Працюй із меню, замовленнями, навчанням та власною статистикою.";
   }
 }
-async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
+async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentProfile=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
 
 /* ================= PERSONAL + TEAM SALES STATS ================= */
 function monthStartISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths);return d.toISOString();}
@@ -3442,20 +3474,13 @@ async function saveNewOrder(){
   if(!waiterId){showToast("Не визначено офіціанта для чека.");return;}
   const total=orderDraftTotal();
   try{
-    const created=await supabaseRequest("orders",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),waiter_id:waiterId,total,status:"closed"})});
-    const order=Array.isArray(created)?created[0]:created;
-    const orderId=Number(order?.id||0);if(!orderId)throw new Error("Не отримано ID нового чека.");
-    const payload=orderDraft.map(x=>({order_id:orderId,menu_item_id:Number(x.menu_item_id),qty:Number(x.qty),price:Number(x.price||0)}));
-    try{
-      await supabaseRequest("order_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
-    }catch(itemError){
-      try{await supabaseRequest(`orders?id=eq.${encodeURIComponent(orderId)}`,{method:"DELETE",headers:{Prefer:"return=minimal"}});}catch{}
-      throw itemError;
-    }
+    const rows=await rpc("create_order",{p_restaurant_id:Number(currentRestaurant.id),p_waiter_id:waiterId,p_items:orderDraft.map(x=>({menu_item_id:Number(x.menu_item_id),qty:Number(x.qty)}))});
+    const first=Array.isArray(rows)?rows[0]:rows;
+    const orderId=Number(first?.order_id||0);if(!orderId)throw new Error("Не отримано ID нового чека.");
     closeNewOrderComposer();
     await loadOrdersModuleData();
     const view=document.getElementById("masterModuleView");if(view) { const temp=renderOrdersModule(); view.innerHTML=`<div class="module-content"><div class="back-row"><button class="back-btn" onclick="showMasterView()">← Головна</button></div><div class="kicker">ORDERS · LIVE</div><h1>Замовлення</h1><p class="subtitle">Чек #${orderId} створено та зараховано офіціанту.</p>${temp}</div>`; }
-    showToast(`Чек #${orderId} створено: ${money(total)}.`);
+    showToast(`Чек #${orderId} створено: ${money(Number(first?.total??total))}.`);
   }catch(e){console.error("Create order error:",e);showToast("Не вдалося створити чек: "+e.message);}
 }
 
@@ -3853,7 +3878,7 @@ async function hallAnalyzeSpace(){
         uncertain_items_must_be_marked_needs_verification:true
       }
     };
-    const response=await fetch(SERVISIUM_AI_HALL_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${SUPABASE_PUBLISHABLE_KEY}`},body:JSON.stringify(payload)});
+    const response=await fetch(SERVISIUM_AI_HALL_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':`Bearer ${servisiumSession?.access_token||SUPABASE_PUBLISHABLE_KEY}`},body:JSON.stringify(payload)});
     const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null}catch{data=null;}
     if(!response.ok)throw new Error(data?.error||data?.message||`AI Vision HTTP ${response.status}`);
     const tables=Array.isArray(data?.tables)?data.tables:[];
@@ -5690,25 +5715,7 @@ async function savePersonnelMember(){
   if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast("Перевір email працівника.");return;}
 
   try{
-    const pin_hash=await sha256Hex(pin);
-    const existing=await supabaseRequest(`restaurant_staff?select=id,name,restaurant_id,status&pin_hash=eq.${encodeURIComponent(pin_hash)}&status=eq.active&limit=5`);
-    if(Array.isArray(existing)&&existing.length){
-      showToast("Цей PIN уже використовується активним акаунтом. Обери інший.");
-      return;
-    }
-
-    await supabaseRequest("restaurant_staff",{
-      method:"POST",
-      body:JSON.stringify({
-        restaurant_id:Number(currentRestaurant.id),
-        name,
-        email:email||null,
-        contact:contact||null,
-        role,
-        status:"active",
-        pin_hash
-      })
-    });
+    await rpc("staff_create",{p_restaurant_id:Number(currentRestaurant.id),p_name:name,p_email:email||null,p_contact:contact||null,p_role:role,p_pin:pin});
 
     closeModal("personnelModal");
     await openRestaurantModule("personnel");
@@ -6919,7 +6926,7 @@ async function enrichImportedPhotos(
                 apikey:
                   SUPABASE_PUBLISHABLE_KEY,
                 Authorization:
-                  `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+                  `Bearer ${servisiumSession?.access_token||SUPABASE_PUBLISHABLE_KEY}`
               },
               body:
                 JSON.stringify({
@@ -7302,7 +7309,7 @@ async function importMenuFromUrl(){
               SUPABASE_PUBLISHABLE_KEY,
 
             Authorization:
-              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+              `Bearer ${servisiumSession?.access_token||SUPABASE_PUBLISHABLE_KEY}`
           },
 
           body:
