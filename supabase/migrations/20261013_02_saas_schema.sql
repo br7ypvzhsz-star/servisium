@@ -90,7 +90,7 @@ create policy billing_events_read on public.billing_events for select to authent
 create table if not exists public.audit_log (
   id bigint generated always as identity primary key,
   restaurant_id bigint,
-  actor uuid default (select auth.uid()),
+  actor uuid default auth.uid(),
   action text not null,
   entity text not null,
   entity_id text,
@@ -142,7 +142,7 @@ create table if not exists public.hall_configs (
   config jsonb not null default '{}'::jsonb,
   version int not null default 1,
   updated_at timestamptz not null default now(),
-  updated_by uuid default (select auth.uid())
+  updated_by uuid default auth.uid()
 );
 alter table public.hall_configs enable row level security;
 drop policy if exists hall_configs_read on public.hall_configs;
@@ -158,7 +158,7 @@ create table if not exists public.hall_table_status (
   status text not null check (status in ('available', 'busy', 'reserved', 'cleaning')),
   guests int,
   updated_at timestamptz not null default now(),
-  updated_by uuid default (select auth.uid()),
+  updated_by uuid default auth.uid(),
   primary key (restaurant_id, table_id)
 );
 alter table public.hall_table_status enable row level security;
@@ -197,7 +197,7 @@ create table if not exists public.import_runs (
   adopted_count int not null default 0,
   missing_count int not null default 0,
   diff jsonb not null default '[]'::jsonb,
-  created_by uuid default (select auth.uid()),
+  created_by uuid default auth.uid(),
   created_at timestamptz not null default now()
 );
 alter table public.import_runs enable row level security;
@@ -306,3 +306,9 @@ $$;
 
 revoke execute on function public.import_menu_items(bigint, text, text, jsonb), public.menu_duplicates(bigint) from public, anon;
 grant execute on function public.import_menu_items(bigint, text, text, jsonb), public.menu_duplicates(bigint) to authenticated;
+
+-- ---------- backfill order_items.restaurant_id / waiter_id from parent order ----------
+update public.order_items oi set restaurant_id = o.restaurant_id
+from public.orders o where o.id = oi.order_id and oi.restaurant_id is null;
+update public.order_items oi set waiter_id = o.waiter_id
+from public.orders o where o.id = oi.order_id and oi.waiter_id is null;

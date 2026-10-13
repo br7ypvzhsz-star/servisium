@@ -80,6 +80,7 @@ create policy order_items_delete on public.order_items for delete to authenticat
 
 -- legacy unsalted PIN hashes are now only kept in private.staff_pin
 update public.restaurant_staff set pin_hash = null where pin_hash is not null;
+delete from public.order_items where restaurant_id is null and order_id is null;
 alter table public.order_items alter column restaurant_id set not null;
 
 -- the PIN-lookup columns must never be readable by clients, whatever the policies say
