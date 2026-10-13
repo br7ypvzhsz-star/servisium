@@ -1083,7 +1083,18 @@ h3{
 .live-table{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line2);background:rgba(16,16,18,.94);color:#fff;cursor:pointer;z-index:2;transition:.18s;}
 .live-table:hover{transform:translateY(-1px);border-color:#55555d;}
 .live-table.circle{border-radius:50%;}.live-table.square{border-radius:13px;}.live-table.rect{border-radius:10px;}.live-table.rounded{border-radius:25px;}
-.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}.allergen-editor{display:grid;gap:10px;}
+.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}.table-panel{max-width:1100px;}
+.tp-line{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;}
+.tp-line>div:first-child{display:grid;gap:3px;min-width:0;}
+.tp-line small{opacity:.75;}
+.tp-line-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.tp-line-actions button{min-width:34px;min-height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:transparent;color:inherit;cursor:pointer;}
+.tp-line-actions .tp-ok{border-color:rgba(79,189,120,.7);color:#7fe0a3;padding:0 10px;}
+.tp-status{font-weight:700;}.tp-status.s-new{color:#e8a04c;}.tp-status.s-sent{color:#91a8e0;}.tp-status.s-preparing{color:#f0c040;}.tp-status.s-ready{color:#6fcf97;}.tp-status.s-served{opacity:.7;}
+.tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
+.receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
+@media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.allergen-editor{display:grid;gap:10px;}
 .allergen-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .allergen-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;font-size:13px;cursor:pointer;user-select:none;}
 .allergen-chip input{margin:0;accent-color:#d33b57;}
@@ -3380,12 +3391,14 @@ async function loadOrdersModuleData(){
   ordersModuleCache=[];ordersStaffCache=[];
   if(!restaurantId)return;
   try{
-    const rows=await supabaseRequest(`orders?select=id,restaurant_id,waiter_id,total,created_at,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&order=created_at.desc&limit=100`);
+    const rows=await supabaseRequest(`orders?select=id,restaurant_id,waiter_id,total,subtotal,discount,created_at,closed_at,status,receipt_no,table_ref,payment_method,guests&restaurant_id=eq.${encodeURIComponent(restaurantId)}${receiptFilterQuery()}&order=created_at.desc&limit=200`);
     ordersModuleCache=Array.isArray(rows)?rows:[];
   }catch(e){
     console.warn("Orders load error:",e.message);
     showToast("Не вдалося завантажити замовлення: "+e.message);
   }
+  try{const o=await rpc("open_orders",{p_restaurant_id:restaurantId});openOrdersCache=Array.isArray(o)?o:[];}catch(e){openOrdersCache=[];console.warn("Open orders:",e.message);}
+  await loadKitchenQueue();
   try{
     const staff=await supabaseRequest(`restaurant_staff?select=id,name,role,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&status=eq.active&order=name.asc&limit=500`);
     ordersStaffCache=Array.isArray(staff)?staff:[];
@@ -3397,12 +3410,71 @@ function orderStatusLabel(status){
   if(s==="closed"||s==="completed")return "ЗАКРИТО";
   if(s==="cancelled")return "СКАСОВАНО";
   if(s==="paid")return "ОПЛАЧЕНО";
+  if(s==="awaiting_payment")return "ОЧІКУЄ ОПЛАТУ";
   return "В РОБОТІ";
+}
+
+/* ---------- receipt archive search (tasks 53, 55, 56) ---------- */
+let receiptFilters={date:"",no:"",table:"",waiter:"",item:"",min:"",max:"",pay:""};
+function receiptFilterQuery(){
+  const f=receiptFilters,q=[];
+  if(f.date){const d=new Date(f.date+"T00:00:00");const n=new Date(d.getTime()+86400000);q.push(`created_at=gte.${encodeURIComponent(d.toISOString())}`,`created_at=lt.${encodeURIComponent(n.toISOString())}`);}
+  if(f.no&&/^\d+$/.test(f.no))q.push(`receipt_no=eq.${f.no}`);
+  if(f.waiter)q.push(`waiter_id=eq.${Number(f.waiter)}`);
+  if(f.min!==""&&Number.isFinite(Number(f.min)))q.push(`total=gte.${Number(f.min)}`);
+  if(f.max!==""&&Number.isFinite(Number(f.max)))q.push(`total=lte.${Number(f.max)}`);
+  if(f.pay)q.push(`payment_method=eq.${encodeURIComponent(f.pay)}`);
+  if(f.table){const refs=(loadHallConfig().tables||[]).filter(t=>String(t.number)===String(f.table).trim()).map(t=>t.id);q.push(refs.length?`table_ref=in.(${refs.map(r=>`"${encodeURIComponent(r)}"`).join(",")})`:`table_ref=eq.${encodeURIComponent(f.table)}`);}
+  if(f.item){const ids=currentMenu.filter(m=>String(m.name||"").toLowerCase().includes(f.item.toLowerCase())).map(m=>Number(m.id)).slice(0,200);q.push(`id=in.(${ids.length?ordersWithItemsFilter(ids):"0"})`);}
+  return q.length?"&"+q.join("&"):"";
+}
+let receiptItemOrderIds=null;
+function ordersWithItemsFilter(){return (receiptItemOrderIds&&receiptItemOrderIds.length?receiptItemOrderIds:[0]).join(",");}
+async function applyReceiptFilters(){
+  ["date","no","table","waiter","item","min","max","pay"].forEach(k=>{const el=document.getElementById("rf_"+k);if(el)receiptFilters[k]=el.value.trim();});
+  receiptItemOrderIds=null;
+  if(receiptFilters.item){
+    const ids=currentMenu.filter(m=>String(m.name||"").toLowerCase().includes(receiptFilters.item.toLowerCase())).map(m=>Number(m.id)).slice(0,200);
+    if(ids.length){try{const rows=await supabaseRequest(`order_items?select=order_id&restaurant_id=eq.${Number(currentRestaurant.id)}&menu_item_id=in.(${ids.join(",")})&limit=1000`);receiptItemOrderIds=[...new Set((rows||[]).map(r=>Number(r.order_id)))];}catch(e){showToast(e.message);}}
+  }
+  refreshOrdersView();
+}
+function resetReceiptFilters(){receiptFilters={date:"",no:"",table:"",waiter:"",item:"",min:"",max:"",pay:""};receiptItemOrderIds=null;refreshOrdersView();}
+function renderReceiptFilters(staffMap){
+  const f=receiptFilters,v=k=>escapeHtml(f[k]||"");
+  return `<div class="receipt-filters">
+    <input id="rf_date" type="date" class="text-input" value="${v("date")}" title="Дата">
+    <input id="rf_no" class="text-input" placeholder="№ чека" value="${v("no")}">
+    <input id="rf_table" class="text-input" placeholder="№ столу" value="${v("table")}">
+    <select id="rf_waiter" class="text-input"><option value="">Усі офіціанти</option>${Object.entries(staffMap).map(([id,n])=>`<option value="${id}" ${String(f.waiter)===String(id)?"selected":""}>${escapeHtml(n)}</option>`).join("")}</select>
+    <input id="rf_item" class="text-input" placeholder="Позиція" value="${v("item")}">
+    <input id="rf_min" type="number" class="text-input" placeholder="Сума від" value="${v("min")}">
+    <input id="rf_max" type="number" class="text-input" placeholder="до" value="${v("max")}">
+    <select id="rf_pay" class="text-input"><option value="">Будь-яка оплата</option><option value="card" ${f.pay==="card"?"selected":""}>Картка</option><option value="cash" ${f.pay==="cash"?"selected":""}>Готівка</option><option value="other" ${f.pay==="other"?"selected":""}>Інше</option></select>
+    <button class="primary" onclick="applyReceiptFilters()">Знайти</button><button class="secondary" onclick="resetReceiptFilters()">Скинути</button>
+  </div>`;
+}
+async function openReceipt(orderId){
+  try{
+    const rows=await supabaseRequest(`orders?select=*,order_items(id,menu_name,qty,price,status,note,cancel_reason)&id=eq.${Number(orderId)}&restaurant_id=eq.${Number(currentRestaurant.id)}`);
+    const o=Array.isArray(rows)?rows[0]:null;if(!o){showToast("Чек не знайдено.");return;}
+    const staffName=(ordersStaffCache.find(s=>Number(s.id)===Number(o.waiter_id))||{}).name||`#${o.waiter_id}`;
+    const lines=(o.order_items||[]).map(i=>`<div class="list-item"><div><strong>${escapeHtml(i.menu_name||"Позиція")} × ${Number(i.qty)}</strong><span>${escapeHtml(ITEM_STATUS_LABEL[i.status]||i.status||"")}${i.note?` · ✎ ${escapeHtml(i.note)}`:""}${i.cancel_reason?` · ${escapeHtml(i.cancel_reason)}`:""}</span></div><span>${i.status==="cancelled"?"—":money(Number(i.qty)*Number(i.price))}</span></div>`).join("");
+    document.getElementById("receiptModal")?.remove();
+    const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="receiptModal";
+    m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">RECEIPT</div><h2>${o.receipt_no?`Чек № ${o.receipt_no}`:`Замовлення #${o.id}`}</h2><div class="section-meta">${escapeHtml(tableLabel(o.table_ref))} · ${escapeHtml(staffName)} · гостей ${escapeHtml(o.guests??"—")}<br>Відкрито ${formatDateTime(o.opened_at)}${o.closed_at?` · закрито ${formatDateTime(o.closed_at)}`:""}</div></div><button class="icon-btn" onclick="document.getElementById('receiptModal').remove()">×</button></div>
+      <div class="list-box">${lines||`<div class="personal-note">Позицій немає.</div>`}</div>
+      <div class="order-total"><span>Сума</span><strong>${money(o.subtotal??o.total)}</strong></div>
+      ${Number(o.discount)>0?`<div class="order-total"><span>Знижка</span><strong>− ${money(o.discount)}</strong></div>`:""}
+      <div class="order-total"><span>РАЗОМ</span><strong>${money(o.total)}</strong></div>
+      <div class="section-meta">Статус: ${orderStatusLabel(o.status)}${o.payment_method?` · оплата: ${escapeHtml({card:"картка",cash:"готівка",other:"інше"}[o.payment_method]||o.payment_method)}`:""}${o.cancel_reason?` · причина скасування: ${escapeHtml(o.cancel_reason)}`:""}</div></div>`;
+    document.body.appendChild(m);
+  }catch(e){showToast("Не вдалося відкрити чек: "+e.message);}
 }
 
 function renderOrdersModule(){
   const role=String(currentUserRole||"").toUpperCase();
-  const activeOrders=ordersModuleCache.filter(o=>!['cancelled','closed','completed','paid'].includes(String(o.status||"").toLowerCase()));
+  const activeOrders=openOrdersCache;
   const today=ordersModuleCache.filter(o=>String(o.created_at||"").slice(0,10)===new Date().toISOString().slice(0,10));
   const canAssign=role==="ADMIN"||role==="SENIOR WAITER";
   const staffMap={};ordersStaffCache.forEach(s=>staffMap[Number(s.id)]=s.name);
@@ -3421,19 +3493,20 @@ function renderOrdersModule(){
       <div class="info-box"><div class="kicker">STAFF</div><div class="big">${ordersStaffCache.length}</div><p>активних працівників</p></div>
     </div>
     <div class="panel" style="margin-top:16px">
-      <div class="section-head"><div><h2>Останні замовлення</h2><div class="section-meta">До 100 останніх замовлень цього закладу.</div></div><span class="section-badge">${ordersModuleCache.length}</span></div>
+      <div class="section-head"><div><h2>Відкриті столи</h2><div class="section-meta">Відкривай стіл у розділі «Зал» або тут. ${role==="WAITER"?"Ти бачиш лише свої столи.":"Ти бачиш усі столи закладу."}</div></div><span class="section-badge">${openOrdersCache.length}</span></div>
+      ${openOrdersCache.length?`<div class="orders-list">${openOrdersCache.map(o=>{
+        const items=(o.items||[]).filter(i=>i.status!=="cancelled"),ready=items.filter(i=>i.status==="ready").length,fresh=items.filter(i=>i.status==="new").length;
+        return `<div class="order-row" style="cursor:pointer" onclick="openTablePanel(${o.table_ref?`'${escapeHtml(o.table_ref)}'`:"null"})"><div class="order-main"><div class="order-id">${escapeHtml(tableLabel(o.table_ref))}</div><div><strong>${escapeHtml(o.waiter_name||"")} · гостей ${escapeHtml(o.guests??"—")}</strong><span>${items.length} поз. · ${minutesSince(o.opened_at)}${ready?` · готово до видачі: ${ready}`:""}${fresh?` · не відправлено: ${fresh}`:""}</span></div></div><div class="order-meta"><span class="order-status">${o.status==="awaiting_payment"?"ОЧІКУЄ ОПЛАТУ":"ВІДКРИТО"}</span><strong>${money(o.total||0)}</strong></div></div>`;
+      }).join("")}</div>`:`<div class="personal-note">Відкритих столів немає.</div>`}
+    </div>
+    ${renderKitchenQueue()}
+    <div class="panel" style="margin-top:16px">
+      <div class="section-head"><div><h2>Архів чеків</h2><div class="section-meta">Пошук за датою, номером, столом, офіціантом, позицією, сумою й оплатою. До 200 результатів.</div></div><span class="section-badge">${ordersModuleCache.length}</span></div>
+      ${renderReceiptFilters(staffMap)}
       ${ordersModuleCache.length?`<div class="orders-list">${ordersModuleCache.map(o=>{
         const wid=Number(o.waiter_id||0), name=staffMap[wid]||`Працівник #${wid||"—"}`;
-        return `<div class="order-row"><div class="order-main"><div class="order-id">#${o.id}</div><div><strong>${escapeHtml(name)}</strong><span>${formatDateTime(o.created_at)}</span></div></div><div class="order-meta"><span class="order-status">${orderStatusLabel(o.status)}</span><strong>${money(o.total||0)}</strong></div></div>`;
-      }).join("")}</div>`:`<div class="personal-note">Замовлень ще немає. Створіть перше замовлення — воно одразу з'явиться у статистиці офіціанта.</div>`}
-    </div>
-    <div class="panel" style="margin-top:16px">
-      <div class="section-head"><div><h2>Як працює каса</h2><div class="section-meta">Зв'язок замовлення з персональною статистикою.</div></div></div>
-      <div class="list-box">
-        <div class="list-item"><div><strong>1. Офіціант створює замовлення</strong><span>У замовлення записується waiter_id.</span></div><span>WAITER</span></div>
-        <div class="list-item"><div><strong>2. Додаються позиції</strong><span>Кожна позиція записується в order_items з ціною на момент продажу.</span></div><span>ITEMS</span></div>
-        <div class="list-item"><div><strong>3. Закривається чек</strong><span>total замовлення використовується для розрахунку каси та середнього чека.</span></div><span>SALES</span></div>
-      </div>
+        return `<div class="order-row" style="cursor:pointer" onclick="openReceipt(${Number(o.id)})"><div class="order-main"><div class="order-id">${o.receipt_no?`Чек № ${o.receipt_no}`:`#${o.id}`}</div><div><strong>${escapeHtml(name)}${o.table_ref?` · ${escapeHtml(tableLabel(o.table_ref))}`:""}</strong><span>${formatDateTime(o.closed_at||o.created_at)}${o.payment_method?` · ${escapeHtml({card:"картка",cash:"готівка",other:"інше"}[o.payment_method]||o.payment_method)}`:""}</span></div></div><div class="order-meta"><span class="order-status">${orderStatusLabel(o.status)}</span><strong>${money(o.total||0)}</strong></div></div>`;
+      }).join("")}</div>`:`<div class="personal-note">Чеків за цими умовами немає.</div>`}
     </div>
     ${canAssign?`<div class="personal-note" style="margin-top:12px">ADMIN і SENIOR WAITER можуть під час створення замовлення вибрати офіціанта, на якого буде зарахований чек.</div>`:""}
   `;
@@ -3493,6 +3566,7 @@ function toggleOrderGuestAllergen(code,on){
 }
 function refreshOrderAllergens(){
   const bar=document.getElementById("orderAllergenBar");if(bar)bar.innerHTML=renderOrderAllergenBar();
+  if(document.getElementById("tablePanelModal")){tpRenderPicker();return;}
   filterOrderMenu(document.getElementById("orderSearchInput")?.value||"");
 }
 function allergenFlagHtml(item,v){
@@ -3545,6 +3619,180 @@ async function saveNewOrder(){
     showToast(`Чек #${orderId} створено: ${money(Number(first?.total??total))}.`);
   }catch(e){console.error("Create order error:",e);showToast("Не вдалося створити чек: "+e.message);}
 }
+
+/* ================= WAITER WORKSPACE: TABLE → ORDER → KITCHEN/BAR → RECEIPT =================
+   Tasks 64, 53–56, 10. All writes go through the order_* RPCs (server checks venue,
+   waiter ownership, stop list, prices). Polls every 10 s while the panel is open. */
+let tablePanel={tableRef:null,order:null,timer:null,busy:false,search:""};
+let openOrdersCache=[],kitchenQueueCache=[],kitchenStation="kitchen";
+const ORDER_ERRORS={
+  item_stopped:"Позиція в стоп-листі.",unsent_items:"Спочатку відправ нові позиції на кухню/бар.",
+  item_already_sent:"Позицію вже передано — кількість змінити не можна, лише скасувати з причиною.",
+  reason_required:"Вкажи причину скасування.",discount_forbidden:"Знижку може дати лише ADMIN або SENIOR WAITER.",
+  invalid_discount:"Знижка більша за суму чека.",order_not_open:"Замовлення вже не відкрите.",order_closed:"Замовлення вже закрите.",
+  empty_order:"У замовленні немає позицій.",invalid_waiter:"Твій акаунт не прив'язаний до цього закладу як працівник.",
+  forbidden:"Немає доступу.",forbidden_waiter:"Це замовлення іншого офіціанта.",invalid_transition:"Такий перехід статусу неможливий."
+};
+function orderErrorText(e){const m=String(e?.message||e||"");return ORDER_ERRORS[m]||m;}
+const ITEM_STATUS_LABEL={new:"Нова",sent:"Передано",preparing:"Готується",ready:"Готово",served:"Подано",cancelled:"Скасовано"};
+function hallTableByRef(ref){return (loadHallConfig().tables||[]).find(t=>t.id===ref)||null;}
+function tableLabel(ref){if(!ref)return "Без столу";const t=hallTableByRef(ref);return t?`Стіл № ${t.number}`:`Стіл ${ref}`;}
+function minutesSince(ts){if(!ts)return "";const m=Math.max(0,Math.round((Date.now()-new Date(ts).getTime())/60000));return m<60?`${m} хв`:`${Math.floor(m/60)} год ${m%60} хв`;}
+
+function startTableOrder(id){openTablePanel(id);}
+
+async function openTablePanel(tableRef){
+  if(!currentRestaurant){showToast("Спочатку відкрий заклад.");return;}
+  tablePanel={tableRef,order:null,timer:null,busy:false,search:""};
+  if(!currentMenu.length){try{await loadMenu();}catch{}}
+  try{await loadStopList();}catch{}
+  document.getElementById("tablePanelModal")?.remove();
+  const modal=document.createElement("div");modal.className="servisium-modal-backdrop";modal.id="tablePanelModal";
+  modal.innerHTML=`<div class="servisium-modal order-composer table-panel"><div id="tablePanelBody"><div class="personal-note">Завантаження…</div></div></div>`;
+  document.body.appendChild(modal);
+  await refreshTablePanel();
+  clearInterval(tablePanel.timer);
+  tablePanel.timer=setInterval(()=>{if(!document.getElementById("tablePanelModal")){clearInterval(tablePanel.timer);return;}if(!document.hidden&&!tablePanel.busy)refreshTablePanel();},10000);
+}
+function closeTablePanel(){clearInterval(tablePanel.timer);document.getElementById("tablePanelModal")?.remove();hallPullFromServer(Number(currentRestaurant?.id),{statusesOnly:true});}
+
+async function refreshTablePanel(){
+  try{
+    const list=await rpc("open_orders",{p_restaurant_id:Number(currentRestaurant.id)});
+    openOrdersCache=Array.isArray(list)?list:[];
+    tablePanel.order=openOrdersCache.find(o=>o.table_ref===tablePanel.tableRef)||null;
+  }catch(e){showToast("Не вдалося завантажити замовлення столу: "+orderErrorText(e));}
+  renderTablePanel();
+}
+
+function renderTablePanel(){
+  const body=document.getElementById("tablePanelBody");if(!body)return;
+  const t=hallTableByRef(tablePanel.tableRef),o=tablePanel.order;
+  const head=`<div class="modal-head"><div><div class="kicker">TABLE · ${o?escapeHtml((o.status==="awaiting_payment"?"ОЧІКУЄ ОПЛАТУ":"ВІДКРИТО")):"ВІЛЬНИЙ"}</div><h2>${escapeHtml(tableLabel(tablePanel.tableRef))}</h2><div class="section-meta">${t?`${escapeHtml(t.capacity||"")} місць`:""}${o?` · гостей: ${escapeHtml(o.guests??"—")} · офіціант: ${escapeHtml(o.waiter_name||"—")} · відкрито ${minutesSince(o.opened_at)} тому`:""}</div></div><button class="icon-btn" onclick="closeTablePanel()">×</button></div>`;
+  if(!o){
+    orderGuestAllergens=[];
+    body.innerHTML=head+`<div class="order-composer-grid"><div>
+      <label class="field-label">КІЛЬКІСТЬ ГОСТЕЙ</label><input id="tpGuests" class="text-input" type="number" min="1" max="200" value="${Math.max(1,Number(t?.capacity||2))}">
+      <label class="field-label" style="margin-top:10px">АЛЕРГЕНИ ГОСТЕЙ (ЯКЩО Є)</label><div id="orderAllergenBar" class="allergen-guest-bar">${renderOrderAllergenBar()}</div>
+      <label class="field-label" style="margin-top:10px">КОМЕНТАР</label><input id="tpNote" class="text-input" placeholder="Напр.: день народження, поспішають">
+      <button class="primary-btn" style="width:100%;margin-top:14px" onclick="tpOpenOrder()">Відкрити стіл</button>
+    </div></div>`;
+    return;
+  }
+  orderGuestAllergens=Array.isArray(o.guest_allergens)?o.guest_allergens:[];
+  const items=(o.items||[]).filter(i=>i.status!=="cancelled"),cancelled=(o.items||[]).filter(i=>i.status==="cancelled");
+  const newCount=items.filter(i=>i.status==="new").length,isOpen=o.status==="open";
+  const role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";
+  const menuMap={};currentMenu.forEach(m=>menuMap[Number(m.id)]=m);
+  const lines=items.length?items.map(i=>{
+    const m=menuMap[Number(i.menu_item_id)],v=m?allergenVerdict(m,orderGuestAllergens):{kind:"none",hits:[]};
+    return `<div class="tp-line ${v.kind==="contains"?"allergen-contains":""}">
+      <div><strong>${escapeHtml(i.name||"Позиція")}</strong>
+        <small>${escapeHtml(i.station==="bar"?"Бар":"Кухня")} · <b class="tp-status s-${escapeHtml(i.status)}">${ITEM_STATUS_LABEL[i.status]||i.status}</b>${i.sent_at&&i.status!=="served"?` · ${minutesSince(i.sent_at)}`:""}</small>
+        ${i.note?`<small>✎ ${escapeHtml(i.note)}</small>`:""}${m?allergenFlagHtml(m,v):""}</div>
+      <div class="tp-line-actions">
+        ${i.status==="new"&&isOpen?`<button onclick="tpQty(${i.id},${Number(i.qty)-1})">−</button><span>${Number(i.qty)}</span><button onclick="tpQty(${i.id},${Number(i.qty)+1})">+</button><button title="Коментар" onclick="tpNote(${i.id})">✎</button>`:`<span>× ${Number(i.qty)}</span>`}
+        ${i.status==="ready"?`<button class="tp-ok" onclick="tpItemStatus(${i.id},'served')">Подано</button>`:""}
+        ${!["served","cancelled"].includes(i.status)?`<button title="Скасувати" onclick="tpCancelItem(${i.id},'${i.status}')">✕</button>`:""}
+        <b>${money(Number(i.qty)*Number(i.price))}</b>
+      </div></div>`;}).join(""):`<div class="personal-note">Позицій ще немає — додай зі списку.</div>`;
+  const available=currentMenu.filter(x=>!isMenuItemStopped(x));
+  const q=tablePanel.search.trim().toLowerCase();
+  const shown=available.filter(x=>!q||`${x.name||""} ${x.category||""} ${x.type||""}`.toLowerCase().includes(q));
+  body.innerHTML=head+`<div class="order-composer-grid"><div>
+      ${isOpen?`<label class="field-label">ДОДАТИ ПОЗИЦІЮ</label><input id="tpSearch" class="text-input" placeholder="Пошук: стейк, вино, кава…" value="${escapeHtml(tablePanel.search)}" oninput="tablePanel.search=this.value;tpRenderPicker()">
+      <label class="field-label" style="margin-top:10px">АЛЕРГЕНИ ГОСТЕЙ</label><div id="orderAllergenBar" class="allergen-guest-bar">${renderOrderAllergenBar()}</div>
+      <div id="orderMenuPicker" class="order-menu-picker">${tpPickerHtml(shown)}</div>`:`<div class="personal-note">Рахунок запрошено. Щоб додати позиції — «Повернути до замовлення».</div>`}
+    </div><div>
+      <div class="order-cart">${lines}</div>
+      ${cancelled.length?`<details class="section-meta"><summary>Скасовано: ${cancelled.length}</summary>${cancelled.map(i=>`<div>${escapeHtml(i.name)} × ${Number(i.qty)} — ${escapeHtml(i.cancel_reason||"")}</div>`).join("")}</details>`:""}
+      <div class="order-total"><span>РАЗОМ</span><strong>${money(o.total||0)}</strong></div>
+      ${isOpen&&newCount?`<button class="primary-btn" style="width:100%;margin-top:10px" onclick="tpSend()">Відправити на кухню/бар (${newCount})</button>`:""}
+      ${isOpen&&items.length&&!newCount?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpRequestBill()">Рахунок</button>`:""}
+      ${o.status==="awaiting_payment"?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpReopen()">Повернути до замовлення</button>`:""}
+      ${items.length&&!newCount?`<div class="tp-close"><label class="field-label">ОПЛАТА</label>
+        <select id="tpPay" class="text-input"><option value="card">Картка</option><option value="cash">Готівка</option><option value="other">Інше</option></select>
+        ${canManage?`<label class="field-label">ЗНИЖКА, СУМА</label><input id="tpDiscount" class="text-input" type="number" min="0" step="0.01" value="0">`:""}
+        <button class="primary-btn" style="width:100%;margin-top:10px" onclick="tpClose()">Закрити чек</button></div>`:""}
+      ${canManage?`<button class="danger-btn" style="width:100%;margin-top:10px" onclick="tpCancelOrder()">Скасувати замовлення</button>`:""}
+    </div></div>`;
+}
+function tpPickerHtml(items){
+  if(!items.length)return `<div class="personal-note">Нічого не знайдено.</div>`;
+  const shown=orderAllergenHide&&orderGuestAllergens.length?items.filter(i=>allergenVerdict(i,orderGuestAllergens).kind!=="contains"):items;
+  return shown.slice(0,60).map(item=>{const v=allergenVerdict(item,orderGuestAllergens);return `<button class="order-menu-item ${v.kind==="contains"?"allergen-contains":""}" onclick="tpAdd(${Number(item.id)})"><img src="${escapeHtml(getMenuPhoto(item))}" onerror="this.style.display='none'" alt=""><span><strong>${escapeHtml(item.name||"Позиція")}</strong><small>${escapeHtml(item.category||item.type||"")}</small>${allergenFlagHtml(item,v)}</span><b>${money(item.price||0)}</b></button>`;}).join("");
+}
+function tpRenderPicker(){
+  const el=document.getElementById("orderMenuPicker");if(!el)return;
+  const q=tablePanel.search.trim().toLowerCase();
+  el.innerHTML=tpPickerHtml(currentMenu.filter(x=>!isMenuItemStopped(x)&&(!q||`${x.name||""} ${x.category||""} ${x.type||""}`.toLowerCase().includes(q))));
+}
+async function tpCall(fn,args,ok){
+  if(tablePanel.busy)return;tablePanel.busy=true;
+  try{const r=await rpc(fn,args);if(ok)ok(r);await refreshTablePanel();}
+  catch(e){showToast(orderErrorText(e));}
+  finally{tablePanel.busy=false;}
+}
+async function tpOpenOrder(){
+  const guests=Number(document.getElementById("tpGuests")?.value||0)||null;
+  const note=document.getElementById("tpNote")?.value.trim()||null;
+  await tpCall("order_open",{p_restaurant_id:Number(currentRestaurant.id),p_table_ref:tablePanel.tableRef,p_guests:guests,p_guest_allergens:orderGuestAllergens,p_note:note});
+}
+function tpAdd(menuItemId){
+  const item=currentMenu.find(x=>Number(x.id)===Number(menuItemId));if(!item||!tablePanel.order)return;
+  const v=allergenVerdict(item,orderGuestAllergens);
+  if(v.kind==="contains"&&!confirm(`${item.name} МІСТИТЬ: ${v.hits.map(allergenLabel).join(", ")}.\nДодати попри алерген гостя?`))return;
+  return tpCall("order_add_items",{p_order_id:tablePanel.order.id,p_items:[{menu_item_id:Number(item.id),qty:1}]});
+}
+function tpQty(itemId,qty){return tpCall("order_update_item",{p_item_id:itemId,p_qty:Math.max(0,qty)});}
+function tpNote(itemId){const it=tablePanel.order?.items?.find(i=>i.id===itemId);const n=prompt("Коментар для кухні/бару",it?.note||"");if(n===null)return;return tpCall("order_update_item",{p_item_id:itemId,p_note:n});}
+function tpCancelItem(itemId,status){
+  let reason=null;
+  if(status!=="new"){reason=prompt("Позицію вже передано. Причина скасування:");if(!reason)return;}
+  return tpCall("order_cancel_item",{p_item_id:itemId,p_reason:reason});
+}
+function tpSend(){return tpCall("order_send",{p_order_id:tablePanel.order.id},n=>showToast(`Передано: ${n}`));}
+function tpItemStatus(itemId,status){return tpCall("order_item_set_status",{p_item_id:itemId,p_status:status});}
+function tpRequestBill(){return tpCall("order_request_bill",{p_order_id:tablePanel.order.id});}
+function tpReopen(){return tpCall("order_reopen",{p_order_id:tablePanel.order.id});}
+function tpCancelOrder(){const r=prompt("Причина скасування всього замовлення:");if(!r)return;return tpCall("order_cancel",{p_order_id:tablePanel.order.id,p_reason:r});}
+async function tpClose(){
+  const pay=document.getElementById("tpPay")?.value||"card";
+  const discount=Number(document.getElementById("tpDiscount")?.value||0)||0;
+  if(!confirm(`Закрити чек на ${money(Math.max(0,Number(tablePanel.order.subtotal||0)-discount))}?`))return;
+  await tpCall("order_close",{p_order_id:tablePanel.order.id,p_payment_method:pay,p_discount:discount},r=>{const row=Array.isArray(r)?r[0]:r;showToast(`Чек № ${row?.receipt_no} закрито: ${money(row?.total||0)}`);});
+}
+/* the guest-allergen chips inside the table panel also persist to the order */
+const _toggleOrderGuestAllergen=toggleOrderGuestAllergen;
+toggleOrderGuestAllergen=function(code,on){
+  _toggleOrderGuestAllergen(code,on);
+  if(document.getElementById("tablePanelModal")){
+    if(tablePanel.order)rpc("order_update_meta",{p_order_id:tablePanel.order.id,p_guest_allergens:orderGuestAllergens}).catch(e=>showToast(orderErrorText(e)));
+    tpRenderPicker();
+  }
+};
+
+/* ---------- kitchen / bar queue ---------- */
+async function loadKitchenQueue(){
+  try{const q=await rpc("kitchen_queue",{p_restaurant_id:Number(currentRestaurant.id),p_station:null});kitchenQueueCache=Array.isArray(q)?q:[];}
+  catch(e){kitchenQueueCache=[];console.warn("Kitchen queue:",e.message);}
+}
+function renderKitchenQueue(){
+  const list=kitchenQueueCache.filter(i=>i.station===kitchenStation);
+  const btn=(i,s,l)=>`<button class="secondary" onclick="kqSet(${i.id},'${s}')">${l}</button>`;
+  return `<div class="panel" style="margin-top:16px"><div class="section-head"><div><h2>Черга: ${kitchenStation==="bar"?"Бар":"Кухня"}</h2><div class="section-meta">Передані позиції по всіх столах закладу. Оновлюється при відкритті розділу.</div></div>
+    <div><button class="${kitchenStation==="kitchen"?"primary":"secondary"}" onclick="kitchenStation='kitchen';refreshOrdersView()">Кухня (${kitchenQueueCache.filter(i=>i.station==="kitchen").length})</button>
+    <button class="${kitchenStation==="bar"?"primary":"secondary"}" onclick="kitchenStation='bar';refreshOrdersView()">Бар (${kitchenQueueCache.filter(i=>i.station==="bar").length})</button></div></div>
+    ${list.length?`<div class="orders-list">${list.map(i=>`<div class="order-row"><div class="order-main"><div class="order-id">${escapeHtml(tableLabel(i.table_ref))}</div><div><strong>${escapeHtml(i.name)} × ${Number(i.qty)}</strong>
+      <span>${ITEM_STATUS_LABEL[i.status]} · ${minutesSince(i.sent_at)} · ${escapeHtml(i.waiter_name||"")}</span>${i.note?`<span>✎ ${escapeHtml(i.note)}</span>`:""}
+      ${(i.guest_allergens||[]).length?`<em class="allergen-flag contains">Алергени гостей: ${escapeHtml(i.guest_allergens.map(allergenLabel).join(", "))}</em>`:""}</div></div>
+      <div class="order-meta">${i.status==="sent"?btn(i,"preparing","Готується"):""}${i.status!=="ready"?btn(i,"ready","Готово"):btn(i,"served","Подано")}</div></div>`).join("")}</div>`:`<div class="personal-note">Черга порожня.</div>`}</div>`;
+}
+async function kqSet(itemId,status){
+  try{await rpc("order_item_set_status",{p_item_id:itemId,p_status:status});}catch(e){showToast(orderErrorText(e));}
+  return refreshOrdersView();
+}
+function refreshOrdersView(){return openRestaurantModule("orders");}
 
 /* ================= HELPERS ================= */
 
