@@ -1094,6 +1094,10 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.cat-node{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;}
+.cat-node small{opacity:.65;}.cat-hidden{opacity:.5;text-decoration:line-through;}
+.cat-actions{display:flex;gap:4px;flex-wrap:wrap;}.cat-actions button{min-width:32px;padding:4px 8px;}
+#categoryTree{max-height:65vh;overflow:auto;}
 .ingredient-editor{display:grid;gap:8px;}
 .ingredient-row{display:grid;grid-template-columns:1.4fr .5fr .5fr .8fr 1fr 1.2fr auto;gap:6px;align-items:start;}
 .ingredient-row select[multiple]{min-height:38px;max-height:76px;}
@@ -2583,6 +2587,13 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
               onclick="openManualMenuModal()"
             >
               ＋ Додати позицію
+            </button>
+
+            <button
+              class="secondary"
+              onclick="openCategoryManager()"
+            >
+              ☰ Категорії
             </button>
 
             <button
@@ -5900,6 +5911,8 @@ async function loadMenu(){
         ? data
         : [];
 
+    await loadMenuCategories();
+
 
     await loadStopList();
 
@@ -5946,13 +5959,17 @@ function renderCategoryTabs(){
   if(!container) return;
 
 
+  /* order follows the category tree (task 5); hidden nodes are not shown to waiters */
+  const present = new Set(
+    currentMenu
+      .filter(item => !isMenuItemHiddenForRole(item))
+      .map(item => item.category || "Інше")
+      .filter(Boolean)
+  );
+  const ordered = menuCategoryOrder().filter(name => present.has(name));
   const categories = [
     "Усі",
-    ...new Set(
-      currentMenu
-        .map(item => item.category || "Інше")
-        .filter(Boolean)
-    )
+    ...new Set([...ordered, ...present])
   ];
 
 
@@ -6509,6 +6526,10 @@ function renderMenu(){
   const filtered =
     currentMenu.filter(item => {
 
+      if(isMenuItemHiddenForRole(item)){
+        return false;
+      }
+
       const category =
         item.category || "Інше";
 
@@ -6983,6 +7004,80 @@ function openEditMenuItem(id){
   renderIngredientEditor();
 
   openModal("editMenuModal");
+}
+
+/* ================= CATEGORY TREE (handoff task 5) =================
+   menu_categories (parent_id). Items keep their text category; the server keeps
+   category_ref in sync and renames items when a node is renamed. */
+let currentMenuCategories=[];
+async function loadMenuCategories(){
+  if(!currentRestaurant){currentMenuCategories=[];return;}
+  try{const rows=await supabaseRequest(`menu_categories?select=id,parent_id,name,item_type,sort,hidden&restaurant_id=eq.${Number(currentRestaurant.id)}&order=sort.asc,name.asc`);currentMenuCategories=Array.isArray(rows)?rows:[];}
+  catch(e){currentMenuCategories=[];console.warn("Categories:",e.message);}
+}
+function categoryChildren(parentId){return currentMenuCategories.filter(c=>(c.parent_id??null)===(parentId??null)).sort((a,b)=>(a.sort-b.sort)||a.name.localeCompare(b.name,"uk"));}
+function categoryHiddenDeep(cat){let c=cat;while(c){if(c.hidden)return true;c=currentMenuCategories.find(x=>x.id===c.parent_id);}return false;}
+/* names in tree order (depth-first) */
+function menuCategoryOrder(){
+  const out=[];const walk=p=>categoryChildren(p).forEach(c=>{if(c.parent_id!=null)out.push(c.name);walk(c.id);});walk(null);return out;
+}
+function isMenuItemHiddenForRole(item){
+  if(["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase()))return false;
+  const cat=currentMenuCategories.find(c=>Number(c.id)===Number(item?.category_ref));
+  return cat?categoryHiddenDeep(cat):false;
+}
+async function openCategoryManager(){
+  await loadMenuCategories();
+  document.getElementById("categoryManagerModal")?.remove();
+  const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="categoryManagerModal";
+  m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">MENU · CATEGORIES</div><h2>Категорії меню</h2><div class="section-meta">Дерево категорій закладу. Перейменування змінює назву категорії в усіх її позиціях. Приховані категорії не бачать офіціанти.</div></div><button class="icon-btn" onclick="document.getElementById('categoryManagerModal').remove()">×</button></div><div id="categoryTree"></div></div>`;
+  document.body.appendChild(m);renderCategoryTree();
+}
+function renderCategoryTree(){
+  const box=document.getElementById("categoryTree");if(!box)return;
+  const counts={};currentMenu.forEach(i=>{if(i.category_ref)counts[i.category_ref]=(counts[i.category_ref]||0)+1;});
+  const row=(c,depth)=>{
+    const kids=categoryChildren(c.id),n=counts[c.id]||0;
+    return `<div class="cat-node" style="margin-left:${depth*18}px">
+      <span class="${c.hidden?"cat-hidden":""}"><b>${escapeHtml(c.name)}</b> <small>${n?`${n} поз.`:""}${kids.length?` · ${kids.length} підкат.`:""}${c.hidden?" · приховано":""}</small></span>
+      <span class="cat-actions">
+        <button class="secondary" title="Вище" onclick="catMove(${c.id},-1)">↑</button><button class="secondary" title="Нижче" onclick="catMove(${c.id},1)">↓</button>
+        <button class="secondary" title="Підкатегорія" onclick="catAdd(${c.id})">＋</button>
+        <button class="secondary" title="Перейменувати" onclick="catRename(${c.id})">✎</button>
+        <button class="secondary" title="Перемістити в іншу категорію" onclick="catReparent(${c.id})">⇄</button>
+        <button class="secondary" title="${c.hidden?"Показати":"Приховати"}" onclick="catToggle(${c.id})">${c.hidden?"👁":"⦸"}</button>
+        ${!n&&!kids.length?`<button class="secondary" title="Видалити" onclick="catDelete(${c.id})">✕</button>`:""}
+      </span></div>${kids.map(k=>row(k,depth+1)).join("")}`;
+  };
+  box.innerHTML=categoryChildren(null).map(r=>row(r,0)).join("")+`<button class="secondary" style="margin-top:10px" onclick="catAdd(null)">＋ Коренева категорія</button>`;
+}
+async function catWrite(path,opts){
+  try{await supabaseRequest(path,opts);await loadMenuCategories();await loadMenu();renderCategoryTabs();renderCategoryTree();}
+  catch(e){showToast("Категорії: "+e.message);}
+}
+function catAdd(parentId){
+  const name=prompt(parentId?"Назва підкатегорії":"Назва кореневої категорії");if(!name||!name.trim())return;
+  const parent=currentMenuCategories.find(c=>c.id===parentId);
+  return catWrite("menu_categories",{method:"POST",body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),parent_id:parentId,name:name.trim(),item_type:parent?.item_type||null,sort:(categoryChildren(parentId).at(-1)?.sort||0)+10})});
+}
+function catRename(id){const c=currentMenuCategories.find(x=>x.id===id);const name=prompt("Нова назва",c?.name||"");if(!name||!name.trim()||name.trim()===c?.name)return;return catWrite(`menu_categories?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({name:name.trim()})});}
+function catToggle(id){const c=currentMenuCategories.find(x=>x.id===id);return catWrite(`menu_categories?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({hidden:!c?.hidden})});}
+function catDelete(id){if(!confirm("Видалити порожню категорію?"))return;return catWrite(`menu_categories?id=eq.${id}`,{method:"DELETE"});}
+async function catMove(id,dir){
+  const c=currentMenuCategories.find(x=>x.id===id);if(!c)return;
+  const sib=categoryChildren(c.parent_id),idx=sib.findIndex(x=>x.id===id),other=sib[idx+dir];if(!other)return;
+  const a=c.sort===other.sort?c.sort+dir:other.sort,b=c.sort===other.sort?c.sort:c.sort;
+  await supabaseRequest(`menu_categories?id=eq.${other.id}`,{method:"PATCH",body:JSON.stringify({sort:b})}).catch(e=>showToast(e.message));
+  return catWrite(`menu_categories?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({sort:a})});
+}
+function catReparent(id){
+  const c=currentMenuCategories.find(x=>x.id===id);if(!c)return;
+  const desc=new Set([id]);let grew=true;while(grew){grew=false;currentMenuCategories.forEach(x=>{if(x.parent_id&&desc.has(x.parent_id)&&!desc.has(x.id)){desc.add(x.id);grew=true;}});}
+  const options=currentMenuCategories.filter(x=>!desc.has(x.id));
+  const list=options.map((x,i)=>`${i+1}. ${x.name}`).join("\n");
+  const pick=prompt(`Куди перемістити «${c.name}»? Введи номер (0 — у корінь):\n${list}`);if(pick===null)return;
+  const n=Number(pick);if(!Number.isInteger(n)||n<0||n>options.length)return;
+  return catWrite(`menu_categories?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({parent_id:n===0?null:options[n-1].id})});
 }
 
 /* ================= INGREDIENTS (instruction §5, tasks 56–58) =================
