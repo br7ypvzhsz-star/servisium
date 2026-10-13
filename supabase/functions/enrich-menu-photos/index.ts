@@ -5462,7 +5462,45 @@ const matches =
         alcoholItems - matchedAlcoholItems
       );
 
+    /*
+      Decision log (T030): one row per item — accepted / not found / skipped
+      (non-alcohol, kitchen never touched) / storage failed, with source and
+      confidence. A logging failure never fails the photo run.
+    */
+    const runId = crypto.randomUUID();
+    try {
+      const rows = results.map((r, index) => {
+        const item = items[index] || {};
+        const src = String(r?.source || "");
+        const status =
+          clean(r?.photo_url) ? "accepted"
+          : src === "skipped-non-alcohol" ? "skipped_non_alcohol"
+          : src.startsWith("storage-failed:") ? "storage_failed"
+          : "not_found";
+        return {
+          restaurant_id: Number(restaurantId),
+          run_id: runId,
+          item_name: clean(r?.name || item.name || item.title).slice(0, 300) || "—",
+          source_id: item.source_id != null ? String(item.source_id) : item.external_id != null ? String(item.external_id) : null,
+          item_type: clean(item.type).slice(0, 40) || null,
+          status,
+          photo_url: clean(r?.photo_url) || null,
+          photo_source: clean(r?.photo_source).slice(0, 1000) || null,
+          engine_source: src.slice(0, 300) || null,
+          confidence: Number.isFinite(Number(r?.confidence)) ? Number(r.confidence) : null,
+          vision_checked: src.includes("vision") || src.startsWith("quality-audit"),
+        };
+      });
+      for (let i = 0; i < rows.length; i += 500) {
+        const { error } = await supabaseAdmin.from("photo_decisions").insert(rows.slice(i, i + 500));
+        if (error) { console.warn("photo_decisions insert failed:", error.message); break; }
+      }
+    } catch (e) {
+      console.warn("photo_decisions log skipped:", e instanceof Error ? e.message : e);
+    }
+
 return jsonResponse({
+      run_id: runId,
       success: true,
       restaurant_id:
         restaurantId,
