@@ -1094,6 +1094,11 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.training-list{display:grid;gap:12px;max-height:62vh;overflow:auto;}
+.training-q{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;}
+.training-q.ok{border-color:rgba(79,189,120,.6);}.training-q.bad{border-color:rgba(255,80,105,.6);}
+.training-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.training-opts .correct{outline:2px solid rgba(79,189,120,.8);}
 .cat-node{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;}
 .cat-node small{opacity:.65;}.cat-hidden{opacity:.5;text-decoration:line-through;}
 .cat-actions{display:flex;gap:4px;flex-wrap:wrap;}.cat-actions button{min-width:32px;padding:4px 8px;}
@@ -5607,30 +5612,8 @@ async function openRestaurantModule(type){
 
   else if(type === "training"){
 
-    content = `
-
-      <div class="info-grid">
-
-        <div class="info-box">
-          <div class="kicker">LEVEL</div>
-          <div class="big">1</div>
-          <p>Рівень навчання.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">TESTS</div>
-          <div class="big">0</div>
-          <p>Тести будуть підключені.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="kicker">PROGRESS</div>
-          <div class="big">0%</div>
-          <p>Поточний прогрес.</p>
-        </div>
-
-      </div>
-    `;
+    await loadTrainingProgress();
+    content = renderTrainingModule();
 
   }
 
@@ -7005,6 +6988,59 @@ function openEditMenuItem(id){
 
   openModal("editMenuModal");
 }
+
+/* ================= TRAINING (tasks 24–25, T050–T051) =================
+   Questions are generated and graded on the server from the venue's real menu;
+   correct answers reach the client only after submit. */
+let trainingProgress=null,trainingSession=null,trainingAnswers={},trainingResult=null;
+const TRAINING_LEVELS={1:"Рівень 1 — категорії меню",2:"Рівень 2 — ціни та вихід",3:"Рівень 3 — склад і алергени (підтверджені)"};
+async function loadTrainingProgress(){
+  try{trainingProgress=await rpc("training_progress",{p_restaurant_id:Number(currentRestaurant.id)});}catch(e){trainingProgress=null;console.warn("Training:",e.message);}
+}
+function renderTrainingModule(){
+  const me=trainingProgress?.me,team=trainingProgress?.team;
+  const levels=(me?.levels||[]).map(l=>`<div class="info-box"><div class="kicker">LEVEL ${l.level}</div><div class="big">${l.best}%</div>
+    <p>${escapeHtml(TRAINING_LEVELS[l.level])}<br>Спроб: ${l.attempts}${l.unlocked?"":" · 🔒 відкриється з ≥ 80% на попередньому"}</p>
+    <button class="${l.unlocked?"primary":"secondary"}" ${l.unlocked?"":"disabled"} onclick="startTraining(${l.level})">${l.attempts?"Пройти ще раз":"Почати тест"}</button></div>`).join("");
+  const recent=(me?.recent||[]).map(r=>`<div class="list-item"><div><strong>Рівень ${r.level}: ${r.score}/${r.total}</strong><span>${formatDateTime(r.at)}</span></div><span>${Math.round(100*r.score/Math.max(1,r.total))}%</span></div>`).join("");
+  const teamRows=Array.isArray(team)?team.map(w=>`<div class="list-item"><div><strong>${escapeHtml(w.name)}</strong><span>${escapeHtml(w.role)} · спроб ${w.attempts}${w.last?` · останній ${formatDateTime(w.last)}`:""}</span></div><span>L1 ${w.l1}% · L2 ${w.l2}% · L3 ${w.l3}%</span></div>`).join(""):"";
+  return `${me?`<div class="info-grid">${levels}</div>`:`<div class="personal-note">Тести доступні працівникам закладу (твій акаунт не прив'язаний до цього закладу як працівник).</div>`}
+    <div class="section-meta" style="margin-top:8px">Питання генеруються з реального меню цього закладу. Рівень 3 — лише з підтверджених закладом складу й алергенів.</div>
+    ${recent?`<div class="panel" style="margin-top:14px"><div class="section-head"><h2>Мої останні спроби</h2></div><div class="list-box">${recent}</div></div>`:""}
+    ${teamRows?`<div class="panel" style="margin-top:14px"><div class="section-head"><div><h2>Прогрес персоналу</h2><div class="section-meta">Найкращий результат по кожному рівню.</div></div></div><div class="list-box">${teamRows}</div></div>`:""}`;
+}
+async function startTraining(level){
+  try{
+    const r=await rpc("training_generate",{p_restaurant_id:Number(currentRestaurant.id),p_level:level,p_count:10});
+    if(!r?.session_id){showToast(r?.message||"Недостатньо даних для тесту.");return;}
+    trainingSession=r;trainingAnswers={};trainingResult=null;renderTrainingModal();
+  }catch(e){showToast(String(e.message)==="level_locked"?"Рівень ще закритий: потрібно ≥ 80% на попередньому.":String(e.message)==="invalid_waiter"?"Тести доступні лише працівникам цього закладу.":e.message);}
+}
+function renderTrainingModal(){
+  document.getElementById("trainingModal")?.remove();
+  const s=trainingSession;if(!s)return;
+  const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="trainingModal";
+  const res=trainingResult,detail={};(res?.detail||[]).forEach(d=>detail[d.i]=d);
+  const qs=s.questions.map(q=>{
+    const d=detail[q.i];
+    return `<div class="training-q ${d?(d.ok?"ok":"bad"):""}"><strong>${q.i+1}. ${escapeHtml(q.text)}</strong>
+      <div class="training-opts">${q.options.map(o=>{const sel=trainingAnswers[q.i]===o;const isCorrect=d&&String(d.correct)===String(o);
+        return `<button type="button" class="${sel?"primary":"secondary"} ${isCorrect?"correct":""}" ${res?"disabled":""} onclick="trainingPick(${q.i},this.dataset.v)" data-v="${escapeHtml(o)}">${escapeHtml(o)}${isCorrect?" ✓":""}</button>`;}).join("")}</div></div>`;
+  }).join("");
+  const answered=Object.keys(trainingAnswers).length;
+  m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">TRAINING · LEVEL ${s.level}</div><h2>${escapeHtml(TRAINING_LEVELS[s.level])}</h2>
+    <div class="section-meta">${res?`Результат: ${res.score}/${res.total} (${res.percent}%) — ${res.passed?"рівень складено ✓":"потрібно ≥ 80%"}`:`Відповіді: ${answered}/${s.questions.length}`}</div></div>
+    <button class="icon-btn" onclick="closeTraining()">×</button></div>
+    <div class="training-list">${qs}</div>
+    ${res?`<button class="primary-btn" style="width:100%;margin-top:12px" onclick="closeTraining()">Готово</button>`:`<button class="primary-btn" style="width:100%;margin-top:12px" ${answered<s.questions.length?"disabled":""} onclick="submitTraining()">Здати тест</button>`}</div>`;
+  document.body.appendChild(m);
+}
+function trainingPick(i,v){if(trainingResult)return;trainingAnswers[i]=v;renderTrainingModal();}
+async function submitTraining(){
+  try{trainingResult=await rpc("training_submit",{p_session_id:trainingSession.session_id,p_answers:trainingAnswers});renderTrainingModal();}
+  catch(e){showToast(e.message);}
+}
+function closeTraining(){document.getElementById("trainingModal")?.remove();trainingSession=null;openRestaurantModule("training");}
 
 /* ================= CATEGORY TREE (handoff task 5) =================
    menu_categories (parent_id). Items keep their text category; the server keeps
