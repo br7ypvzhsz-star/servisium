@@ -53,3 +53,10 @@
 - Імпорт за URL падав з `mergeExistingMenuPhotosIntoImportedItems is not defined` — функції не було і в `main` (тобто імпорт зламаний і на живому сайті). Також не існували `updateLocalPhotoCacheFromItems`, `loadLocalPhotoCache`, `loadRestaurantMenu` (остання — у створенні замовлення).
 - Додано: кеш фото по закладу (ключ source_id, інакше назва); підстановка лише ВІДСУТНІХ фото з меню в базі, потім з кешу; `loadRestaurantMenu` → `loadMenu()`.
 - Перевірено в браузері на тестових даних (5 випадків: фото з БД за source_id і за назвою, з кешу, нове фото не перезаписується, невідома позиція без фото).
+
+## 2026-10-14 — CUTOVER виконано (за рішенням власника)
+- Резервна копія перед перемиканням: схема `backup_20261014` (restaurants 5, menu_items 1351, stop_list 12, restaurant_staff 3, orders, order_items, 48 політик), RLS увімкнено, доступу клієнтам немає.
+- Міграція `20261013_03_rls_cutover` застосована: старі відкриті політики видалено, `anon` позбавлено всіх прав, старі SHA-256 `pin_hash` обнулено.
+- `main` переведено fast-forward 78a5029 → 5692fa5; GitHub Pages віддає нову версію (вхід за PIN, імпорт через RPC).
+- Перевірка наживо: публічний ключ без входу → `42501 permission denied` для restaurants, menu_items, restaurant_staff, stop_list, orders, plans, `rpc/my_profile`. Залогінений ADMIN/platform admin: 5 закладів, меню 319, стоп-лист 12, персонал 3 (pin_hash = null).
+- Відкат (лише в аварії): `ROLLBACK_03_rls_cutover.sql` + `git revert`/тег `pre-hardening-20261013`; дані — `backup_20261014`.
