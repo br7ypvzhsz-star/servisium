@@ -1,0 +1,8 @@
+{
+  "appId": "app.servisium.waiter",
+  "appName": "SERVISIUM",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "ios": { "contentInset": "always" },
+  "android": { "allowMixedContent": false }
+}
