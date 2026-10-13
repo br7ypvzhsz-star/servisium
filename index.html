@@ -1083,7 +1083,9 @@ h3{
 .live-table{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line2);background:rgba(16,16,18,.94);color:#fff;cursor:pointer;z-index:2;transition:.18s;}
 .live-table:hover{transform:translateY(-1px);border-color:#55555d;}
 .live-table.circle{border-radius:50%;}.live-table.square{border-radius:13px;}.live-table.rect{border-radius:10px;}.live-table.rounded{border-radius:25px;}
-.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}
+.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}.live-table.partial{border-color:rgba(230,140,70,.55);}.live-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.live-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
+.table-card.partial{border-color:rgba(230,140,70,.4);}.table-card.awaiting_payment{border-color:rgba(240,200,60,.55);}.table-card.blocked{border-color:rgba(120,120,120,.5);opacity:.65;}
+.builder-table.partial{border-color:rgba(230,140,70,.6);}.builder-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.builder-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
 .live-table b{font-size:13px;}.live-table span{font-size:8px;color:#8c868a;margin-top:4px;}.live-table em{font-style:normal;font-size:8px;margin-top:3px;color:#79d59a;}
 .hall-zoom{display:flex;gap:6px;margin-left:auto;}.hall-zoom button{width:34px;height:34px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);color:#ccc;}
 @media(max-width:900px){.builder-selection,.hall-setup-grid{grid-template-columns:1fr}.builder-fields{grid-template-columns:1fr 1fr}.hall-canvas,.hall-live-canvas{min-height:560px}.hall-stage{height:560px;min-width:760px}}
@@ -3663,7 +3665,117 @@ function scrollToRestaurants(){
 function hallKey(){return `servisium_hall_builder_v49_${Number(currentRestaurant?.id||0)}`;}
 function defaultHallConfig(){return {version:7,style:"DARK",floors:[{id:"f1",name:"1 поверх",sort:1,image:null,imageRotation:0,imageOpacity:48,planScale:1.15,sourceImage:null,analysis:null,digitalized:false,zones:[{id:"z1",name:"Основний зал",sort:1}]}],tables:[]};}
 function loadHallConfig(){if(!currentRestaurant)return defaultHallConfig();try{const raw=localStorage.getItem(hallKey());if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.floors)&&Array.isArray(p.tables)){p.floors.forEach(f=>{f.zones=f.zones||[{id:"z"+Date.now(),name:"Основна зона",sort:1}];f.planScale=Number(f.planScale||1.15);f.style=f.style||p.style||"DARK";});if(Number(p.version||0)<7){p.tables=p.tables.filter(t=>!t.autoDetected);p.version=7;}return p;}}}catch(e){console.warn("Hall config read error",e);}return defaultHallConfig();}
-function saveHallConfig(cfg){localStorage.setItem(hallKey(),JSON.stringify(cfg));}
+function saveHallConfig(cfg){localStorage.setItem(hallKey(),JSON.stringify(cfg));hallScheduleServerSync(cfg);}
+
+/* ================= HALL SERVER SYNC (T038/T043, task 4) =================
+   localStorage stays the synchronous working copy (offline cache); the
+   source of truth is Supabase:
+   - hall_configs: floors, zones, tables, geometry (ADMIN / SENIOR WAITER write)
+   - hall_table_status: per-table status + guests (any staff of the venue)
+   Plan images stay on the device (too large for a row); the digital scheme
+   (tables, coordinates, numbers) is what is shared. */
+const HALL_STATUSES=["available","busy","reserved","cleaning","awaiting_payment","blocked","partial"];
+let hallSync={rid:null,timer:null,pulling:false,lastStatuses:{},pollTimer:null,pulledRid:null};
+
+function hallCanManage(){const r=hallRole();return r==="ADMIN"||r==="SENIOR WAITER";}
+
+function hallStripForServer(cfg){
+  const c=JSON.parse(JSON.stringify(cfg||{}));
+  (c.floors||[]).forEach(f=>{delete f.image;delete f.sourceImage;});
+  (c.tables||[]).forEach(t=>{delete t.status;delete t.guests;});
+  delete c.serverVersion;delete c.serverUpdatedAt;
+  return c;
+}
+
+function hallStatusMap(cfg){
+  const m={};
+  (cfg?.tables||[]).forEach(t=>{if(t?.id)m[t.id]={status:HALL_STATUSES.includes(t.status)?t.status:"available",guests:Number.isFinite(Number(t.guests))?Number(t.guests):null};});
+  return m;
+}
+
+function hallScheduleServerSync(cfg){
+  if(!currentRestaurant||!servisiumSession?.access_token)return;
+  const rid=Number(currentRestaurant.id);
+  /* Never push before this device has pulled the server copy: a fresh
+     device would otherwise overwrite the venue hall with its empty default. */
+  if(hallSync.pulledRid!==rid)return;
+  clearTimeout(hallSync.timer);
+  hallSync.timer=setTimeout(()=>hallPushToServer(rid,cfg).catch(e=>console.warn("Hall sync failed:",e.message)),700);
+}
+
+async function hallPushToServer(rid,cfg){
+  if(!currentRestaurant||Number(currentRestaurant.id)!==rid)return;
+  if(hallCanManage()){
+    const rows=await supabaseRequest("hall_configs?on_conflict=restaurant_id",{
+      method:"POST",
+      headers:{Prefer:"resolution=merge-duplicates,return=representation"},
+      body:JSON.stringify([{restaurant_id:rid,config:hallStripForServer(cfg),version:Number(cfg.serverVersion||0)+1,updated_at:new Date().toISOString()}])
+    });
+    const saved=Array.isArray(rows)?rows[0]:null;
+    if(saved){
+      try{const local=JSON.parse(localStorage.getItem(hallKey())||"null");if(local){local.serverVersion=saved.version;local.serverUpdatedAt=saved.updated_at;localStorage.setItem(hallKey(),JSON.stringify(local));}}catch{}
+    }
+  }
+  const now=hallStatusMap(cfg),prev=hallSync.rid===rid?hallSync.lastStatuses:{};
+  const changed=Object.entries(now).filter(([id,s])=>!prev[id]||prev[id].status!==s.status||prev[id].guests!==s.guests)
+    .map(([id,s])=>({restaurant_id:rid,table_id:id,status:s.status,guests:s.guests,updated_at:new Date().toISOString()}));
+  if(changed.length){
+    await supabaseRequest("hall_table_status?on_conflict=restaurant_id,table_id",{
+      method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(changed)
+    });
+  }
+  hallSync.rid=rid;hallSync.lastStatuses=now;
+}
+
+/* Server → device. Keeps this device's plan images (matched by floor id).
+   A brand-new server row is seeded from an existing local hall once. */
+async function hallPullFromServer(rid,{statusesOnly=false}={}){
+  if(!servisiumSession?.access_token||hallSync.pulling)return;
+  hallSync.pulling=true;
+  try{
+    let local=null;try{local=JSON.parse(localStorage.getItem(`servisium_hall_builder_v49_${rid}`)||"null");}catch{}
+    let cfg=local;
+    if(!statusesOnly){
+      const rows=await supabaseRequest(`hall_configs?select=config,version,updated_at&restaurant_id=eq.${rid}`);
+      const row=Array.isArray(rows)?rows[0]:null;
+      if(row&&row.config&&Array.isArray(row.config.floors)){
+        if(!local||Number(row.version)>Number(local.serverVersion||0)){
+          const imgs={};(local?.floors||[]).forEach(f=>{imgs[f.id]={image:f.image,sourceImage:f.sourceImage};});
+          cfg=row.config;
+          (cfg.floors||[]).forEach(f=>{if(imgs[f.id]){f.image=imgs[f.id].image||null;f.sourceImage=imgs[f.id].sourceImage||null;}});
+          cfg.serverVersion=row.version;cfg.serverUpdatedAt=row.updated_at;
+        }
+      }else if(!row&&local&&Array.isArray(local.tables)&&local.tables.length&&hallCanManage()&&currentRestaurant&&Number(currentRestaurant.id)===rid){
+        await hallPushToServer(rid,local);
+      }
+      hallSync.pulledRid=rid;
+    }
+    if(cfg&&Array.isArray(cfg.tables)){
+      const st=await supabaseRequest(`hall_table_status?select=table_id,status,guests&restaurant_id=eq.${rid}`);
+      const map={};(Array.isArray(st)?st:[]).forEach(s=>{map[s.table_id]=s;});
+      cfg.tables.forEach(t=>{const s=map[t.id];if(s){t.status=s.status;t.guests=s.guests;}});
+      localStorage.setItem(`servisium_hall_builder_v49_${rid}`,JSON.stringify(cfg));
+      hallSync.rid=rid;hallSync.lastStatuses=hallStatusMap(cfg);
+    }
+    if(currentRestaurant&&Number(currentRestaurant.id)===rid&&document.getElementById("navHall")?.classList.contains("active")&&!hallDrag){
+      renderHallModule();
+    }
+  }catch(e){
+    console.warn("Hall pull failed:",e.message);
+  }finally{
+    hallSync.pulling=false;
+  }
+}
+
+function hallStartPolling(){
+  clearInterval(hallSync.pollTimer);
+  hallSync.pollTimer=setInterval(()=>{
+    if(document.hidden||!currentRestaurant)return;
+    if(!document.getElementById("navHall")?.classList.contains("active"))return;
+    const rid=Number(currentRestaurant.id);
+    hallPullFromServer(rid,{statusesOnly:hallSync.pulledRid===rid});
+  },15000);
+}
 let hallMode="live",hallFloorId=null,hallZoneId=null,hallSelectedTableId=null,hallDrag=null,hallSmartStep="source",hallSmartStyle="DARK";
 // AI Vision is intentionally routed through a Supabase Edge Function. Never place an OpenAI secret in this HTML.
 const SERVISIUM_AI_HALL_URL=(window.SERVISIUM_AI_HALL_URL||`${SUPABASE_URL}/functions/v1/analyze-hall-ai`);
@@ -3672,7 +3784,7 @@ function hallRole(){return String(currentUserRole||"").toUpperCase();}
 function hallCanEdit(){return hallRole()==="ADMIN";}
 function hallFloor(){const c=loadHallConfig();return c.floors.find(f=>f.id===hallFloorId)||c.floors[0]||null;}
 function hallZone(){const f=hallFloor();return f?.zones?.find(z=>z.id===hallZoneId)||f?.zones?.[0]||null;}
-function hallStatusLabel(s){return {available:"Вільний",busy:"Зайнятий",reserved:"Резерв",cleaning:"Прибирання"}[s]||"Вільний";}
+function hallStatusLabel(s){return {available:"Вільний",busy:"Зайнятий",partial:"Частково зайнятий",awaiting_payment:"Очікує оплату",reserved:"Резерв",cleaning:"Прибирання",blocked:"Заблокований"}[s]||"Вільний";}
 function hallShapeClass(s){return ["circle","square","rect","rounded"].includes(s)?s:"square";}
 function hallEscape(v){return escapeHtml(String(v??""));}
 function hallSetActiveIds(){const c=loadHallConfig();if(!c.floors.length){hallFloorId=null;hallZoneId=null;return;}if(!c.floors.some(f=>f.id===hallFloorId))hallFloorId=c.floors[0].id;const f=c.floors.find(x=>x.id===hallFloorId);if(!f.zones?.length)f.zones=[{id:"z"+Date.now(),name:"Основний зал",sort:1}];if(!f.zones.some(z=>z.id===hallZoneId))hallZoneId=f.zones[0].id;hallSmartStyle=f.style||c.style||"DARK";saveHallConfig(c);}
@@ -3692,7 +3804,7 @@ function hallAddTableAt(x=120,y=120,opts={}){if(!hallCanEdit())return null;hallS
 function hallAddTable(){const t=hallAddTableAt(140,120);if(t){hallSelectedTableId=t.id;renderHallModule();showToast(`Стіл ${t.number} додано.`);}}
 function hallDeleteTable(){if(!hallCanEdit()||!hallSelectedTableId)return;const c=loadHallConfig(),t=c.tables.find(x=>x.id===hallSelectedTableId);if(!t)return;if(!confirm(`Видалити стіл ${t.number}?`))return;c.tables=c.tables.filter(x=>x.id!==t.id);saveHallConfig(c);hallSelectedTableId=null;renderHallModule();}
 function hallUpdateSelected(field,value){if(!hallCanEdit()||!hallSelectedTableId)return;const c=loadHallConfig(),t=c.tables.find(x=>x.id===hallSelectedTableId);if(!t)return;if(field==="number")t.number=String(value).trim()||t.number;else if(field==="capacity")t.capacity=Math.max(1,Math.min(50,Number(value)||4));else if(field==="shape")t.shape=hallShapeClass(value);else if(field==="width")t.width=Math.max(40,Math.min(300,Number(value)||120));else if(field==="height")t.height=Math.max(40,Math.min(240,Number(value)||90));else if(field==="rotation")t.rotation=((Number(value)||0)%360+360)%360;saveHallConfig(c);renderHallModule();}
-function hallCycleStatus(id){const c=loadHallConfig(),t=c.tables.find(x=>x.id===id);if(!t)return;const order=["available","busy","reserved","cleaning"];t.status=order[(order.indexOf(t.status)+1)%order.length];saveHallConfig(c);renderHallModule();}
+function hallCycleStatus(id){const c=loadHallConfig(),t=c.tables.find(x=>x.id===id);if(!t)return;const order=["available","busy","partial","awaiting_payment","reserved","cleaning","blocked"];t.status=order[(order.indexOf(t.status)+1)%order.length];saveHallConfig(c);renderHallModule();}
 function startTableOrder(id){const c=loadHallConfig(),t=c.tables.find(x=>x.id===id);if(!t)return;if(t.status==="available"){t.status="busy";saveHallConfig(c);}openRestaurantModule("orders");}
 function hallTablePointerDown(e,id){if(!hallCanEdit())return;const c=loadHallConfig(),t=c.tables.find(x=>x.id===id);if(!t)return;hallSelectedTableId=id;hallDrag={id,startX:e.clientX,startY:e.clientY,origX:t.x,origY:t.y};e.currentTarget?.setPointerCapture?.(e.pointerId);e.preventDefault();renderHallModule();}
 function hallPointerMove(e){if(!hallDrag)return;const c=loadHallConfig(),t=c.tables.find(x=>x.id===hallDrag.id);if(!t)return;const dx=e.clientX-hallDrag.startX,dy=e.clientY-hallDrag.startY;t.x=Math.max(70,Math.min(1020,hallDrag.origX+dx));t.y=Math.max(60,Math.min(620,hallDrag.origY+dy));saveHallConfig(c);const el=document.querySelector(`[data-builder-table-id="${CSS.escape(String(t.id))}"]`);if(el){el.style.left=t.x+"px";el.style.top=t.y+"px";}}
@@ -4782,6 +4894,10 @@ async function openRestaurant(id){
 
 
   currentRestaurant = restaurant;
+
+  hallSync.pulledRid = null;
+  hallPullFromServer(Number(restaurant.id));
+  hallStartPolling();
 
   applyRoleAccess();
 
