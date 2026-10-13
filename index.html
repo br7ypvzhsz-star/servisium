@@ -1094,6 +1094,14 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.ingredient-editor{display:grid;gap:8px;}
+.ingredient-row{display:grid;grid-template-columns:1.4fr .5fr .5fr .8fr 1fr 1.2fr auto;gap:6px;align-items:start;}
+.ingredient-row select[multiple]{min-height:38px;max-height:76px;}
+.ingredient-row small{grid-column:1/-1;}
+@media (max-width:760px){.ingredient-row{grid-template-columns:1fr 1fr;}.ingredient-row input:first-child{grid-column:1/-1;}}
+.ingredient-list{display:grid;gap:6px;margin-top:6px;}
+.ingredient-item{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;}
+.ingredient-item .ingredient-info{grid-column:1/-1;}
 .allergen-editor{display:grid;gap:10px;}
 .allergen-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .allergen-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;font-size:13px;cursor:pointer;user-select:none;}
@@ -3018,6 +3026,10 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
         <div class="field full">
           <label>АЛЕРГЕНИ (ЛИШЕ ПІДТВЕРДЖЕНІ ЗАКЛАДОМ)</label>
           <div id="editMenuAllergens" class="allergen-editor"></div>
+        </div>
+        <div class="field full">
+          <label>СКЛАД / ІНГРЕДІЄНТИ</label>
+          <div id="editMenuIngredients" class="ingredient-editor"></div>
         </div>
       </div>
       <div class="modal-actions">
@@ -6881,6 +6893,7 @@ function openMenuItemDetails(id){
         <div class="menu-detail-description">
           ${item.description ? escapeHtml(item.description) : "Опис для цієї позиції ще не додано."}
         </div>
+        ${menuDetailIngredientsHtml(item)}
         ${menuDetailAllergensHtml(item)}
         <div class="menu-detail-actions">
           <button class="primary" onclick="closeModal('menuDetailModal');openEditMenuItem(${Number(item.id)})">✎ Редагувати</button>
@@ -6910,8 +6923,101 @@ function openEditMenuItem(id){
   document.getElementById("editMenuPhoto").value = getMenuPhoto(item);
   previewMenuPhoto();
   renderAllergenEditor(item);
+  ingredientDraft=itemIngredients(item).map(i=>({...i}));
+  ingredientStatus=String(item.ingredients_status||"unknown");
+  ingredientAiNote="";
+  renderIngredientEditor();
 
   openModal("editMenuModal");
+}
+
+/* ================= INGREDIENTS (instruction §5, tasks 56–58) =================
+   Each ingredient is its own element. AI may only PROPOSE from the item's own
+   text (with a quote); the venue confirms. General ingredient notes are labelled
+   as general knowledge, never as the venue's specific product. */
+const INGREDIENT_ROLES=["основа","соус","гарнір","спеція","топінг","інше"];
+let ingredientDraft=[],ingredientStatus="unknown",ingredientAiNote="";
+function itemIngredients(item){return Array.isArray(item?.ingredients)?item.ingredients.filter(i=>i&&String(i.name||"").trim()):[];}
+function renderIngredientEditor(){
+  const box=document.getElementById("editMenuIngredients");if(!box)return;
+  const rows=ingredientDraft.map((ing,idx)=>`<div class="ingredient-row" data-idx="${idx}">
+    <input placeholder="Інгредієнт" value="${escapeHtml(ing.name||"")}" oninput="ingredientDraft[${idx}].name=this.value">
+    <input placeholder="К-сть" value="${escapeHtml(ing.qty||"")}" oninput="ingredientDraft[${idx}].qty=this.value">
+    <input placeholder="Од." value="${escapeHtml(ing.unit||"")}" oninput="ingredientDraft[${idx}].unit=this.value">
+    <select onchange="ingredientDraft[${idx}].role=this.value">${INGREDIENT_ROLES.map(r=>`<option ${ing.role===r?"selected":""}>${r}</option>`).join("")}</select>
+    <select multiple title="Алергени інгредієнта (Ctrl/⌘ для кількох)" onchange="ingredientDraft[${idx}].allergens=[...this.selectedOptions].map(o=>o.value)">${ALLERGENS.map(a=>`<option value="${a.code}" ${(ing.allergens||[]).includes(a.code)?"selected":""}>${escapeHtml(a.label)}</option>`).join("")}</select>
+    <input placeholder="Походження / виробник (якщо підтверджено)" value="${escapeHtml(ing.origin||"")}" oninput="ingredientDraft[${idx}].origin=this.value">
+    <button type="button" class="secondary" title="Прибрати" onclick="ingredientDraft.splice(${idx},1);renderIngredientEditor()">✕</button>
+    ${ing.quote?`<small class="section-meta">AI з опису: «${escapeHtml(ing.quote)}»</small>`:""}
+  </div>`).join("");
+  box.innerHTML=`${rows||`<div class="section-meta">Склад ще не внесено.</div>`}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button type="button" class="secondary" onclick="ingredientDraft.push({name:'',qty:'',unit:'',role:'інше',allergens:[],origin:'',note:''});renderIngredientEditor()">＋ Інгредієнт</button>
+      <button type="button" class="secondary" onclick="ingredientAiSuggest()">✦ Запропонувати з опису (AI)</button>
+      <button type="button" class="secondary" onclick="ingredientAllergensToItem()">Перенести алергени складу в позицію</button>
+    </div>
+    ${ingredientAiNote?`<div class="section-meta">${escapeHtml(ingredientAiNote)}</div>`:""}
+    <select id="editMenuIngredientStatus" onchange="ingredientStatus=this.value">
+      <option value="unknown" ${ingredientStatus!=="confirmed"?"selected":""}>Склад не підтверджено (чернетка / пропозиція AI)</option>
+      <option value="confirmed" ${ingredientStatus==="confirmed"?"selected":""}>Склад підтверджено закладом (техкарта)</option>
+    </select>`;
+}
+async function ingredientAiSuggest(){
+  const id=Number(document.getElementById("editMenuId")?.value||0);if(!id)return;
+  ingredientAiNote="SERVISIUM AI читає опис позиції…";renderIngredientEditor();
+  try{
+    await ensureFreshToken();
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/ai-menu-assist`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`,"Content-Type":"application/json"},
+      body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),action:"extract_ingredients",menu_item_id:id})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.success)throw new Error(j.message||j.error||`HTTP ${r.status}`);
+    const have=new Set(ingredientDraft.map(i=>String(i.name||"").trim().toLowerCase()));
+    (j.ingredients||[]).forEach(i=>{if(!have.has(i.name.toLowerCase()))ingredientDraft.push(i);});
+    ingredientStatus="unknown";
+    ingredientAiNote=`Пропозиція AI лише з тексту опису — перевір і підтвердь.${j.missing_info?` Не вказано: ${j.missing_info}`:""}`;
+  }catch(e){ingredientAiNote=`AI: ${e.message}`;}
+  renderIngredientEditor();
+}
+function ingredientAllergensToItem(){
+  const codes=new Set(ingredientDraft.flatMap(i=>i.allergens||[]));
+  const box=document.getElementById("editMenuAllergens");if(!box)return;
+  box.querySelectorAll(".allergen-chips input").forEach(cb=>{if(codes.has(cb.value)&&!cb.checked){cb.checked=true;cb.parentElement.classList.add("on");}});
+  renderAllergenAdaptRows();
+  showToast(codes.size?"Алергени складу перенесено — перевір і підтвердь.":"У складі немає позначених алергенів.");
+}
+function readIngredientEditor(){
+  if(!document.getElementById("editMenuIngredients"))return null;
+  const ingredients=ingredientDraft.map(i=>({name:String(i.name||"").trim(),qty:String(i.qty||"").trim(),unit:String(i.unit||"").trim(),
+    role:INGREDIENT_ROLES.includes(i.role)?i.role:"інше",allergens:(i.allergens||[]).filter(c=>ALLERGEN_LABEL[c]),
+    origin:String(i.origin||"").trim(),note:String(i.note||"").trim()})).filter(i=>i.name);
+  return {ingredients,ingredients_status:ingredientStatus==="confirmed"?"confirmed":"unknown"};
+}
+
+/* detail card: ingredients + general AI note per ingredient */
+function menuDetailIngredientsHtml(item){
+  const list=itemIngredients(item);
+  if(!list.length)return `<div class="menu-detail-weight"><strong>Склад:</strong> <span class="section-meta">ще не внесено закладом.</span></div>`;
+  const conf=String(item.ingredients_status||"")==="confirmed";
+  return `<div class="menu-detail-weight"><strong>Склад${conf?"":" (не підтверджено закладом)"}:</strong>
+    <div class="ingredient-list">${list.map((i,idx)=>`<div class="ingredient-item">
+      <span><b>${escapeHtml(i.name)}</b>${i.qty?` · ${escapeHtml(i.qty)} ${escapeHtml(i.unit||"")}`:""} <small>${escapeHtml(i.role||"")}</small>${(i.allergens||[]).length?` <em class="allergen-flag contains">${escapeHtml(i.allergens.map(allergenLabel).join(", "))}</em>`:""}${i.origin?`<small> · ${escapeHtml(i.origin)}</small>`:""}</span>
+      <button type="button" class="secondary" onclick="ingredientInfo(${Number(item.id)},${idx},this)">ℹ</button>
+      <div class="ingredient-info" id="ingInfo_${Number(item.id)}_${idx}"></div></div>`).join("")}</div></div>`;
+}
+async function ingredientInfo(itemId,idx,btn){
+  const item=findMenuItem(itemId),ing=itemIngredients(item)[idx],box=document.getElementById(`ingInfo_${itemId}_${idx}`);
+  if(!ing||!box)return;
+  if(box.innerHTML){box.innerHTML="";return;}
+  box.innerHTML=`<span class="section-meta">SERVISIUM AI…</span>`;btn.disabled=true;
+  try{
+    await ensureFreshToken();
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/ai-menu-assist`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`,"Content-Type":"application/json"},
+      body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),action:"ingredient_info",ingredient:[ing.name,ing.origin].filter(Boolean).join(", "),dish:item.name})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.success)throw new Error(j.message||j.error||`HTTP ${r.status}`);
+    box.innerHTML=`<div class="section-meta"><b>Загальна довідка (AI, не дані закладу):</b> ${escapeHtml(j.summary)} ${escapeHtml(j.taste)}<br>💬 «${escapeHtml(j.waiter_phrase)}»${j.uncertain?`<br>⚠ Тип/походження в цьому закладі не вказані.`:""}</div>`;
+  }catch(e){box.innerHTML=`<span class="section-meta">AI: ${escapeHtml(e.message)}</span>`;}
+  btn.disabled=false;
 }
 
 /* ================= ALLERGENS (tasks 17–23, 65) =================
@@ -7084,7 +7190,8 @@ async function saveEditedMenuItem(){
           price,
           weight:weight || null,
           photo_url:photo || null,
-          ...(readAllergenEditor() || {})
+          ...(readAllergenEditor() || {}),
+          ...(readIngredientEditor() || {})
         })
       }
     );
