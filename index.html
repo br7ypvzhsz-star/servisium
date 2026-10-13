@@ -3711,6 +3711,7 @@ function renderTablePanel(){
       <div class="order-cart">${lines}</div>
       ${cancelled.length?`<details class="section-meta"><summary>Скасовано: ${cancelled.length}</summary>${cancelled.map(i=>`<div>${escapeHtml(i.name)} × ${Number(i.qty)} — ${escapeHtml(i.cancel_reason||"")}</div>`).join("")}</details>`:""}
       <div class="order-total"><span>РАЗОМ</span><strong>${money(o.total||0)}</strong></div>
+      ${items.length?renderTpAi():""}
       ${isOpen&&newCount?`<button class="primary-btn" style="width:100%;margin-top:10px" onclick="tpSend()">Відправити на кухню/бар (${newCount})</button>`:""}
       ${isOpen&&items.length&&!newCount?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpRequestBill()">Рахунок</button>`:""}
       ${o.status==="awaiting_payment"?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpReopen()">Повернути до замовлення</button>`:""}
@@ -3766,6 +3767,38 @@ async function tpClose(){
   if(!confirm(`Закрити чек на ${money(Math.max(0,Number(tablePanel.order.subtotal||0)-discount))}?`))return;
   await tpCall("order_close",{p_order_id:tablePanel.order.id,p_payment_method:pay,p_discount:discount},r=>{const row=Array.isArray(r)?r[0]:r;showToast(`Чек № ${row?.receipt_no} закрито: ${money(row?.total||0)}`);});
 }
+/* ---------- SERVISIUM AI pairing (task 66) ----------
+   Server picks only from this venue's available menu, drops stop-listed items and
+   items with the guests' confirmed allergens; reason/phrase are AI, facts are the menu. */
+let tpAi={loading:false,data:null,error:null,mode:"auto",orderId:null};
+function renderTpAi(){
+  if(tpAi.orderId!==tablePanel.order?.id){tpAi={loading:false,data:null,error:null,mode:"auto",orderId:tablePanel.order?.id};}
+  const roleLabel={best:"НАЙКРАЩИЙ ВИБІР",alternative:"АЛЬТЕРНАТИВА",addon:"ДОПОВНЕННЯ"};
+  const recs=tpAi.data?.recommendations||[];
+  const body=tpAi.loading?`<div class="personal-note">SERVISIUM AI підбирає з меню закладу…</div>`
+    :tpAi.error?`<div class="personal-note">${escapeHtml(tpAi.error)}</div>`
+    :tpAi.data?(recs.length?recs.map(r=>{const m=currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id));return `<div class="tp-line"><div><small class="kicker">${roleLabel[r.role]||""}${r.pairs_with?` · до «${escapeHtml(r.pairs_with)}»`:""}</small><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.reason)}</small><small>💬 «${escapeHtml(r.guest_phrase)}»</small>${m?allergenFlagHtml(m):""}</div><div class="tp-line-actions"><b>${money(r.price||0)}</b>${tablePanel.order?.status==="open"?`<button class="tp-ok" onclick="tpAdd(${Number(r.menu_item_id)})">Додати</button>`:""}</div></div>`;}).join("")
+      :`<div class="personal-note">Немає відповідних позицій.</div>`)+
+      `<div class="section-meta">Назви й ціни — з меню закладу; пояснення — AI${tpAi.data.excluded_by_allergen?` · виключено через алергени гостей: ${tpAi.data.excluded_by_allergen}`:""}${tpAi.data.data_gaps?` · ${escapeHtml(tpAi.data.data_gaps)}`:""}</div>`
+    :"";
+  const mbtn=(k,l)=>`<button class="${tpAi.mode===k?"primary":"secondary"}" onclick="tpAi.mode='${k}';tpAiRun()">${l}</button>`;
+  return `<div class="tp-ai"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px"><strong>✦ SERVISIUM AI</strong>${mbtn("drink_for_food","Напій до страв")}${mbtn("food_for_drink","Страва до напоїв")}${mbtn("addons","Доповнення")}</div>${body}</div>`;
+}
+async function tpAiRun(){
+  const o=tablePanel.order;if(!o)return;
+  const ids=(o.items||[]).filter(i=>i.status!=="cancelled").map(i=>Number(i.menu_item_id));
+  tpAi={...tpAi,loading:true,error:null,data:null,orderId:o.id};renderTablePanel();
+  try{
+    await ensureFreshToken();
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/ai-pairing`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`,"Content-Type":"application/json"},
+      body:JSON.stringify({restaurant_id:Number(currentRestaurant.id),cart_item_ids:ids,guest_allergens:o.guest_allergens||[],mode:tpAi.mode==="auto"?undefined:tpAi.mode})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.success)throw new Error(j.message||j.error||`HTTP ${r.status}`);
+    tpAi.data=j;
+  }catch(e){tpAi.error=e.message==="not_configured"?"AI не налаштовано на сервері.":`SERVISIUM AI: ${e.message}`;}
+  tpAi.loading=false;renderTablePanel();
+}
+
 /* the guest-allergen chips inside the table panel also persist to the order */
 const _toggleOrderGuestAllergen=toggleOrderGuestAllergen;
 toggleOrderGuestAllergen=function(code,on){
