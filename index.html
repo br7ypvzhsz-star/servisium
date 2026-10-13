@@ -1094,6 +1094,14 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.onboarding{margin:12px 0;}
+.onboarding-bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;margin:8px 0 12px;}
+.onboarding-bar i{display:block;height:100%;background:linear-gradient(90deg,#d33b57,#6fcf97);}
+.onboarding-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;}
+.onboarding-step{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:transparent;color:inherit;cursor:pointer;}
+.onboarding-step b{min-width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);}
+.onboarding-step.ok b{background:rgba(79,189,120,.25);color:#8bd6a4;}
+.onboarding-step span{display:grid;gap:2px;}.onboarding-step small{opacity:.7;}
 .smart-obstacle{display:flex;align-items:center;justify-content:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;z-index:1;pointer-events:none;}
 .smart-obstacle.unsure{border-style:dashed;opacity:.75;}
 .smart-obstacle.obst-door,.smart-obstacle.obst-entrance{border-color:rgba(79,189,120,.6);background:rgba(79,189,120,.1);color:#8bd6a4;}
@@ -2463,6 +2471,7 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
 
         </div>
 
+        <div id="onboardingPanel"></div>
 
         <div class="module-grid">
 
@@ -5432,6 +5441,7 @@ async function openRestaurant(id){
   hallPullFromServer(Number(restaurant.id));
   hallStartPolling();
   realtimeConnect(Number(restaurant.id));
+  renderOnboarding();
 
   applyRoleAccess();
 
@@ -6983,6 +6993,36 @@ function openEditMenuItem(id){
   renderIngredientEditor();
 
   openModal("editMenuModal");
+}
+
+/* ================= ONBOARDING CHECKLIST (task 41) =================
+   RESTAURANT → HALL → STAFF → MENU → CATEGORIES → TECH DATA → ALLERGENS → PHOTOS → READY.
+   Every step is computed on the server from real data; AI helps inside the steps,
+   the venue confirms. Shown to ADMIN / SENIOR WAITER until the venue is ready. */
+let onboardingCollapsed=false;
+async function renderOnboarding(){
+  const box=document.getElementById("onboardingPanel");if(!box)return;
+  box.innerHTML="";
+  if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())||!currentRestaurant)return;
+  let s=null;try{s=await rpc("onboarding_status",{p_restaurant_id:Number(currentRestaurant.id)});}catch{}
+  if(!s)return;
+  const pct=(a,b)=>b?Math.round(100*a/b):0;
+  const steps=[
+    {t:"Заклад",ok:!!s.restaurant?.has_city,d:s.restaurant?.has_city?"дані закладу внесено":"додай місто/адресу в налаштуваннях",go:"openRestaurantModule('settings')"},
+    {t:"Зал",ok:s.hall_tables>0,d:s.hall_tables?`${s.hall_tables} столів`:"завантаж план або розстав столи",go:"openHallModule()"},
+    {t:"Персонал",ok:s.staff_active>1,d:`${s.staff_active} працівників (офіціантів: ${s.staff_waiters})`,go:"openRestaurantModule('personnel')"},
+    {t:"Меню",ok:s.menu_with_price>0,d:s.menu_items?`${s.menu_items} позицій, з ціною ${s.menu_with_price}`:"імпортуй або додай позиції",go:"openRestaurantModule('menu')"},
+    {t:"Категорії",ok:s.categories>0,d:`${s.categories} категорій`,go:"openRestaurantModule('menu').then(()=>openCategoryManager())"},
+    {t:"Техкарти: склад і час",ok:s.kitchen_items>0&&pct(s.ingredients_confirmed,s.menu_items)>=50,d:`склад підтверджено: ${pct(s.ingredients_confirmed,s.menu_items)}% · час кухні: ${pct(s.prep_time_set,s.kitchen_items)}%`,go:"openRestaurantModule('menu')"},
+    {t:"Алергени",ok:pct(s.allergens_confirmed,s.menu_items)>=80,d:`підтверджено: ${s.allergens_confirmed} з ${s.menu_items} (${pct(s.allergens_confirmed,s.menu_items)}%)`,go:"openRestaurantModule('menu')"},
+    {t:"Фото",ok:pct(s.with_photo,s.menu_items)>=60,d:`з фото: ${pct(s.with_photo,s.menu_items)}% (бар ${pct(s.bar_with_photo,s.bar_items)}%)`,go:"openRestaurantModule('menu')"}
+  ];
+  const done=steps.filter(x=>x.ok).length,ready=done===steps.length;
+  box.innerHTML=`<div class="panel onboarding"><div class="section-head"><div><div class="kicker">ONBOARDING</div><h2>${ready?"✓ Заклад готовий до роботи":`Запуск закладу: ${done} з ${steps.length}`}</h2>
+      <div class="section-meta">Кроки рахуються з реальних даних. AI допомагає (імпорт, склад, фото, план залу) — остаточне рішення за закладом.</div></div>
+      <button class="secondary" onclick="onboardingCollapsed=!onboardingCollapsed;renderOnboarding()">${onboardingCollapsed?"Показати":"Згорнути"}</button></div>
+    <div class="onboarding-bar"><i style="width:${pct(done,steps.length)}%"></i></div>
+    ${onboardingCollapsed?"":`<div class="onboarding-steps">${steps.map((x,i)=>`<button class="onboarding-step ${x.ok?"ok":""}" onclick="${x.go}"><b>${x.ok?"✓":i+1}</b><span><strong>${x.t}</strong><small>${escapeHtml(x.d)}</small></span></button>`).join("")}</div>`}</div>`;
 }
 
 /* ================= HALL GEOMETRY + AUTO PLACEMENT (tasks 59–63) =================
