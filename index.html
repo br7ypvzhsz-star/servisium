@@ -4139,7 +4139,7 @@ function saveHallConfig(cfg){localStorage.setItem(hallKey(),JSON.stringify(cfg))
    Plan images stay on the device (too large for a row); the digital scheme
    (tables, coordinates, numbers) is what is shared. */
 const HALL_STATUSES=["available","busy","reserved","cleaning","awaiting_payment","blocked","partial"];
-let hallSync={rid:null,timer:null,pulling:false,lastStatuses:{},pollTimer:null,pulledRid:null};
+let hallSync={rid:null,timer:null,pulling:false,lastStatuses:{},pollTimer:null,pulledRid:null,lastConfigJson:null};
 
 function hallCanManage(){const r=hallRole();return r==="ADMIN"||r==="SENIOR WAITER";}
 
@@ -4169,7 +4169,11 @@ function hallScheduleServerSync(cfg){
 
 async function hallPushToServer(rid,cfg){
   if(!currentRestaurant||Number(currentRestaurant.id)!==rid)return;
-  if(hallCanManage()){
+  /* push the scheme only when it really differs from what is already on the server
+     (renders, Realtime echoes and polling must never create a write loop) */
+  const configJson=JSON.stringify(hallStripForServer(cfg));
+  if(hallCanManage()&&!(hallSync.rid===rid&&hallSync.lastConfigJson===configJson)){
+    hallSync.lastConfigJson=configJson;
     const rows=await supabaseRequest("hall_configs?on_conflict=restaurant_id",{
       method:"POST",
       headers:{Prefer:"resolution=merge-duplicates,return=representation"},
@@ -4209,6 +4213,7 @@ async function hallPullFromServer(rid,{statusesOnly=false}={}){
           (cfg.floors||[]).forEach(f=>{if(imgs[f.id]){f.image=imgs[f.id].image||null;f.sourceImage=imgs[f.id].sourceImage||null;}});
           cfg.serverVersion=row.version;cfg.serverUpdatedAt=row.updated_at;
         }
+        hallSync.rid=rid;hallSync.lastConfigJson=JSON.stringify(hallStripForServer(row.config));
       }else if(!row&&local&&Array.isArray(local.tables)&&local.tables.length&&hallCanManage()&&currentRestaurant&&Number(currentRestaurant.id)===rid){
         await hallPushToServer(rid,local);
       }
@@ -4302,7 +4307,7 @@ function hallZone(){const f=hallFloor();return f?.zones?.find(z=>z.id===hallZone
 function hallStatusLabel(s){return {available:"Вільний",busy:"Зайнятий",partial:"Частково зайнятий",awaiting_payment:"Очікує оплату",reserved:"Резерв",cleaning:"Прибирання",blocked:"Заблокований"}[s]||"Вільний";}
 function hallShapeClass(s){return ["circle","square","rect","rounded"].includes(s)?s:"square";}
 function hallEscape(v){return escapeHtml(String(v??""));}
-function hallSetActiveIds(){const c=loadHallConfig();if(!c.floors.length){hallFloorId=null;hallZoneId=null;return;}if(!c.floors.some(f=>f.id===hallFloorId))hallFloorId=c.floors[0].id;const f=c.floors.find(x=>x.id===hallFloorId);if(!f.zones?.length)f.zones=[{id:"z"+Date.now(),name:"Основний зал",sort:1}];if(!f.zones.some(z=>z.id===hallZoneId))hallZoneId=f.zones[0].id;hallSmartStyle=f.style||c.style||"DARK";saveHallConfig(c);}
+function hallSetActiveIds(){const c=loadHallConfig();if(!c.floors.length){hallFloorId=null;hallZoneId=null;return;}if(!c.floors.some(f=>f.id===hallFloorId))hallFloorId=c.floors[0].id;const f=c.floors.find(x=>x.id===hallFloorId);let changed=false;if(!f.zones?.length){f.zones=[{id:"z"+Date.now(),name:"Основний зал",sort:1}];changed=true;}if(!f.zones.some(z=>z.id===hallZoneId))hallZoneId=f.zones[0].id;hallSmartStyle=f.style||c.style||"DARK";if(changed)saveHallConfig(c);}
 function openHallModule(){if(!currentRestaurant){showToast("Спочатку відкрий свій заклад.");scrollToRestaurants();return;}hallMode="live";hallSetActiveIds();renderHallModule();}
 function openHallBuilder(){if(!currentRestaurant){showToast("Спочатку відкрий свій заклад.");return;}if(!hallCanEdit()){showToast("Конструктор залу доступний тільки ADMIN.");return;}hallMode="builder";hallSmartStep="source";hallSetActiveIds();renderHallModule();}
 function openOrdersFromNav(){if(!currentRestaurant){showToast("Спочатку відкрий свій заклад.");scrollToRestaurants();return;}openRestaurantModule("orders");}
