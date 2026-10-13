@@ -6221,6 +6221,82 @@ function setMenuPhotoLocal(id,url){
   }
 }
 
+/*
+  Per-restaurant photo cache for the import flow (was called but never
+  defined, so every URL import failed). Keyed by source_id, else by name.
+*/
+function menuPhotoCacheKey(item){
+  const sid = item?.source_id ?? item?.external_id;
+  if(sid !== null && sid !== undefined && String(sid).trim()){
+    return `sid:${String(sid).trim()}`;
+  }
+  const name = String(item?.name || "").trim().toLowerCase();
+  return name ? `name:${name}` : "";
+}
+
+function menuPhotoCacheStorageKey(){
+  return `servisium_photo_cache_${currentRestaurant?.id || 0}`;
+}
+
+function loadLocalPhotoCache(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(menuPhotoCacheStorageKey()) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  }catch{
+    return {};
+  }
+}
+
+function updateLocalPhotoCacheFromItems(items){
+  const cache = loadLocalPhotoCache();
+  (Array.isArray(items) ? items : []).forEach(item => {
+    const photo = String(item?.photo_url || item?.photo || "").trim();
+    const key = menuPhotoCacheKey(item);
+    if(photo && key) cache[key] = photo;
+  });
+  try{
+    localStorage.setItem(menuPhotoCacheStorageKey(), JSON.stringify(cache));
+  }catch(error){
+    console.warn("Photo cache unavailable:", error);
+  }
+  return cache;
+}
+
+/*
+  Fills only MISSING photos of imported items: first from the saved menu
+  (matched by source_id, then by name), then from the local cache. A photo
+  the import already has is never replaced here.
+*/
+function mergeExistingMenuPhotosIntoImportedItems(items){
+  const list = Array.isArray(items) ? items : [];
+  const saved = new Map();
+  (Array.isArray(currentMenu) ? currentMenu : []).forEach(m => {
+    const photo = getMenuPhoto(m);
+    if(!photo) return;
+    if(m.source_id) saved.set(`sid:${String(m.source_id).trim()}`, photo);
+    const name = String(m.name || "").trim().toLowerCase();
+    if(name && !saved.has(`name:${name}`)) saved.set(`name:${name}`, photo);
+  });
+  const cache = loadLocalPhotoCache();
+
+  return list.map(item => {
+    if(String(item?.photo_url || item?.photo || "").trim()) return item;
+    const key = menuPhotoCacheKey(item);
+    const name = String(item?.name || "").trim().toLowerCase();
+    const photo =
+      saved.get(key) ||
+      (name && saved.get(`name:${name}`)) ||
+      cache[key] ||
+      "";
+    return photo ? { ...item, photo_url: photo } : item;
+  });
+}
+
+async function loadRestaurantMenu(restaurantId){
+  if(!currentRestaurant || Number(currentRestaurant.id) !== Number(restaurantId)) return;
+  await loadMenu();
+}
+
 function findMenuItem(id){
   return currentMenu.find(item => Number(item.id) === Number(id)) || null;
 }
