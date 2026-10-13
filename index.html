@@ -1083,7 +1083,19 @@ h3{
 .live-table{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line2);background:rgba(16,16,18,.94);color:#fff;cursor:pointer;z-index:2;transition:.18s;}
 .live-table:hover{transform:translateY(-1px);border-color:#55555d;}
 .live-table.circle{border-radius:50%;}.live-table.square{border-radius:13px;}.live-table.rect{border-radius:10px;}.live-table.rounded{border-radius:25px;}
-.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}.live-table.partial{border-color:rgba(230,140,70,.55);}.live-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.live-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
+.live-table.available{border-color:rgba(79,189,120,.42);}.live-table.busy{border-color:rgba(211,59,87,.55);}.live-table.reserved{border-color:rgba(215,185,135,.55);}.live-table.cleaning{border-color:rgba(117,149,217,.45);}.allergen-editor{display:grid;gap:10px;}
+.allergen-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.allergen-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;font-size:13px;cursor:pointer;user-select:none;}
+.allergen-chip input{margin:0;accent-color:#d33b57;}
+.allergen-chip.on{border-color:rgba(211,59,87,.75);background:rgba(211,59,87,.14);color:#ffb3c0;}
+.allergen-adapt{display:grid;gap:6px;}
+.allergen-adapt-row{display:grid;grid-template-columns:110px 150px 1fr;gap:6px;align-items:center;}
+@media (max-width:640px){.allergen-adapt-row{grid-template-columns:1fr;}}
+.allergen-guest-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;}
+.allergen-flag{display:block;margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.02em;}
+.allergen-flag.contains{color:#ff6b81;}.allergen-flag.adapt{color:#f0c040;}.allergen-flag.unknown{color:#e8a04c;}.allergen-flag.clear{color:#6fcf97;font-weight:600;}
+.order-menu-item.allergen-contains,.menu-card.allergen-contains{border-color:rgba(255,80,105,.85)!important;background:rgba(211,59,87,.12)!important;}
+.live-table.partial{border-color:rgba(230,140,70,.55);}.live-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.live-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
 .table-card.partial{border-color:rgba(230,140,70,.4);}.table-card.awaiting_payment{border-color:rgba(240,200,60,.55);}.table-card.blocked{border-color:rgba(120,120,120,.5);opacity:.65;}
 .builder-table.partial{border-color:rgba(230,140,70,.6);}.builder-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.builder-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
 .live-table b{font-size:13px;}.live-table span{font-size:8px;color:#8c868a;margin-top:4px;}.live-table em{font-style:normal;font-size:8px;margin-top:3px;color:#79d59a;}
@@ -2992,6 +3004,10 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
           <input id="editMenuPhoto" type="url" placeholder="https://..." oninput="previewMenuPhoto()">
           <img id="editMenuPhotoPreview" class="photo-preview" alt="Попередній перегляд">
         </div>
+        <div class="field full">
+          <label>АЛЕРГЕНИ (ЛИШЕ ПІДТВЕРДЖЕНІ ЗАКЛАДОМ)</label>
+          <div id="editMenuAllergens" class="allergen-editor"></div>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="secondary" onclick="closeModal('editMenuModal')">Скасувати</button>
@@ -3355,6 +3371,8 @@ async function openPersonalCabinet(){
 /* ================= ORDERS MVP ================= */
 let ordersModuleCache = [];
 let orderDraft = [];
+let orderGuestAllergens = [];
+let orderAllergenHide = false;
 let ordersStaffCache = [];
 
 async function loadOrdersModuleData(){
@@ -3430,18 +3448,22 @@ function formatDateTime(value){
 async function openNewOrderComposer(){
   if(!currentRestaurant){showToast("Спочатку відкрий заклад.");return;}
   orderDraft=[];
+  orderGuestAllergens=[];orderAllergenHide=false;
   const role=String(currentUserRole||"").toUpperCase();
   const canAssign=role==="ADMIN"||role==="SENIOR WAITER";
   if(!currentMenu.length){
     try{await loadRestaurantMenu(currentRestaurant.id);}catch(e){console.warn("Menu load for order:",e.message);}
   }
-  const available=currentMenu.filter(x=>String(x.status||"active").toLowerCase()!=="stop"&&String(x.status||"active").toLowerCase()!=="stopped");
+  try{await loadStopList();}catch(e){console.warn("Stop list for order:",e.message);}
+  const available=currentMenu.filter(x=>!isMenuItemStopped(x));
   const staffOptions=ordersStaffCache.map(s=>`<option value="${Number(s.id)}" ${Number(s.id)===Number(currentUserStaff?.id)?"selected":""}>${escapeHtml(s.name)} · ${escapeHtml(s.role)}</option>`).join("");
   const modal=document.createElement("div");modal.className="servisium-modal-backdrop";modal.id="newOrderModal";
   modal.innerHTML=`<div class="servisium-modal order-composer"><div class="modal-head"><div><div class="kicker">NEW ORDER</div><h2>Нове замовлення</h2><div class="section-meta">Додавай позиції — SERVISIUM автоматично порахує чек.</div></div><button class="icon-btn" onclick="closeNewOrderComposer()">×</button></div>
     <div class="order-composer-grid">
       <div>
         <label class="field-label">ПОШУК ПОЗИЦІЇ</label><input id="orderSearchInput" class="text-input" placeholder="Наприклад: T-bone, бургер, вино…" oninput="filterOrderMenu(this.value)">
+        <label class="field-label" style="margin-top:10px">АЛЕРГЕНИ ГОСТЯ</label>
+        <div id="orderAllergenBar" class="allergen-guest-bar">${renderOrderAllergenBar()}</div>
         <div id="orderMenuPicker" class="order-menu-picker">${renderOrderMenuPicker(available)}</div>
       </div>
       <div>
@@ -3455,19 +3477,49 @@ async function openNewOrderComposer(){
   document.body.appendChild(modal);
 }
 
+/* Stop list lives in stop_list (server also rejects stopped items in create_order). */
+function isMenuItemStopped(item){
+  const s=String(item?.status||"active").toLowerCase();
+  if(s==="stop"||s==="stopped")return true;
+  return (Array.isArray(currentStopList)?currentStopList:[]).some(r=>Number(r.menu_item_id)===Number(item?.id)&&String(r.status||"active")==="active");
+}
+function renderOrderAllergenBar(){
+  return ALLERGENS.map(a=>`<label class="allergen-chip ${orderGuestAllergens.includes(a.code)?"on":""}"><input type="checkbox" ${orderGuestAllergens.includes(a.code)?"checked":""} onchange="toggleOrderGuestAllergen('${a.code}',this.checked)">${escapeHtml(a.label)}</label>`).join("")+
+    `<label class="allergen-chip ${orderAllergenHide?"on":""}" title="Приховати позиції, що містять вибрані алергени"><input type="checkbox" ${orderAllergenHide?"checked":""} onchange="orderAllergenHide=this.checked;refreshOrderAllergens()">Лише без вибраних</label>`;
+}
+function toggleOrderGuestAllergen(code,on){
+  orderGuestAllergens=on?[...new Set([...orderGuestAllergens,code])]:orderGuestAllergens.filter(c=>c!==code);
+  refreshOrderAllergens();
+}
+function refreshOrderAllergens(){
+  const bar=document.getElementById("orderAllergenBar");if(bar)bar.innerHTML=renderOrderAllergenBar();
+  filterOrderMenu(document.getElementById("orderSearchInput")?.value||"");
+}
+function allergenFlagHtml(item,v){
+  v=v||allergenVerdict(item,orderGuestAllergens);
+  if(v.kind==="contains")return `<em class="allergen-flag contains">МІСТИТЬ: ${escapeHtml(v.hits.map(allergenLabel).join(", "))}</em>`;
+  if(v.kind==="adapt")return `<em class="allergen-flag adapt">МІСТИТЬ: ${escapeHtml(v.hits.map(allergenLabel).join(", "))} · CAN ADAPT за правилом закладу</em>`;
+  if(v.kind==="unknown")return `<em class="allergen-flag unknown">Алергени не підтверджені закладом — потрібне уточнення</em>`;
+  if(v.kind==="clear")return `<em class="allergen-flag clear">Не містить зазначених алергенів за даними меню</em>`;
+  return "";
+}
 function closeNewOrderComposer(){document.getElementById("newOrderModal")?.remove();}
 function orderDraftTotal(){return orderDraft.reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||0),0);}
 function renderOrderMenuPicker(items){
   if(!items.length)return `<div class="personal-note">Немає доступних позицій меню.</div>`;
-  return items.slice(0,80).map(item=>`<button class="order-menu-item" onclick="addOrderDraftItem(${Number(item.id)})"><img src="${escapeHtml(item.photo_url||"")}" onerror="this.style.display='none'" alt=""><span><strong>${escapeHtml(item.name||"Позиція")}</strong><small>${escapeHtml(item.category||item.type||"")}</small></span><b>${money(item.price||0)}</b></button>`).join("");
+  const shown=orderAllergenHide&&orderGuestAllergens.length?items.filter(i=>allergenVerdict(i,orderGuestAllergens).kind!=="contains"):items;
+  if(!shown.length)return `<div class="personal-note">Немає позицій без вибраних алергенів за даними меню.</div>`;
+  return shown.slice(0,80).map(item=>{const v=allergenVerdict(item,orderGuestAllergens);return `<button class="order-menu-item ${v.kind==="contains"?"allergen-contains":""}" onclick="addOrderDraftItem(${Number(item.id)})"><img src="${escapeHtml(item.photo_url||"")}" onerror="this.style.display='none'" alt=""><span><strong>${escapeHtml(item.name||"Позиція")}</strong><small>${escapeHtml(item.category||item.type||"")}</small>${allergenFlagHtml(item,v)}</span><b>${money(item.price||0)}</b></button>`;}).join("");
 }
 function filterOrderMenu(query){
   const q=String(query||"").trim().toLowerCase();
-  const list=currentMenu.filter(x=>{const status=String(x.status||"active").toLowerCase();if(status==="stop"||status==="stopped")return false;return !q||`${x.name||""} ${x.category||""} ${x.type||""}`.toLowerCase().includes(q);});
+  const list=currentMenu.filter(x=>{if(isMenuItemStopped(x))return false;return !q||`${x.name||""} ${x.category||""} ${x.type||""}`.toLowerCase().includes(q);});
   const el=document.getElementById("orderMenuPicker");if(el)el.innerHTML=renderOrderMenuPicker(list);
 }
 function addOrderDraftItem(id){
   const item=currentMenu.find(x=>Number(x.id)===Number(id));if(!item)return;
+  const verdict=allergenVerdict(item,orderGuestAllergens);
+  if(verdict.kind==="contains"&&!confirm(`${item.name} МІСТИТЬ: ${verdict.hits.map(allergenLabel).join(", ")}.\nДодати попри алерген гостя?`))return;
   const existing=orderDraft.find(x=>Number(x.menu_item_id)===Number(id));
   if(existing)existing.qty=Number(existing.qty||0)+1;else orderDraft.push({menu_item_id:Number(item.id),name:item.name,price:Number(item.price||0),qty:1});
   refreshOrderComposer();
@@ -6449,6 +6501,7 @@ function openMenuItemDetails(id){
         <div class="menu-detail-description">
           ${item.description ? escapeHtml(item.description) : "Опис для цієї позиції ще не додано."}
         </div>
+        ${menuDetailAllergensHtml(item)}
         <div class="menu-detail-actions">
           <button class="primary" onclick="closeModal('menuDetailModal');openEditMenuItem(${Number(item.id)})">✎ Редагувати</button>
           <button class="danger-btn" onclick="closeModal('menuDetailModal');deleteMenuItem(${Number(item.id)})">× Видалити</button>
@@ -6476,8 +6529,104 @@ function openEditMenuItem(id){
   document.getElementById("editMenuDescription").value = item.description || "";
   document.getElementById("editMenuPhoto").value = getMenuPhoto(item);
   previewMenuPhoto();
+  renderAllergenEditor(item);
 
   openModal("editMenuModal");
+}
+
+/* ================= ALLERGENS (tasks 17–23, 65) =================
+   EU-14. Only what the venue confirmed is shown as fact; an unconfirmed
+   item is «потрібне уточнення», never «безпечно». */
+const ALLERGENS=[
+  {code:"gluten",label:"Глютен"},{code:"crustaceans",label:"Ракоподібні"},{code:"eggs",label:"Яйця"},
+  {code:"fish",label:"Риба"},{code:"peanuts",label:"Арахіс"},{code:"soy",label:"Соя"},
+  {code:"milk",label:"Молоко"},{code:"tree_nuts",label:"Горіхи"},{code:"celery",label:"Селера"},
+  {code:"mustard",label:"Гірчиця"},{code:"sesame",label:"Кунжут"},{code:"sulphites",label:"Сульфіти"},
+  {code:"lupin",label:"Люпин"},{code:"molluscs",label:"Молюски"}
+];
+const ALLERGEN_LABEL=Object.fromEntries(ALLERGENS.map(a=>[a.code,a.label]));
+function allergenLabel(code){return ALLERGEN_LABEL[code]||code;}
+function itemAllergens(item){return Array.isArray(item?.allergens)?item.allergens.filter(c=>ALLERGEN_LABEL[c]):[];}
+function itemAllergensConfirmed(item){return String(item?.allergens_status||"unknown")==="confirmed";}
+
+function renderAllergenEditor(item){
+  const box=document.getElementById("editMenuAllergens");
+  if(!box)return;
+  const selected=new Set(itemAllergens(item));
+  const adapt=(item&&typeof item.allergen_adaptations==="object"&&item.allergen_adaptations)||{};
+  box.innerHTML=`
+    <div class="allergen-chips">${ALLERGENS.map(a=>`
+      <label class="allergen-chip ${selected.has(a.code)?"on":""}">
+        <input type="checkbox" value="${a.code}" ${selected.has(a.code)?"checked":""} onchange="this.parentElement.classList.toggle('on',this.checked);renderAllergenAdaptRows()">
+        ${escapeHtml(a.label)}
+      </label>`).join("")}
+    </div>
+    <div class="allergen-status-row">
+      <select id="editMenuAllergenStatus">
+        <option value="unknown" ${itemAllergensConfirmed(item)?"":"selected"}>Не підтверджено — офіціант побачить «потрібне уточнення»</option>
+        <option value="confirmed" ${itemAllergensConfirmed(item)?"selected":""}>Підтверджено закладом (склад/техкарта перевірені)</option>
+      </select>
+    </div>
+    <div id="editMenuAllergenAdapt" class="allergen-adapt"></div>
+    <textarea id="editMenuCrossContact" placeholder="Ризик перехресного контакту (лише підтверджене закладом), напр.: готується на спільній поверхні з горіхами">${escapeHtml(item?.cross_contact_note||"")}</textarea>`;
+  box.dataset.adapt=JSON.stringify(adapt);
+  renderAllergenAdaptRows();
+}
+
+function renderAllergenAdaptRows(){
+  const box=document.getElementById("editMenuAllergens"),wrap=document.getElementById("editMenuAllergenAdapt");
+  if(!box||!wrap)return;
+  let adapt={};try{adapt=JSON.parse(box.dataset.adapt||"{}");}catch{}
+  wrap.querySelectorAll("[data-code]").forEach(row=>{adapt[row.dataset.code]={can:row.querySelector("select").value,note:row.querySelector("input").value};});
+  box.dataset.adapt=JSON.stringify(adapt);
+  const codes=[...box.querySelectorAll(".allergen-chips input:checked")].map(i=>i.value);
+  wrap.innerHTML=codes.length?`<div class="section-meta">Чи можна прибрати/замінити — лише за підтвердженим правилом кухні:</div>`+codes.map(c=>{
+    const a=adapt[c]||{};const can=a.can===true||a.can==="yes"?"yes":a.can===false||a.can==="no"?"no":"unknown";
+    return `<div class="allergen-adapt-row" data-code="${c}"><span>${escapeHtml(allergenLabel(c))}</span>
+      <select><option value="unknown" ${can==="unknown"?"selected":""}>Невідомо</option><option value="yes" ${can==="yes"?"selected":""}>CAN ADAPT</option><option value="no" ${can==="no"?"selected":""}>CANNOT ADAPT</option></select>
+      <input placeholder="Що прибрати/замінити і як зміниться страва" value="${escapeHtml(a.note||"")}"></div>`;
+  }).join(""):"";
+}
+
+function readAllergenEditor(){
+  const box=document.getElementById("editMenuAllergens");
+  if(!box)return null;
+  const allergens=[...box.querySelectorAll(".allergen-chips input:checked")].map(i=>i.value);
+  const adaptations={};
+  box.querySelectorAll("#editMenuAllergenAdapt [data-code]").forEach(row=>{
+    const v=row.querySelector("select").value,note=row.querySelector("input").value.trim();
+    if(v!=="unknown"||note)adaptations[row.dataset.code]={can:v==="yes"?true:v==="no"?false:null,note:note||null};
+  });
+  return {
+    allergens,
+    allergens_status:document.getElementById("editMenuAllergenStatus")?.value==="confirmed"?"confirmed":"unknown",
+    allergen_adaptations:adaptations,
+    cross_contact_note:document.getElementById("editMenuCrossContact")?.value.trim()||null
+  };
+}
+
+function menuDetailAllergensHtml(item){
+  const codes=itemAllergens(item),adapt=item?.allergen_adaptations||{};
+  if(!itemAllergensConfirmed(item)){
+    return `<div class="menu-detail-weight"><em class="allergen-flag unknown">Алергени: не підтверджені закладом — потрібне уточнення${codes.length?` (попередньо: ${escapeHtml(codes.map(allergenLabel).join(", "))})`:""}</em></div>`;
+  }
+  const list=codes.length?codes.map(c=>{const a=adapt[c];const tag=a?.can===true?" · CAN ADAPT":a?.can===false?" · CANNOT ADAPT":"";return `<span class="allergen-chip on">${escapeHtml(allergenLabel(c))}${tag}</span>`;}).join(" "):`<em class="allergen-flag clear">Не містить алергенів зі списку ЄС-14 за даними закладу</em>`;
+  const notes=codes.filter(c=>adapt[c]?.note).map(c=>`<div class="section-meta">${escapeHtml(allergenLabel(c))}: ${escapeHtml(adapt[c].note)}</div>`).join("");
+  const cc=item?.cross_contact_note?`<div class="section-meta">Перехресний контакт: ${escapeHtml(item.cross_contact_note)}</div>`:"";
+  return `<div class="menu-detail-weight"><strong>Алергени:</strong> <div class="allergen-chips" style="margin-top:6px">${list}</div>${notes}${cc}</div>`;
+}
+
+/* Waiter-facing verdict for a set of guest allergens. */
+function allergenVerdict(item,guest){
+  const codes=itemAllergens(item);
+  const hits=(guest||[]).filter(c=>codes.includes(c));
+  if(hits.length){
+    const adapt=item?.allergen_adaptations||{};
+    const adaptable=hits.every(c=>adapt[c]?.can===true);
+    return {kind:adaptable?"adapt":"contains",hits};
+  }
+  if(!guest?.length)return {kind:"none",hits:[]};
+  return {kind:itemAllergensConfirmed(item)?"clear":"unknown",hits:[]};
 }
 
 function previewMenuPhoto(){
@@ -6540,41 +6689,25 @@ async function saveEditedMenuItem(){
   button.innerHTML = `<span class="loading"><span class="spinner"></span>Збереження...</span>`;
 
   try{
-    let updated;
-    try{
-      updated = await supabaseRequest(
-        `menu_items?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
-        {
-          method:"PATCH",
-          headers:{Prefer:"return=representation"},
-          body:JSON.stringify({
-            name,
-            type,
-            category,
-            description:description || null,
-            price,
-            weight:weight || null,
-            photo_url:photo || null
-          })
-        }
-      );
-    }catch(photoSchemaError){
-      updated = await supabaseRequest(
-        `menu_items?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
-        {
-          method:"PATCH",
-          headers:{Prefer:"return=representation"},
-          body:JSON.stringify({
-            name,
-            type,
-            category,
-            description:description || null,
-            price,
-            weight:weight || null
-          })
-        }
-      );
-    }
+    /* One PATCH. The old retry without photo_url hid real errors (RLS,
+       validation) behind a second, silently partial save. */
+    const updated = await supabaseRequest(
+      `menu_items?id=eq.${encodeURIComponent(id)}&restaurant_id=eq.${encodeURIComponent(currentRestaurant.id)}`,
+      {
+        method:"PATCH",
+        headers:{Prefer:"return=representation"},
+        body:JSON.stringify({
+          name,
+          type,
+          category,
+          description:description || null,
+          price,
+          weight:weight || null,
+          photo_url:photo || null,
+          ...(readAllergenEditor() || {})
+        })
+      }
+    );
 
     const row = Array.isArray(updated) && updated[0] ? updated[0] : null;
     const index = currentMenu.findIndex(x => Number(x.id) === id);
