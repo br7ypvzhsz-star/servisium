@@ -1102,6 +1102,9 @@ h3{
 .ingredient-list{display:grid;gap:6px;margin-top:6px;}
 .ingredient-item{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;}
 .ingredient-item .ingredient-info{grid-column:1/-1;}
+.prep-timer{display:block;font-size:12px;font-style:normal;opacity:.85;}
+.prep-timer.overdue{color:#ff6b81;font-weight:700;opacity:1;}
+.prep-timer.delayed{color:#91a8e0;}
 .allergen-editor{display:grid;gap:10px;}
 .allergen-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .allergen-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;font-size:13px;cursor:pointer;user-select:none;}
@@ -3027,6 +3030,14 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
           <label>АЛЕРГЕНИ (ЛИШЕ ПІДТВЕРДЖЕНІ ЗАКЛАДОМ)</label>
           <div id="editMenuAllergens" class="allergen-editor"></div>
         </div>
+        <div class="field">
+          <label>ЧАС ПРИГОТУВАННЯ, ХВ (ВІД)</label>
+          <input id="editMenuPrepMin" type="number" min="0" max="600" placeholder="напр. 12">
+        </div>
+        <div class="field">
+          <label>ЧАС ПРИГОТУВАННЯ, ХВ (ДО)</label>
+          <input id="editMenuPrepMax" type="number" min="0" max="600" placeholder="напр. 18">
+        </div>
         <div class="field full">
           <label>СКЛАД / ІНГРЕДІЄНТИ</label>
           <div id="editMenuIngredients" class="ingredient-editor"></div>
@@ -3706,10 +3717,11 @@ function renderTablePanel(){
     return `<div class="tp-line ${v.kind==="contains"?"allergen-contains":""}">
       <div><strong>${escapeHtml(i.name||"Позиція")}</strong>
         <small>${escapeHtml(i.station==="bar"?"Бар":"Кухня")} · <b class="tp-status s-${escapeHtml(i.status)}">${ITEM_STATUS_LABEL[i.status]||i.status}</b>${i.sent_at&&i.status!=="served"?` · ${minutesSince(i.sent_at)}`:""}</small>
-        ${i.note?`<small>✎ ${escapeHtml(i.note)}</small>`:""}${m?allergenFlagHtml(m,v):""}</div>
+        ${i.note?`<small>✎ ${escapeHtml(i.note)}</small>`:""}${prepTimerHtml(i)}${m?allergenFlagHtml(m,v):""}</div>
       <div class="tp-line-actions">
         ${i.status==="new"&&isOpen?`<button onclick="tpQty(${i.id},${Number(i.qty)-1})">−</button><span>${Number(i.qty)}</span><button onclick="tpQty(${i.id},${Number(i.qty)+1})">+</button><button title="Коментар" onclick="tpNote(${i.id})">✎</button>`:`<span>× ${Number(i.qty)}</span>`}
         ${i.status==="ready"?`<button class="tp-ok" onclick="tpItemStatus(${i.id},'served')">Подано</button>`:""}
+        ${["new","sent","preparing"].includes(i.status)?`<button title="Відкласти / затримка" onclick="delayItem(${i.id})">⏸</button>`:""}
         ${!["served","cancelled"].includes(i.status)?`<button title="Скасувати" onclick="tpCancelItem(${i.id},'${i.status}')">✕</button>`:""}
         <b>${money(Number(i.qty)*Number(i.price))}</b>
       </div></div>`;}).join(""):`<div class="personal-note">Позицій ще немає — додай зі списку.</div>`;
@@ -3865,6 +3877,46 @@ async function shiftToggle(start){
   return refreshOrdersView();
 }
 
+/* ---------- preparation time, delays, reminders (tasks 47–51) ----------
+   Norms come only from the venue's menu (prep_*_minutes); no invented defaults. */
+let delayReminderTimers={};
+function prepTimerHtml(i){
+  if(!i||["served","cancelled"].includes(i.status))return "";
+  const now=Date.now();
+  if(i.delay_until){
+    const left=Math.round((new Date(i.delay_until).getTime()-now)/60000);
+    scheduleDelayReminder(i);
+    return left>0
+      ?`<em class="prep-timer delayed">⏸ Відкладено ще ${left} хв${i.delay_reason?`: ${escapeHtml(i.delay_reason)}`:""}</em>`
+      :`<em class="prep-timer overdue">⏰ Затримка завершилась${i.delay_reason?` (${escapeHtml(i.delay_reason)})`:""}</em>`;
+  }
+  if(i.status==="ready"||!i.sent_at||!Number(i.prep_max_minutes))return "";
+  const left=Math.round((new Date(i.sent_at).getTime()+Number(i.prep_max_minutes)*60000-now)/60000);
+  return left>=0?`<em class="prep-timer">⏱ ≈ ${left} хв до нормативу</em>`:`<em class="prep-timer overdue">⚠ Прострочено на ${-left} хв (норматив ${Number(i.prep_max_minutes)} хв)</em>`;
+}
+function scheduleDelayReminder(i){
+  const due=new Date(i.delay_until).getTime()-Date.now(),key=`${i.id}:${i.delay_until}`;
+  if(due<=0||due>6*3600000||delayReminderTimers[key])return;
+  delayReminderTimers[key]=setTimeout(()=>{
+    const order=openOrdersCache.find(o=>Number(o.id)===Number(i.order_id))||tablePanel.order;
+    showToast(`Затримка завершилась: ${i.name||i.menu_name||"позиція"} — ${tableLabel(i.table_ref||order?.table_ref)}`);
+    try{navigator.vibrate?.([200,80,200]);}catch{}
+    if(document.getElementById("tablePanelModal"))renderTablePanel();
+  },due);
+}
+async function delayItem(itemId){
+  const m=prompt("На скільки хвилин відкласти? (0 — зняти затримку)","10");if(m===null)return;
+  const minutes=Math.round(Number(m));if(!Number.isFinite(minutes)||minutes<0||minutes>600){showToast("0–600 хв.");return;}
+  let reason=null;if(minutes>0){reason=prompt("Причина затримки (обов'язково):","Гості просять пізніше");if(!reason)return;}
+  try{
+    const n=await rpc("order_delay",{p_order_id:null,p_item_id:itemId,p_minutes:minutes,p_reason:reason});
+    showToast(minutes?`Відкладено на ${minutes} хв (${n})`:"Затримку знято");
+  }catch(e){showToast(orderErrorText(e));}
+  if(document.getElementById("tablePanelModal"))await refreshTablePanel();
+}
+/* timers tick on screen without server calls */
+setInterval(()=>{if(document.hidden)return;if(document.getElementById("tablePanelModal")&&!tablePanel.busy)renderTablePanel();},30000);
+
 /* ---------- kitchen / bar queue ---------- */
 async function loadKitchenQueue(){
   try{const q=await rpc("kitchen_queue",{p_restaurant_id:Number(currentRestaurant.id),p_station:null});kitchenQueueCache=Array.isArray(q)?q:[];}
@@ -3877,9 +3929,9 @@ function renderKitchenQueue(){
     <div><button class="${kitchenStation==="kitchen"?"primary":"secondary"}" onclick="kitchenStation='kitchen';refreshOrdersView()">Кухня (${kitchenQueueCache.filter(i=>i.station==="kitchen").length})</button>
     <button class="${kitchenStation==="bar"?"primary":"secondary"}" onclick="kitchenStation='bar';refreshOrdersView()">Бар (${kitchenQueueCache.filter(i=>i.station==="bar").length})</button></div></div>
     ${list.length?`<div class="orders-list">${list.map(i=>`<div class="order-row"><div class="order-main"><div class="order-id">${escapeHtml(tableLabel(i.table_ref))}</div><div><strong>${escapeHtml(i.name)} × ${Number(i.qty)}</strong>
-      <span>${ITEM_STATUS_LABEL[i.status]} · ${minutesSince(i.sent_at)} · ${escapeHtml(i.waiter_name||"")}</span>${i.note?`<span>✎ ${escapeHtml(i.note)}</span>`:""}
+      <span>${ITEM_STATUS_LABEL[i.status]} · ${minutesSince(i.sent_at)} · ${escapeHtml(i.waiter_name||"")}</span>${i.note?`<span>✎ ${escapeHtml(i.note)}</span>`:""}${prepTimerHtml(i)}
       ${(i.guest_allergens||[]).length?`<em class="allergen-flag contains">Алергени гостей: ${escapeHtml(i.guest_allergens.map(allergenLabel).join(", "))}</em>`:""}</div></div>
-      <div class="order-meta">${i.status==="sent"?btn(i,"preparing","Готується"):""}${i.status!=="ready"?btn(i,"ready","Готово"):btn(i,"served","Подано")}</div></div>`).join("")}</div>`:`<div class="personal-note">Черга порожня.</div>`}</div>`;
+      <div class="order-meta">${i.status!=="ready"?`<button class="secondary" title="Затримка" onclick="delayItem(${i.id}).then(refreshOrdersView)">⏸</button>`:""}${i.status==="sent"?btn(i,"preparing","Готується"):""}${i.status!=="ready"?btn(i,"ready","Готово"):btn(i,"served","Подано")}</div></div>`).join("")}</div>`:`<div class="personal-note">Черга порожня.</div>`}</div>`;
 }
 async function kqSet(itemId,status){
   try{await rpc("order_item_set_status",{p_item_id:itemId,p_status:status});}catch(e){showToast(orderErrorText(e));}
@@ -6923,6 +6975,8 @@ function openEditMenuItem(id){
   document.getElementById("editMenuPhoto").value = getMenuPhoto(item);
   previewMenuPhoto();
   renderAllergenEditor(item);
+  document.getElementById("editMenuPrepMin").value = item.prep_min_minutes ?? "";
+  document.getElementById("editMenuPrepMax").value = item.prep_max_minutes ?? "";
   ingredientDraft=itemIngredients(item).map(i=>({...i}));
   ingredientStatus=String(item.ingredients_status||"unknown");
   ingredientAiNote="";
@@ -7154,9 +7208,17 @@ async function saveEditedMenuItem(){
   const weight = document.getElementById("editMenuWeight").value.trim();
   const description = document.getElementById("editMenuDescription").value.trim();
   const photo = document.getElementById("editMenuPhoto").value.trim();
+  const prepMinRaw = document.getElementById("editMenuPrepMin")?.value ?? "";
+  const prepMaxRaw = document.getElementById("editMenuPrepMax")?.value ?? "";
+  const prep_min_minutes = prepMinRaw === "" ? null : Math.round(Number(prepMinRaw));
+  const prep_max_minutes = prepMaxRaw === "" ? null : Math.round(Number(prepMaxRaw));
 
   if(!name){
     showToast("Вкажи назву позиції.");
+    return;
+  }
+  if([prep_min_minutes,prep_max_minutes].some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>600))||(prep_min_minutes!==null&&prep_max_minutes!==null&&prep_min_minutes>prep_max_minutes)){
+    showToast("Час приготування: 0–600 хв, «від» не більше «до».");
     return;
   }
 
@@ -7190,6 +7252,8 @@ async function saveEditedMenuItem(){
           price,
           weight:weight || null,
           photo_url:photo || null,
+          prep_min_minutes,
+          prep_max_minutes,
           ...(readAllergenEditor() || {}),
           ...(readIngredientEditor() || {})
         })
