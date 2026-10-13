@@ -1,0 +1,20 @@
+{
+  "name": "SERVISIUM — Art of Service",
+  "short_name": "SERVISIUM",
+  "description": "Робоче місце офіціанта: меню, зал, замовлення, стоп-лист, навчання.",
+  "lang": "uk",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070708",
+  "theme_color": "#080809",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
