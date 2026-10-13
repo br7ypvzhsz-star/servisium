@@ -3316,7 +3316,8 @@ async function loadPersonalSalesStats(){
   const result={total:0,checks:0,avg:0,items:0,todayTotal:0,todayChecks:0,byDay:[],topItems:[]},staffId=Number(currentUserStaff?.id||0);if(!staffId)return result;
   try{
     const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&waiter_id=eq.${encodeURIComponent(staffId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc&limit=5000`);
-    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()!=="cancelled");
+    /* only closed receipts are sales — open tables are not paid yet */
+    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()==="closed");
     result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
     const todayStart=todayStartISO(),todayEnd=tomorrowStartISO();
     const todayOrders=valid.filter(o=>String(o.created_at||"")>=todayStart&&String(o.created_at||"")<todayEnd);
@@ -3344,7 +3345,8 @@ async function loadTeamSalesStats(){
   try{
     const staffRows=await supabaseRequest(`restaurant_staff?select=id,name,role,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&status=eq.active&order=name.asc&limit=500`);
     const staff=Array.isArray(staffRows)?staffRows:[];const orders=await supabaseRequest(`orders?select=id,total,waiter_id,created_at,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&created_at=gte.${encodeURIComponent(monthStartISO())}&created_at=lt.${encodeURIComponent(nextMonthISO())}&order=created_at.desc&limit=10000`);
-    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()!=="cancelled");result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
+    /* only closed receipts are sales — open tables are not paid yet */
+    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o.status||"").toLowerCase()==="closed");result.checks=valid.length;result.total=valid.reduce((sum,o)=>sum+Number(o.total||0),0);result.avg=result.checks?result.total/result.checks:0;
     const map={};staff.forEach(s=>map[Number(s.id)]={id:Number(s.id),name:s.name,role:s.role,checks:0,total:0,avg:0});
     valid.forEach(o=>{const id=Number(o.waiter_id||0);if(!map[id])return;map[id].checks++;map[id].total+=Number(o.total||0);});
     result.staff=Object.values(map).map(s=>({...s,avg:s.checks?s.total/s.checks:0})).sort((a,b)=>b.total-a.total);
@@ -3399,6 +3401,7 @@ async function loadOrdersModuleData(){
   }
   try{const o=await rpc("open_orders",{p_restaurant_id:restaurantId});openOrdersCache=Array.isArray(o)?o:[];}catch(e){openOrdersCache=[];console.warn("Open orders:",e.message);}
   await loadKitchenQueue();
+  await loadShiftData(restaurantId);
   try{
     const staff=await supabaseRequest(`restaurant_staff?select=id,name,role,status&restaurant_id=eq.${encodeURIComponent(restaurantId)}&status=eq.active&order=name.asc&limit=500`);
     ordersStaffCache=Array.isArray(staff)?staff:[];
@@ -3492,6 +3495,7 @@ function renderOrdersModule(){
       <div class="info-box"><div class="kicker">ACTIVE</div><div class="big">${activeOrders.length}</div><p>активних замовлень</p></div>
       <div class="info-box"><div class="kicker">STAFF</div><div class="big">${ordersStaffCache.length}</div><p>активних працівників</p></div>
     </div>
+    ${renderShiftPanel()}
     <div class="panel" style="margin-top:16px">
       <div class="section-head"><div><h2>Відкриті столи</h2><div class="section-meta">Відкривай стіл у розділі «Зал» або тут. ${role==="WAITER"?"Ти бачиш лише свої столи.":"Ти бачиш усі столи закладу."}</div></div><span class="section-badge">${openOrdersCache.length}</span></div>
       ${openOrdersCache.length?`<div class="orders-list">${openOrdersCache.map(o=>{
@@ -3771,6 +3775,49 @@ toggleOrderGuestAllergen=function(code,on){
     tpRenderPicker();
   }
 };
+
+/* ---------- shift + shift analytics (instruction §11, T048) ----------
+   Turnover is not salary: salary rules are configured and approved by the venue (T049). */
+let myShiftCache=null,shiftStatsCache=null,shiftPeriod="shift";
+async function loadShiftData(restaurantId){
+  try{myShiftCache=await rpc("my_open_shift",{p_restaurant_id:restaurantId});}catch{myShiftCache=null;}
+  const now=new Date(),to=new Date(now.getTime()+60000).toISOString();
+  let from=todayStartISO();
+  if(shiftPeriod==="shift"&&myShiftCache?.started_at)from=myShiftCache.started_at;
+  if(shiftPeriod==="month")from=monthStartISO();
+  try{shiftStatsCache=await rpc("shift_stats",{p_restaurant_id:restaurantId,p_from:from,p_to:to,p_staff_id:null});}catch(e){shiftStatsCache=null;console.warn("Shift stats:",e.message);}
+}
+function renderShiftPanel(){
+  const s=shiftStatsCache,role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";
+  const started=myShiftCache?.started_at;
+  const tab=(k,l)=>`<button class="${shiftPeriod===k?"primary":"secondary"}" onclick="shiftPeriod='${k}';refreshOrdersView()">${l}</button>`;
+  const box=(k,v,p)=>`<div class="info-box"><div class="kicker">${k}</div><div class="big">${v}</div><p>${p}</p></div>`;
+  const cats=(s?.by_category||[]).slice(0,8).map(c=>`<div class="list-item"><div><strong>${escapeHtml(c.category)}</strong><span>${Number(c.qty)} шт.</span></div><span>${money(c.sum)}</span></div>`).join("");
+  const top=(s?.top_items||[]).slice(0,8).map(c=>`<div class="list-item"><div><strong>${escapeHtml(c.name)}</strong><span>${Number(c.qty)} шт.</span></div><span>${money(c.sum)}</span></div>`).join("");
+  const staff=canManage&&Array.isArray(s?.by_staff)?s.by_staff.map(w=>`<div class="list-item"><div><strong>${escapeHtml(w.name)}</strong><span>${escapeHtml(w.role)} · чеків ${w.receipts} · столів ${w.tables} · гостей ${w.guests??0} · середній ${money(w.avg_check)}</span></div><span>${money(w.turnover)}</span></div>`).join(""):"";
+  return `<div class="panel" style="margin-top:16px">
+    <div class="section-head"><div><h2>${canManage?"Зміна та аналітика залу":"Моя зміна"}</h2><div class="section-meta">${started?`Зміна триває ${minutesSince(started)} (з ${formatDateTime(started)})`:"Зміну не розпочато."} Враховуються лише закриті чеки. Оборот ≠ зарплата.</div></div>
+      <div>${started?`<button class="secondary" onclick="shiftToggle(false)">Завершити зміну</button>`:`<button class="primary" onclick="shiftToggle(true)">Почати зміну</button>`}</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px">${started?tab("shift","Поточна зміна"):""}${tab("today","Сьогодні")}${tab("month","Місяць")}</div>
+    ${s?`<div class="info-grid">
+      ${box("TURNOVER",money(s.turnover),canManage&&!s.staff_id?"оборот закладу":"мій оборот")}
+      ${box("RECEIPTS",s.receipts,"закритих чеків")}${box("AVG CHECK",money(s.avg_check),"середній чек")}
+      ${box("TABLES",s.tables,"обслужених столів")}${box("GUESTS",s.guests,"гостей")}
+      ${box("KITCHEN / BAR",`${money(s.kitchen_sales)} / ${money(s.bar_sales)}`,"кухня / бар")}
+    </div>
+    <div class="section-meta" style="margin-top:8px">Відкритих замовлень: ${s.open_orders} · скасовано замовлень: ${s.cancelled_orders}, позицій: ${s.cancelled_lines} · знижки: ${money(s.discounts)} · оплата: ${Object.entries(s.by_payment||{}).map(([k,v])=>`${({card:"картка",cash:"готівка",other:"інше"})[k]||k} ${money(v)}`).join(", ")||"—"}</div>
+    <div class="info-grid" style="margin-top:12px;align-items:start">
+      <div><div class="kicker">ПРОДАЖІ ЗА КАТЕГОРІЯМИ</div><div class="list-box">${cats||`<div class="personal-note">Немає продажів.</div>`}</div></div>
+      <div><div class="kicker">ТОП ПОЗИЦІЙ</div><div class="list-box">${top||`<div class="personal-note">Немає продажів.</div>`}</div></div>
+      ${canManage?`<div><div class="kicker">ПЕРСОНАЛ</div><div class="list-box">${staff||`<div class="personal-note">Немає даних.</div>`}</div></div>`:""}
+    </div>`:`<div class="personal-note">Аналітика недоступна.</div>`}
+  </div>`;
+}
+async function shiftToggle(start){
+  try{await rpc(start?"shift_start":"shift_end",{p_restaurant_id:Number(currentRestaurant.id)});shiftPeriod=start?"shift":"today";}
+  catch(e){showToast(orderErrorText(e)==="no_open_shift"?"Відкритої зміни немає.":orderErrorText(e));}
+  return refreshOrdersView();
+}
 
 /* ---------- kitchen / bar queue ---------- */
 async function loadKitchenQueue(){
