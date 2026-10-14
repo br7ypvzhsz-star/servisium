@@ -7093,8 +7093,11 @@ function openEditMenuItem(id){
    додайте вручну». Kitchen items are never touched. */
 let photoAudit={running:false,stop:false,done:0,total:0,results:[]};
 const AUDIT_LABEL={match:"✓ відповідає",wrong_product:"✕ інший продукт",wrong_line:"✕ інша лінійка",pack_or_promo:"✕ упаковка / промо / в руці",not_a_bottle:"✕ немає пляшки",unclear:"? не вдалося прочитати",no_photo:"— без фото"};
+function photoAuditKey(){return `servisium_photo_audit_${Number(currentRestaurant?.id||0)}`;}
+function savePhotoAudit(){try{localStorage.setItem(photoAuditKey(),JSON.stringify({at:Date.now(),results:photoAudit.results}));}catch{}}
 function openPhotoAudit(){
   if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){showToast("Доступно ADMIN / SENIOR WAITER.");return;}
+  if(!photoAudit.running&&!photoAudit.results.length){try{const s=JSON.parse(localStorage.getItem(photoAuditKey())||"null");if(s?.results?.length)photoAudit={running:false,stop:false,done:s.results.length,total:s.results.length,results:s.results,at:s.at};}catch{}}
   document.getElementById("photoAuditModal")?.remove();
   const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="photoAuditModal";
   m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">PHOTO ENGINE · AUDIT</div><h2>Перевірка фото напоїв</h2><div class="section-meta">AI Vision звіряє кожне фото бару з назвою: виробник, лінійка, тип. Нічого не змінює без твого рішення. Кухня не перевіряється й не змінюється.</div></div><button class="icon-btn" onclick="photoAudit.stop=true;document.getElementById('photoAuditModal').remove()">×</button></div><div id="photoAuditBody"></div></div>`;
@@ -7111,14 +7114,21 @@ function renderPhotoAudit(){
   box.innerHTML=`<label class="allergen-chip ${auditIncludeSource?"on":""}" style="margin-bottom:6px"><input type="checkbox" ${auditIncludeSource?"checked":""} ${a.running?"disabled":""} onchange="auditIncludeSource=this.checked;renderPhotoAudit()">Також фото з джерела меню (Expz)</label>
     <div class="section-meta">Фото бару для перевірки: ${auditCandidates().length} (за замовчуванням — лише підібрані фото-рушієм). Перевірено: ${a.done}/${a.total||auditCandidates().length} · відповідають: ${a.results.filter(r=>r.verdict==="match").length} · невідповідні: ${bad.length} · не вдалося прочитати: ${unclear.length}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
-      ${a.running?`<button class="secondary" onclick="photoAudit.stop=true">Зупинити</button>`:`<button class="primary" onclick="runPhotoAudit()">${a.done?"Перевірити ще раз":"Почати перевірку"}</button>`}
+      ${a.running?`<button class="secondary" onclick="photoAudit.stop=true">Зупинити</button>`:`<button class="primary" onclick="runPhotoAudit()">${a.done?"Перевірити все ще раз":"Почати перевірку"}</button>${a.results.some(r=>r.verdict!=="match")?`<button class="secondary" onclick="recheckFlaggedPhotos()">Перевірити лише позначені</button>`:""}`}
+      ${a.at&&!a.running?`<span class="section-meta">Результат від ${formatDateTime(new Date(a.at).toISOString())}</span>`:""}
       ${bad.some(r=>currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id))?.photo_url)?`<button class="danger-btn" onclick="auditRemoveAllBad()">Прибрати всі невідповідні (${bad.length})</button>`:""}
     </div>
     ${bad.length?`<div class="kicker">НЕВІДПОВІДНІ</div><div class="audit-list">${bad.map(row).join("")}</div>`:""}
     ${unclear.length?`<details><summary class="section-meta">Не вдалося прочитати етикетку: ${unclear.length} — перевір вручну</summary><div class="audit-list">${unclear.map(row).join("")}</div></details>`:""}`;
 }
-async function runPhotoAudit(){
-  const list=auditCandidates();
+/* re-check only flagged / unchecked items, keeping the rest of the previous result */
+function recheckFlaggedPhotos(){
+  const keep=photoAudit.results.filter(r=>r.verdict==="match");
+  const ids=new Set(photoAudit.results.filter(r=>r.verdict!=="match").map(r=>Number(r.menu_item_id)));
+  return runPhotoAudit(auditCandidates().filter(i=>ids.has(Number(i.id))),keep);
+}
+async function runPhotoAudit(onlyList,keepResults){
+  const list=onlyList||auditCandidates();
   photoAudit={running:true,stop:false,done:0,total:list.length,results:[]};renderPhotoAudit();
   for(let i=0;i<list.length&&!photoAudit.stop;i+=6){
     const batch=list.slice(i,i+6).map(x=>Number(x.id)),t0=Date.now();
@@ -7130,7 +7140,8 @@ async function runPhotoAudit(){
     photoAudit.done=Math.min(list.length,i+6);renderPhotoAudit();
     const wait=3600-(Date.now()-t0);if(wait>0)await new Promise(r=>setTimeout(r,wait)); /* stay under 20 requests/min */
   }
-  photoAudit.running=false;renderPhotoAudit();
+  if(keepResults)photoAudit.results=[...keepResults,...photoAudit.results];
+  photoAudit.running=false;savePhotoAudit();renderPhotoAudit();
 }
 async function auditRemovePhoto(id,silent){
   const it=currentMenu.find(x=>Number(x.id)===Number(id));if(!it||it.type!=="Бар")return;
