@@ -1094,6 +1094,12 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.pro-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.pro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;}
+.pro-grid label{display:grid;gap:2px;}.pro-grid small{opacity:.65;font-size:11px;}
+.pro-detail{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:4px 12px;margin-top:6px;}
+.pro-row{display:grid;}.pro-row small{opacity:.6;font-size:11px;}
+.wine-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin:6px 0 10px;}
 .onboarding{margin:12px 0;}
 .onboarding-bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;margin:8px 0 12px;}
 .onboarding-bar i{display:block;height:100%;background:linear-gradient(90deg,#d33b57,#6fcf97);}
@@ -3087,6 +3093,10 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
         <div class="field">
           <label>ЧАС ПРИГОТУВАННЯ, ХВ (ДО)</label>
           <input id="editMenuPrepMax" type="number" min="0" max="600" placeholder="напр. 18">
+        </div>
+        <div class="field full">
+          <label>PRO-ХАРАКТЕРИСТИКИ (ВИНО · КОКТЕЙЛЬ · СТЕЙК · МІЦНИЙ · ПИВО)</label>
+          <div id="editMenuPro" class="pro-editor"></div>
         </div>
         <div class="field full">
           <label>СКЛАД / ІНГРЕДІЄНТИ</label>
@@ -6964,6 +6974,7 @@ function openMenuItemDetails(id){
         <div class="menu-detail-description">
           ${item.description ? escapeHtml(item.description) : "Опис для цієї позиції ще не додано."}
         </div>
+        ${menuDetailProHtml(item)}
         ${menuDetailIngredientsHtml(item)}
         ${menuDetailAllergensHtml(item)}
         <div class="menu-detail-actions">
@@ -6996,6 +7007,8 @@ function openEditMenuItem(id){
   renderAllergenEditor(item);
   document.getElementById("editMenuPrepMin").value = item.prep_min_minutes ?? "";
   document.getElementById("editMenuPrepMax").value = item.prep_max_minutes ?? "";
+  proDraft={kind:item.pro_kind||"",data:{...(item.pro||{})},status:String(item.pro_status||"unknown")};
+  renderProEditor();
   ingredientDraft=itemIngredients(item).map(i=>({...i}));
   ingredientStatus=String(item.ingredients_status||"unknown");
   ingredientAiNote="";
@@ -7003,6 +7016,73 @@ function openEditMenuItem(id){
 
   openModal("editMenuModal");
 }
+
+/* ================= PRO CHARACTERISTICS (tasks 6–16) =================
+   Structured facts per kind. Only venue data: entered/confirmed by the venue, or parsed
+   from the venue's own menu text (status «з меню»). The AI uses them as facts. */
+const PRO_KINDS={wine:"Вино",cocktail:"Коктейль",steak:"Стейк",spirit:"Міцний алкоголь",beer:"Пиво",other:"Інше"};
+const PRO_OPTS={
+  colour:{red:"червоне",white:"біле",rose:"рожеве",orange:"помаранчеве",sparkling:"ігристе",dessert:"десертне/кріплене",non_alcoholic:"безалкогольне"},
+  sweetness:{extra_brut:"екстра-брют",brut:"брют",extra_dry:"екстра-сухе",dry:"сухе",off_dry:"напівсухе",semi_sweet:"напівсолодке",sweet:"солодке"},
+  level:{low:"низьке",medium:"середнє",high:"високе"},
+  body:{light:"легке",medium:"середнє",full:"повне"},
+  doneness:{rare:"rare",medium_rare:"medium rare",medium:"medium",medium_well:"medium well",well_done:"well done"},
+  feed:{grass:"трав'яна",grain:"зернова",mixed:"змішана"}
+};
+const PRO_FIELDS={
+  wine:[["colour","Колір","colour"],["sweetness","Цукор","sweetness"],["grapes","Сорт(и)"],["producer","Виробник"],["country","Країна"],["region","Регіон / апелясьйон"],["vintage","Вінтаж"],
+        ["abv","Міцність, %"],["body","Тіло","body"],["acidity","Кислотність","level"],["tannin","Танінність","level"],["aroma","Аромат / смак"],["serving","Подача (t°, декантація)"],["pairing","Pairing від закладу"],["sales_phrase","Фраза для гостя"]],
+  cocktail:[["base","Базовий алкоголь"],["recipe","Склад і кількості"],["method","Метод"],["glass","Келих"],["ice","Лід"],["garnish","Гарнір"],["volume","Об'єм"],["abv","Міцність, %"],["taste","Смак (солодкість/кислотність/гіркота)"],["sales_phrase","Фраза для гостя"]],
+  steak:[["cut","Відруб (cut)"],["breed","Порода"],["origin","Країна / ферма"],["aging","Витримка (dry/wet, днів)"],["marbling","Мармуровість / grade"],["feed","Відгодівля","feed"],["weight","Вага / товщина"],["doneness","Рекомендована прожарка","doneness"],["sauce","Соус / гарнір"],["sales_phrase","Фраза для гостя"]],
+  spirit:[["category","Категорія (віскі, ром…)"],["brand","Бренд / виробник"],["age","Витримка"],["origin","Країна / регіон"],["abv","Міцність, %"],["taste","Смак / аромат"],["serving","Подача"],["sales_phrase","Фраза для гостя"]],
+  beer:[["style","Стиль"],["brewery","Броварня"],["origin","Країна"],["abv","Міцність, %"],["ibu","Гіркота (IBU)"],["taste","Смак"],["serving","Подача"],["sales_phrase","Фраза для гостя"]],
+  other:[["notes","Характеристики"],["sales_phrase","Фраза для гостя"]]
+};
+let proDraft={kind:"",data:{},status:"unknown"};
+function proLabel(field,value){const f=Object.values(PRO_FIELDS).flat().find(x=>x[0]===field);const opts=f&&f[2]?PRO_OPTS[f[2]]:null;return opts?(opts[value]||value):value;}
+function renderProEditor(){
+  const box=document.getElementById("editMenuPro");if(!box)return;
+  const k=proDraft.kind,fields=PRO_FIELDS[k]||[];
+  box.innerHTML=`<div class="pro-head"><select onchange="proDraft.kind=this.value;renderProEditor()"><option value="">— не задано —</option>${Object.entries(PRO_KINDS).map(([v,l])=>`<option value="${v}" ${k===v?"selected":""}>${l}</option>`).join("")}</select>
+      <select onchange="proDraft.status=this.value"><option value="unknown" ${proDraft.status==="unknown"?"selected":""}>Не перевірено</option><option value="from_menu" ${proDraft.status==="from_menu"?"selected":""}>З меню закладу (перевір)</option><option value="confirmed" ${proDraft.status==="confirmed"?"selected":""}>Підтверджено закладом</option></select></div>
+    ${fields.length?`<div class="pro-grid">${fields.map(([f,l,o])=>`<label><small>${l}</small>${o?`<select onchange="proDraft.data['${f}']=this.value||undefined"><option value="">—</option>${Object.entries(PRO_OPTS[o]).map(([v,t])=>`<option value="${v}" ${proDraft.data[f]===v?"selected":""}>${t}</option>`).join("")}</select>`
+      :`<input value="${escapeHtml(proDraft.data[f]??"")}" oninput="proDraft.data['${f}']=this.value">`}</label>`).join("")}</div>`:`<div class="section-meta">Вибери тип, щоб внести характеристики. Вносити лише підтверджені факти.</div>`}`;
+}
+function readProEditor(){
+  if(!document.getElementById("editMenuPro"))return null;
+  const kind=proDraft.kind||null,allowed=new Set((PRO_FIELDS[kind]||[]).map(f=>f[0]));
+  const data={};Object.entries(proDraft.data||{}).forEach(([k,v])=>{if((allowed.has(k)||k==="origin"||k==="by_glass")&&v!==undefined&&String(v).trim()!=="")data[k]=typeof v==="string"?v.trim():v;});
+  return {pro_kind:kind,pro:kind?data:{},pro_status:kind?(["unknown","from_menu","confirmed"].includes(proDraft.status)?proDraft.status:"unknown"):"unknown"};
+}
+function menuDetailProHtml(item){
+  const k=item?.pro_kind,d=item?.pro||{};if(!k||!PRO_FIELDS[k])return "";
+  const rows=PRO_FIELDS[k].filter(([f])=>d[f]!==undefined&&d[f]!=="").map(([f,l])=>`<div class="pro-row"><small>${escapeHtml(l)}</small><span>${escapeHtml(String(proLabel(f,d[f])))}</span></div>`).join("");
+  if(!rows)return "";
+  const st={confirmed:"підтверджено закладом",from_menu:"з назви/розділу меню закладу",unknown:"не перевірено"}[item.pro_status]||"";
+  return `<div class="menu-detail-weight"><strong>${escapeHtml(PRO_KINDS[k])} PRO</strong> <small class="section-meta">· ${st}</small><div class="pro-detail">${rows}</div></div>`;
+}
+async function proAutofillWines(){
+  if(!confirm("Заповнити колір, цукор, вінтаж, виробника й країну вин з назв і розділів меню цього закладу? Підтверджені закладом дані не змінюються."))return;
+  try{const n=await rpc("pro_autofill_wines",{p_restaurant_id:Number(currentRestaurant.id)});await loadMenu();renderMenu();showToast(`Оновлено вин: ${n}. Перевір і за потреби підтвердь.`);}
+  catch(e){showToast(e.message);}
+}
+/* Wine Sales (task 7): real wines of this venue by colour / sweetness / budget / country */
+let wineFilter={colour:"",sweetness:"",max:"",country:"",glass:false};
+function renderWineFinder(){
+  const wines=currentMenu.filter(m=>m.pro_kind==="wine"&&!isMenuItemStopped(m)&&!isMenuItemHiddenForRole(m));
+  if(!wines.length)return `<div class="panel" style="margin-top:14px"><div class="section-head"><h2>Підбір вина</h2></div><div class="personal-note">У меню ще немає PRO-даних вин.${["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())?` <button class="secondary" onclick="proAutofillWines()">Розпізнати вина з меню</button>`:""}</div></div>`;
+  const f=wineFilter,countries=[...new Set(wines.map(w=>w.pro?.country).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"uk"));
+  const list=wines.filter(w=>(!f.colour||w.pro?.colour===f.colour)&&(!f.sweetness||w.pro?.sweetness===f.sweetness)&&(!f.country||w.pro?.country===f.country)
+    &&(!f.max||Number(w.price||0)<=Number(f.max))&&(!f.glass||w.pro?.by_glass)).sort((a,b)=>Number(a.price||0)-Number(b.price||0));
+  const sel=(k,opts,l)=>`<select onchange="wineFilter['${k}']=this.value;rerenderWineFinder()"><option value="">${l}</option>${Object.entries(opts).map(([v,t])=>`<option value="${v}" ${f[k]===v?"selected":""}>${t}</option>`).join("")}</select>`;
+  return `<div class="panel" id="wineFinder" style="margin-top:14px"><div class="section-head"><div><div class="kicker">WINE SALES</div><h2>Підбір вина</h2><div class="section-meta">Лише вина цього закладу, без стоп-листа. Дані — з меню закладу або підтверджені.</div></div></div>
+    <div class="wine-filters">${sel("colour",PRO_OPTS.colour,"Будь-який колір")}${sel("sweetness",PRO_OPTS.sweetness,"Будь-який цукор")}${sel("country",Object.fromEntries(countries.map(c=>[c,c])),"Будь-яка країна")}
+      <input type="number" placeholder="Бюджет до, грн" value="${escapeHtml(f.max)}" onchange="wineFilter.max=this.value;rerenderWineFinder()">
+      <label class="allergen-chip ${f.glass?"on":""}"><input type="checkbox" ${f.glass?"checked":""} onchange="wineFilter.glass=this.checked;rerenderWineFinder()">Побокально</label></div>
+    <div class="list-box">${list.slice(0,40).map(w=>`<div class="list-item" style="cursor:pointer" onclick="openMenuItemDetails(${Number(w.id)})"><div><strong>${escapeHtml(w.name)}</strong><span>${[proLabel("colour",w.pro?.colour),proLabel("sweetness",w.pro?.sweetness),w.pro?.country,w.pro?.vintage].filter(Boolean).map(escapeHtml).join(" · ")}</span></div><span>${money(w.price||0)}</span></div>`).join("")||`<div class="personal-note">Немає вин за цими умовами.</div>`}</div>
+    <div class="section-meta">Знайдено: ${list.length}${list.length>40?" (показано 40 найдешевших)":""}</div></div>`;
+}
+function rerenderWineFinder(){const el=document.getElementById("wineFinder");if(!el)return;const t=document.createElement("div");t.innerHTML=renderWineFinder();el.replaceWith(t.firstElementChild);}
 
 /* ================= UNIVERSAL MENU IMPORT (tasks 67–69) =================
    CSV / XLSX / JSON are parsed in the browser (no AI); PDF, photos and any https page
@@ -7331,7 +7411,8 @@ function renderAssistantModule(){
     <div class="allergen-guest-bar">${ASSISTANT_QUICK.map(q=>`<button class="secondary" onclick="askAssistant(this.textContent)">${escapeHtml(q)}</button>`).join("")}</div>
     <label class="field-label">АЛЕРГЕНИ ГОСТЯ (ВРАХОВУЮТЬСЯ У ВІДПОВІДІ)</label>
     <div class="allergen-guest-bar">${ALLERGENS.map(a=>`<label class="allergen-chip ${assistantAllergens.includes(a.code)?"on":""}"><input type="checkbox" ${assistantAllergens.includes(a.code)?"checked":""} onchange="assistantAllergens=this.checked?[...assistantAllergens,'${a.code}']:assistantAllergens.filter(c=>c!=='${a.code}');this.parentElement.classList.toggle('on',this.checked)">${escapeHtml(a.label)}</label>`).join("")}</div>
-    <div id="assistantLog">${log||`<div class="personal-note">Постав питання про меню, поєднання, алергени чи зал.</div>`}</div></div>`;
+    <div id="assistantLog">${log||`<div class="personal-note">Постав питання про меню, поєднання, алергени чи зал.</div>`}</div></div>
+    ${renderWineFinder()}`;
 }
 function rerenderAssistant(){const el=document.getElementById("assistantLog");if(!el)return;const tmp=document.createElement("div");tmp.innerHTML=renderAssistantModule();const fresh=tmp.querySelector("#assistantLog");if(fresh)el.innerHTML=fresh.innerHTML;}
 async function askAssistant(text){
@@ -7747,7 +7828,8 @@ async function saveEditedMenuItem(){
           prep_min_minutes,
           prep_max_minutes,
           ...(readAllergenEditor() || {}),
-          ...(readIngredientEditor() || {})
+          ...(readIngredientEditor() || {}),
+          ...(readProEditor() || {})
         })
       }
     );

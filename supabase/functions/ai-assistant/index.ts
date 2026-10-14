@@ -49,6 +49,7 @@ const SYSTEM = `Ти — SERVISIUM AI, асистент офіціанта ко�
 5. Якщо даних не вистачає — коротко скажи це і заповни needs_clarification. Не вгадуй.
 6. Режим QUICK: коротко, по суті, за 5–10 секунд читання. Мова — українська.
 7. Не пиши технічні id у тексті answer — лише назви й ціни; id став тільки в items.
+9. Поле pro — факти закладу (status confirmed — підтверджено; from_menu — з назви меню). Використовуй їх для вина/коктейлів/стейків.
 8. Категорії вин часто названі країнами (напр. «Італія», «Франція») — враховуй це.`;
 
 const STOP = new Set(["які", "яка", "який", "яке", "чи", "для", "що", "щось", "можна", "є", "до", "від", "грн", "гривень", "можете",
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
 
   // venue data through the caller's session (RLS)
   const [{ data: menu }, { data: stops }, { data: hall }] = await Promise.all([
-    db.from("menu_items").select("id,name,type,category,price,weight,description,country,allergens,allergens_status,ingredients,ingredients_status,cross_contact_note")
+    db.from("menu_items").select("id,name,type,category,price,weight,description,country,allergens,allergens_status,ingredients,ingredients_status,cross_contact_note,pro_kind,pro,pro_status")
       .eq("restaurant_id", rid).limit(3000),
     db.from("stop_list").select("menu_item_id,reason").eq("restaurant_id", rid).eq("status", "active"),
     db.rpc("hall_stats", { p_restaurant_id: rid }),
@@ -125,6 +126,7 @@ Deno.serve(async (req) => {
       ingredients: (Array.isArray(m.ingredients) ? m.ingredients : []).map((i: any) => clip(i?.name, 40)).filter(Boolean),
       cross_contact: clip(m.cross_contact_note, 120) || null,
       in_stop_list: stopped.has(Number(m.id)), stop_reason: stopped.get(Number(m.id)) || null,
+      pro: m.pro_kind ? { kind: m.pro_kind, status: m.pro_status, ...(m.pro ?? {}) } : undefined,
     })),
     hall: asksHall ? (hall ?? null) : undefined,
     note: scored.length ? undefined : "За словами питання позицій не знайдено — є лише перелік категорій.",

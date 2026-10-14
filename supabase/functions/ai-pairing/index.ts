@@ -42,6 +42,7 @@ function describe(m: MenuRow) {
     id: m.id, name: clip(m.name, 120), kind: isBar(m) ? "drink" : "food",
     category: clip(m.category, 60), menu: clip(m.menu, 60), country: clip(m.country, 40),
     price: m.price, portion: clip(m.weight, 30), description: clip(m.description, 220),
+    pro: (m as any).pro_kind ? { kind: (m as any).pro_kind, status: (m as any).pro_status, ...((m as any).pro ?? {}) } : undefined,
   };
 }
 
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
   // ---- venue data through the CALLER's session (RLS limits it to this venue) ----
   const [{ data: menu, error: menuErr }, { data: stops }] = await Promise.all([
     userDb.from("menu_items")
-      .select("id,name,type,category,description,price,weight,country,menu,allergens,allergens_status,status")
+      .select("id,name,type,category,description,price,weight,country,menu,allergens,allergens_status,status,pro_kind,pro,pro_status")
       .eq("restaurant_id", rid).limit(3000),
     userDb.from("stop_list").select("menu_item_id").eq("restaurant_id", rid).eq("status", "active"),
   ]);
