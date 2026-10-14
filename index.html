@@ -1163,6 +1163,8 @@ h3{
 .allergen-guest-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;}
 .allergen-flag{display:block;margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.02em;}
 .allergen-flag.contains{color:#ff6b81;}.allergen-flag.adapt{color:#f0c040;}.allergen-flag.unknown{color:#e8a04c;}.allergen-flag.clear{color:#6fcf97;font-weight:600;}
+.venue-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+.venue-settings-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted,#aaa);}
 .order-menu-item.allergen-contains,.menu-card.allergen-contains{border-color:rgba(255,80,105,.85)!important;background:rgba(211,59,87,.12)!important;}
 .live-table.partial{border-color:rgba(230,140,70,.55);}.live-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.live-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
 .table-card.partial{border-color:rgba(230,140,70,.4);}.table-card.awaiting_payment{border-color:rgba(240,200,60,.55);}.table-card.blocked{border-color:rgba(120,120,120,.5);opacity:.65;}
@@ -3396,14 +3398,120 @@ function updateProfileUI(){
 }
 async function logoutServisium(){try{if(servisiumSession)await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${servisiumSession?.access_token||""}`}});}catch{}localStorage.removeItem("servisium_session");localStorage.removeItem("servisium_pin_staff");servisiumSession=null;currentProfile=null;currentUser=null;currentUserStaff=null;currentUserRole=null;currentPin="";location.reload();}
 
+/* ================= VENUE SETTINGS FORM (Q-012) =================
+   Only fields that belong to the venue; plan / subscription columns are never sent. */
+const VENUE_CURRENCIES=["UAH","EUR","USD","PLN","CZK","HUF","RON","GBP","CHF"];
+const VENUE_LOCALES=[["uk-UA","Українська"],["en-GB","English (UK)"],["en-US","English (US)"],["pl-PL","Polski"],["cs-CZ","Čeština"],["sk-SK","Slovenčina"],["hu-HU","Magyar"],["ro-RO","Română"],["de-DE","Deutsch"]];
+const VENUE_TIMEZONES=["Europe/Kyiv","Europe/Warsaw","Europe/Prague","Europe/Bratislava","Europe/Budapest","Europe/Bucharest","Europe/Berlin","Europe/Vienna","Europe/London","UTC"];
+function renderVenueSettingsForm(){
+  const r=currentRestaurant||{},v=k=>escapeHtml(r[k]??"");
+  const opt=(list,cur)=>{const has=list.some(x=>(Array.isArray(x)?x[0]:x)===cur);return (has||!cur?"":`<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`)+list.map(x=>{const [val,label]=Array.isArray(x)?x:[x,x];return `<option value="${val}" ${val===cur?"selected":""}>${escapeHtml(label)}</option>`;}).join("");};
+  const sample=money(1234.5)+" · "+venueDateTime(new Date());
+  return `<div class="panel venue-settings">
+    <div class="section-head"><div><h2>Заклад</h2><div class="section-meta">Змінює лише ADMIN цього закладу. Тариф і оплата тут не змінюються.</div></div></div>
+    <div class="venue-settings-grid">
+      <label>Назва<input id="vs_name" class="text-input" value="${v("name")}" maxlength="120"></label>
+      <label>Місто<input id="vs_city" class="text-input" value="${v("city")}" maxlength="80"></label>
+      <label>Адреса<input id="vs_address" class="text-input" value="${v("address")}" maxlength="200"></label>
+      <label>Телефон<input id="vs_phone" class="text-input" value="${v("phone")}" maxlength="40"></label>
+    </div>
+    <div class="section-head" style="margin-top:14px"><div><h2>Валюта, мова, час</h2><div class="section-meta">Ціни, чеки, звіти й межі «сьогодні»/«місяць» рахуються за цими налаштуваннями.</div></div></div>
+    <div class="venue-settings-grid">
+      <label>Валюта<select id="vs_currency" class="text-input">${opt(VENUE_CURRENCIES,r.currency||"UAH")}</select></label>
+      <label>Мова форматування<select id="vs_locale" class="text-input">${opt(VENUE_LOCALES,r.locale||"uk-UA")}</select></label>
+      <label>Часовий пояс<select id="vs_timezone" class="text-input">${opt(VENUE_TIMEZONES,r.timezone||"Europe/Kyiv")}</select></label>
+    </div>
+    <div class="section-meta" style="margin-top:6px">Зараз виглядає так: <strong>${escapeHtml(sample)}</strong></div>
+    <div class="section-head" style="margin-top:14px"><div><h2>Податок і сервісний збір</h2><div class="section-meta">Зберігаються як налаштування закладу. <strong>Чеки їх поки не нараховують</strong> — це окреме рішення власника.</div></div></div>
+    <div class="venue-settings-grid">
+      <label>Податок<select id="vs_tax_mode" class="text-input">
+        <option value="none" ${(r.tax_mode||"none")==="none"?"selected":""}>Не вказувати</option>
+        <option value="included" ${r.tax_mode==="included"?"selected":""}>Включено в ціни</option>
+        <option value="added" ${r.tax_mode==="added"?"selected":""}>Додається до ціни</option>
+      </select></label>
+      <label>Ставка податку, %<input id="vs_tax_rate" type="number" min="0" max="100" step="0.01" class="text-input" value="${escapeHtml(r.tax_rate??0)}"></label>
+      <label>Сервісний збір, %<input id="vs_service" type="number" min="0" max="100" step="0.01" class="text-input" value="${escapeHtml(r.service_charge_pct??0)}"></label>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="vs_save" onclick="saveVenueSettings()">Зберегти</button></div>
+  </div>`;
+}
+function readVenueSettingsForm(){
+  const val=id=>document.getElementById(id)?.value??"";
+  const num=id=>{const n=Number(val(id));return Number.isFinite(n)?Math.min(100,Math.max(0,Math.round(n*100)/100)):0;};
+  const out={
+    name:val("vs_name").trim(),city:val("vs_city").trim(),
+    address:val("vs_address").trim()||null,phone:val("vs_phone").trim()||null,
+    currency:val("vs_currency"),locale:val("vs_locale"),timezone:val("vs_timezone"),
+    tax_mode:["none","included","added"].includes(val("vs_tax_mode"))?val("vs_tax_mode"):"none",
+    tax_rate:num("vs_tax_rate"),service_charge_pct:num("vs_service")
+  };
+  if(!out.name)return {error:"Вкажи назву закладу."};
+  if(!/^[A-Z]{3}$/.test(out.currency))return {error:"Невідома валюта."};
+  try{new Intl.NumberFormat(out.locale,{style:"currency",currency:out.currency});}catch{return {error:"Мова або валюта не підтримуються браузером."};}
+  try{new Intl.DateTimeFormat("en",{timeZone:out.timezone});}catch{return {error:"Невідомий часовий пояс."};}
+  return {data:out};
+}
+async function saveVenueSettings(){
+  if(String(currentUserRole||"").toUpperCase()!=="ADMIN"||!currentRestaurant){showToast("Налаштування змінює лише ADMIN закладу.");return;}
+  const {data,error}=readVenueSettingsForm();
+  if(error){showToast(error);return;}
+  const btn=document.getElementById("vs_save");if(btn)btn.disabled=true;
+  try{
+    const rows=await supabaseRequest(`restaurants?id=eq.${Number(currentRestaurant.id)}`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(data)});
+    const row=Array.isArray(rows)?rows[0]:null;
+    if(!row){showToast("Не збережено: немає прав або заклад не знайдено.");return;}
+    Object.assign(currentRestaurant,row);
+    if(typeof restaurants!=="undefined"&&Array.isArray(restaurants)){const i=restaurants.findIndex(x=>Number(x.id)===Number(row.id));if(i>=0)restaurants[i]={...restaurants[i],...row};}
+    showToast("Налаштування закладу збережено.");
+    openRestaurantModule("settings");
+  }catch(e){showToast("Не вдалося зберегти: "+e.message);}
+  finally{if(btn)btn.disabled=false;}
+}
+
 /* ================= PERSONAL + TEAM SALES STATS ================= */
-function monthStartISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths);return d.toISOString();}
-function nextMonthISO(offsetMonths=0){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()+offsetMonths+1);return d.toISOString();}
-function todayStartISO(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString();}
-function tomorrowStartISO(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+1);return d.toISOString();}
+/* Venue settings (Q-012): days, months and clock times follow the venue's
+   timezone and locale, not the device's. */
 function venueFormat(){
   const r=(typeof currentRestaurant!=="undefined"&&currentRestaurant)||{};
-  return {currency:r.currency||"UAH",locale:r.locale||"uk-UA"};
+  let timeZone=r.timezone||"Europe/Kyiv";
+  try{new Intl.DateTimeFormat("en",{timeZone});}catch{timeZone="Europe/Kyiv";}
+  let locale=r.locale||"uk-UA";
+  try{new Intl.DateTimeFormat(locale);}catch{locale="uk-UA";}
+  return {currency:r.currency||"UAH",locale,timeZone};
+}
+/* Y-M-D of an instant as seen on the venue's wall clock. */
+function venueYMD(date=new Date()){
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:venueFormat().timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date);
+  const g=t=>Number(parts.find(x=>x.type===t).value);
+  return {y:g("year"),m:g("month"),d:g("day")};
+}
+function venueDateKey(value){
+  const d=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(d.getTime()))return "";
+  const {y,m,d:day}=venueYMD(d);
+  return `${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+/* UTC instant of local midnight y-m-d in the venue timezone (handles DST). */
+function venueMidnight(y,m,d){
+  const tz=venueFormat().timeZone,guess=Date.UTC(y,m-1,d);
+  const offsetAt=t=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}).formatToParts(new Date(t));const g=k=>Number(p.find(x=>x.type===k).value);return Date.UTC(g("year"),g("month")-1,g("day"),g("hour"),g("minute"),g("second"))-t;};
+  let t=guess-offsetAt(guess);
+  t=guess-offsetAt(t);
+  return new Date(t);
+}
+function monthStartISO(offsetMonths=0){const {y,m}=venueYMD();const k=new Date(Date.UTC(y,m-1+offsetMonths,1));return venueMidnight(k.getUTCFullYear(),k.getUTCMonth()+1,1).toISOString();}
+function nextMonthISO(offsetMonths=0){return monthStartISO(offsetMonths+1);}
+function todayStartISO(){const {y,m,d}=venueYMD();return venueMidnight(y,m,d).toISOString();}
+function tomorrowStartISO(){const {y,m,d}=venueYMD();const k=new Date(Date.UTC(y,m-1,d+1));return venueMidnight(k.getUTCFullYear(),k.getUTCMonth()+1,k.getUTCDate()).toISOString();}
+function venueDateTime(value,opts={day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}){
+  const d=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(d.getTime()))return String(value??"");
+  const {locale,timeZone}=venueFormat();
+  return d.toLocaleString(locale,{...opts,timeZone});
+}
+function currencySymbol(){
+  const {currency,locale}=venueFormat();
+  try{return new Intl.NumberFormat(locale,{style:"currency",currency,currencyDisplay:"narrowSymbol"}).formatToParts(0).find(x=>x.type==="currency")?.value||currency;}catch{return currency;}
 }
 function money(value){
   const {currency,locale}=venueFormat();
@@ -3421,7 +3529,7 @@ async function loadPersonalSalesStats(){
     const todayStart=todayStartISO(),todayEnd=tomorrowStartISO();
     const todayOrders=valid.filter(o=>String(o.created_at||"")>=todayStart&&String(o.created_at||"")<todayEnd);
     result.todayChecks=todayOrders.length;result.todayTotal=todayOrders.reduce((sum,o)=>sum+Number(o.total||0),0);
-    const dayMap={};valid.forEach(o=>{const day=String(o.created_at||"").slice(0,10);if(day)dayMap[day]=(dayMap[day]||0)+Number(o.total||0);});
+    const dayMap={};valid.forEach(o=>{const day=venueDateKey(o.created_at);if(day)dayMap[day]=(dayMap[day]||0)+Number(o.total||0);});
     result.byDay=Object.entries(dayMap).sort((a,b)=>b[0].localeCompare(a[0]));
     const ids=valid.map(o=>Number(o.id)).filter(Boolean);
     if(ids.length){
@@ -3466,7 +3574,7 @@ async function openPersonalCabinet(){
       <div class="personal-stat"><div class="label">ЧЕКИ ЗА МІСЯЦЬ</div><div class="value">${stats.checks}</div><div class="sub">закриті, крім скасованих</div></div>
       <div class="personal-stat"><div class="label">СЕРЕДНІЙ ЧЕК</div><div class="value">${money(stats.avg)}</div><div class="sub">каса ÷ чеки</div></div>
     </div>
-    <div class="panel"><div class="section-head"><div><h2>Місячний звіт</h2><div class="section-meta">${new Date().toLocaleString("uk-UA",{month:"long",year:"numeric"})} · особисті продажі.</div></div></div>
+    <div class="panel"><div class="section-head"><div><h2>Місячний звіт</h2><div class="section-meta">${venueDateTime(new Date(),{month:"long",year:"numeric"})} · особисті продажі.</div></div></div>
       ${stats.byDay.length?`<table class="sales-table"><thead><tr><th>Дата</th><th>Продажі</th></tr></thead><tbody>${stats.byDay.map(([day,total])=>`<tr><td>${formatStatDate(day)}</td><td><strong>${money(total)}</strong></td></tr>`).join("")}</tbody></table>`:`<div class="personal-note">Поки немає даних у таблиці orders. Статистика з'явиться після проведення чеків.</div>`}
     </div>
     <div class="panel" style="margin-top:15px"><div class="section-head"><div><h2>Найбільш продавані позиції</h2><div class="section-meta">За кількістю проданих одиниць у поточному місяці.</div></div><span class="section-badge">TOP SALES</span></div><div class="sales-rank-list">${renderTopItems(stats)}</div></div>
@@ -3520,7 +3628,7 @@ function orderStatusLabel(status){
 let receiptFilters={date:"",no:"",table:"",waiter:"",item:"",min:"",max:"",pay:""};
 function receiptFilterQuery(){
   const f=receiptFilters,q=[];
-  if(f.date){const d=new Date(f.date+"T00:00:00");const n=new Date(d.getTime()+86400000);q.push(`created_at=gte.${encodeURIComponent(d.toISOString())}`,`created_at=lt.${encodeURIComponent(n.toISOString())}`);}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(f.date)){const [yy,mm,dd]=f.date.split("-").map(Number);const d=venueMidnight(yy,mm,dd),n=venueMidnight(...(k=>[k.getUTCFullYear(),k.getUTCMonth()+1,k.getUTCDate()])(new Date(Date.UTC(yy,mm-1,dd+1))));q.push(`created_at=gte.${encodeURIComponent(d.toISOString())}`,`created_at=lt.${encodeURIComponent(n.toISOString())}`);}
   if(f.no&&/^\d+$/.test(f.no))q.push(`receipt_no=eq.${f.no}`);
   if(f.waiter)q.push(`waiter_id=eq.${Number(f.waiter)}`);
   if(f.min!==""&&Number.isFinite(Number(f.min)))q.push(`total=gte.${Number(f.min)}`);
@@ -3577,7 +3685,7 @@ async function openReceipt(orderId){
 function renderOrdersModule(){
   const role=String(currentUserRole||"").toUpperCase();
   const activeOrders=openOrdersCache;
-  const today=ordersModuleCache.filter(o=>String(o.created_at||"").slice(0,10)===new Date().toISOString().slice(0,10));
+  const todayKey=venueDateKey(new Date()),today=ordersModuleCache.filter(o=>venueDateKey(o.created_at)===todayKey);
   const canAssign=role==="ADMIN"||role==="SENIOR WAITER";
   const staffMap={};ordersStaffCache.forEach(s=>staffMap[Number(s.id)]=s.name);
   return `
@@ -3618,7 +3726,7 @@ function renderOrdersModule(){
 function formatDateTime(value){
   if(!value)return "—";
   const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);
-  return d.toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  return venueDateTime(d);
 }
 
 async function openNewOrderComposer(){
@@ -5821,6 +5929,13 @@ async function openRestaurantModule(type){
   }
 
 
+  else if(type === "settings" && String(currentUserRole||"").toUpperCase()==="ADMIN"){
+
+    content = renderVenueSettingsForm();
+
+  }
+
+
   else{
 
     content = `
@@ -6183,12 +6298,7 @@ function isMenuItemStopped(itemId){
 function formatStopDate(value){
   if(!value) return "";
   try{
-    return new Date(value).toLocaleString("uk-UA",{
-      day:"2-digit",
-      month:"2-digit",
-      hour:"2-digit",
-      minute:"2-digit"
-    });
+    return venueDateTime(value);
   }catch{
     return "";
   }
@@ -7219,7 +7329,7 @@ function renderWineFinder(){
   const sel=(k,opts,l)=>`<select onchange="wineFilter['${k}']=this.value;rerenderWineFinder()"><option value="">${l}</option>${Object.entries(opts).map(([v,t])=>`<option value="${v}" ${f[k]===v?"selected":""}>${t}</option>`).join("")}</select>`;
   return `<div class="panel" id="wineFinder" style="margin-top:14px"><div class="section-head"><div><div class="kicker">WINE SALES</div><h2>Підбір вина</h2><div class="section-meta">Лише вина цього закладу, без стоп-листа. Дані — з меню закладу або підтверджені.</div></div></div>
     <div class="wine-filters">${sel("colour",PRO_OPTS.colour,"Будь-який колір")}${sel("sweetness",PRO_OPTS.sweetness,"Будь-який цукор")}${sel("country",Object.fromEntries(countries.map(c=>[c,c])),"Будь-яка країна")}
-      <input type="number" placeholder="Бюджет до, грн" value="${escapeHtml(f.max)}" onchange="wineFilter.max=this.value;rerenderWineFinder()">
+      <input type="number" placeholder="Бюджет до, ${escapeHtml(currencySymbol())}" value="${escapeHtml(f.max)}" onchange="wineFilter.max=this.value;rerenderWineFinder()">
       <label class="allergen-chip ${f.glass?"on":""}"><input type="checkbox" ${f.glass?"checked":""} onchange="wineFilter.glass=this.checked;rerenderWineFinder()">Побокально</label></div>
     <div class="list-box">${list.slice(0,40).map(w=>`<div class="list-item" style="cursor:pointer" onclick="openMenuItemDetails(${Number(w.id)})"><div><strong>${escapeHtml(w.name)}</strong><span>${[proLabel("colour",w.pro?.colour),proLabel("sweetness",w.pro?.sweetness),w.pro?.country,w.pro?.vintage].filter(Boolean).map(escapeHtml).join(" · ")}</span></div><span>${money(w.price||0)}</span></div>`).join("")||`<div class="personal-note">Немає вин за цими умовами.</div>`}</div>
     <div class="section-meta">Знайдено: ${list.length}${list.length>40?" (показано 40 найдешевших)":""}</div></div>`;
@@ -7548,7 +7658,7 @@ function renderAssistantModule(){
   </div>`).reverse().join("");
   return `<div class="panel"><div class="section-head"><div><div class="kicker">SERVISIUM AI · QUICK MODE</div><h2>Асистент офіціанта</h2>
       <div class="section-meta">Відповідає лише з меню, стоп-листа й залу цього закладу. Не вигадує склад і не гарантує відсутність алергенів.</div></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="assistantInput" class="text-input" style="flex:1;min-width:220px" placeholder="Напр.: що порадити до риби з вин до 1500 грн?" onkeydown="if(event.key==='Enter')askAssistant()">
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="assistantInput" class="text-input" style="flex:1;min-width:220px" placeholder="Напр.: що порадити до риби з вин до 1500 ${escapeHtml(currencySymbol())}?" onkeydown="if(event.key==='Enter')askAssistant()">
       <button class="primary" onclick="askAssistant()">Запитати</button></div>
     <div class="allergen-guest-bar">${ASSISTANT_QUICK.map(q=>`<button class="secondary" onclick="askAssistant(this.textContent)">${escapeHtml(q)}</button>`).join("")}</div>
     <label class="field-label">АЛЕРГЕНИ ГОСТЯ (ВРАХОВУЮТЬСЯ У ВІДПОВІДІ)</label>
