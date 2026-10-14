@@ -1094,6 +1094,10 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.peak-hours{display:flex;align-items:flex-end;gap:4px;height:80px;margin:8px 0;}
+.peak-hours div{display:grid;justify-items:center;gap:2px;flex:1;max-width:28px;}
+.peak-hours i{display:block;width:100%;background:linear-gradient(180deg,#d33b57,#7a2235);border-radius:4px 4px 0 0;min-height:2px;}
+.peak-hours small{font-size:10px;opacity:.7;}
 .pro-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
 .pro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;}
 .pro-grid label{display:grid;gap:2px;}.pro-grid small{opacity:.65;font-size:11px;}
@@ -3797,6 +3801,7 @@ function renderTablePanel(){
       ${cancelled.length?`<details class="section-meta"><summary>Скасовано: ${cancelled.length}</summary>${cancelled.map(i=>`<div>${escapeHtml(i.name)} × ${Number(i.qty)} — ${escapeHtml(i.cancel_reason||"")}</div>`).join("")}</details>`:""}
       <div class="order-total"><span>РАЗОМ</span><strong>${money(o.total||0)}</strong></div>
       ${items.length?renderTpAi():""}
+      ${renderTpReminders()}
       ${isOpen&&newCount?`<button class="primary-btn" style="width:100%;margin-top:10px" onclick="tpSend()">Відправити на кухню/бар (${newCount})</button>`:""}
       ${isOpen&&items.length&&!newCount?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpRequestBill()">Рахунок</button>`:""}
       ${o.status==="awaiting_payment"?`<button class="secondary" style="width:100%;margin-top:10px" onclick="tpReopen()">Повернути до замовлення</button>`:""}
@@ -3894,6 +3899,43 @@ toggleOrderGuestAllergen=function(code,on){
   }
 };
 
+/* ---------- personal reminders (task 51) ----------
+   Stored on the server (staff_reminders), fired on this device at due time. */
+let myReminders=[],reminderTimers={};
+async function loadReminders(){
+  if(!currentRestaurant)return;
+  try{myReminders=await rpc("my_reminders",{p_restaurant_id:Number(currentRestaurant.id)})||[];}catch{myReminders=[];}
+  myReminders.forEach(scheduleReminder);
+}
+function scheduleReminder(r){
+  if(reminderTimers[r.id])return;
+  const due=Math.max(0,new Date(r.due_at).getTime()-Date.now());
+  if(due>12*3600000)return;
+  reminderTimers[r.id]=setTimeout(()=>{
+    showToast(`⏰ ${r.text}${r.table_ref?` — ${tableLabel(r.table_ref)}`:""}`);
+    try{navigator.vibrate?.([150,80,150,80,150]);}catch{}
+    if(document.getElementById("tablePanelModal"))renderTablePanel();
+  },due);
+}
+function renderTpReminders(){
+  const list=myReminders.filter(r=>r.table_ref===tablePanel.tableRef);
+  return `<div class="tp-reminders">${list.map(r=>{const left=Math.round((new Date(r.due_at).getTime()-Date.now())/60000);
+    return `<div class="tp-line"><div><strong>⏰ ${escapeHtml(r.text)}</strong><small>${left>0?`через ${left} хв`:"час настав"}</small></div><div class="tp-line-actions"><button class="tp-ok" onclick="reminderDone(${Number(r.id)})">Виконано</button></div></div>`;}).join("")}
+    <button class="secondary" style="width:100%;margin-top:8px" onclick="reminderAdd()">⏰ Нагадати мені</button></div>`;
+}
+async function reminderAdd(){
+  const text=prompt("Про що нагадати?","Запропонувати десерт");if(!text||!text.trim())return;
+  const m=Math.round(Number(prompt("Через скільки хвилин?","15")));if(!Number.isFinite(m)||m<1||m>720){showToast("1–720 хв.");return;}
+  try{await rpc("reminder_create",{p_restaurant_id:Number(currentRestaurant.id),p_minutes:m,p_text:text.trim(),p_table_ref:tablePanel.tableRef||null,p_order_id:tablePanel.order?.id||null});await loadReminders();showToast(`Нагадаю через ${m} хв.`);}
+  catch(e){showToast(orderErrorText(e));}
+  if(document.getElementById("tablePanelModal"))renderTablePanel();
+}
+async function reminderDone(id){
+  try{await rpc("reminder_done",{p_id:id});}catch(e){showToast(e.message);}
+  clearTimeout(reminderTimers[id]);delete reminderTimers[id];
+  await loadReminders();if(document.getElementById("tablePanelModal"))renderTablePanel();
+}
+
 /* ---------- shift + shift analytics (instruction §11, T048) ----------
    Turnover is not salary: salary rules are configured and approved by the venue (T049). */
 let myShiftCache=null,shiftStatsCache=null,shiftPeriod="shift";
@@ -3904,6 +3946,22 @@ async function loadShiftData(restaurantId){
   if(shiftPeriod==="shift"&&myShiftCache?.started_at)from=myShiftCache.started_at;
   if(shiftPeriod==="month")from=monthStartISO();
   try{shiftStatsCache=await rpc("shift_stats",{p_restaurant_id:restaurantId,p_from:from,p_to:to,p_staff_id:null});}catch(e){shiftStatsCache=null;console.warn("Shift stats:",e.message);}
+  hallHistoryCache=null;
+  if(["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){
+    try{hallHistoryCache=await rpc("hall_history_stats",{p_restaurant_id:restaurantId,p_from:shiftPeriod==="month"?monthStartISO():new Date(Date.now()-30*86400000).toISOString(),p_to:to});}catch{}
+  }
+}
+/* hall history (task 46): peak hours, turnover per table, guests per table, seating time */
+let hallHistoryCache=null;
+function renderHallHistory(){
+  const h=hallHistoryCache;if(!h||!Number(h.receipts))return "";
+  const max=Math.max(1,...(h.peak_hours||[]).map(p=>Number(p.receipts)));
+  const days=["","Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
+  return `<div style="margin-top:12px"><div class="kicker">ЗАЛ · ІСТОРІЯ (${shiftPeriod==="month"?"місяць":"30 днів"})</div>
+    <div class="section-meta">Чеків за столами: ${h.receipts} · столів: ${h.tables_used} · оборотність: ${h.turnover_per_table??"—"} на стіл · гостей за столом: ${h.avg_guests_per_table??"—"} · середня посадка: ${h.avg_seating_minutes??"—"} хв</div>
+    <div class="peak-hours">${(h.peak_hours||[]).map(p=>`<div title="${p.receipts} чеків · ${money(p.turnover)}"><i style="height:${Math.round(60*p.receipts/max)}px"></i><small>${p.hour}</small></div>`).join("")}</div>
+    <div class="section-meta">Дні тижня: ${(h.by_weekday||[]).map(d=>`${days[d.dow]} ${d.receipts}`).join(" · ")}</div>
+    <div class="section-meta">Топ столів: ${(h.top_tables||[]).slice(0,5).map(t=>`${escapeHtml(tableLabel(t.table_ref))} (${t.receipts})`).join(", ")}</div></div>`;
 }
 function renderShiftPanel(){
   const s=shiftStatsCache,role=String(currentUserRole||"").toUpperCase(),canManage=role==="ADMIN"||role==="SENIOR WAITER";
@@ -3928,7 +3986,7 @@ function renderShiftPanel(){
       <div><div class="kicker">ПРОДАЖІ ЗА КАТЕГОРІЯМИ</div><div class="list-box">${cats||`<div class="personal-note">Немає продажів.</div>`}</div></div>
       <div><div class="kicker">ТОП ПОЗИЦІЙ</div><div class="list-box">${top||`<div class="personal-note">Немає продажів.</div>`}</div></div>
       ${canManage?`<div><div class="kicker">ПЕРСОНАЛ</div><div class="list-box">${staff||`<div class="personal-note">Немає даних.</div>`}</div></div>`:""}
-    </div>`:`<div class="personal-note">Аналітика недоступна.</div>`}
+    </div>${canManage?renderHallHistory():""}`:`<div class="personal-note">Аналітика недоступна.</div>`}
   </div>`;
 }
 async function shiftToggle(start){
@@ -5461,6 +5519,7 @@ async function openRestaurant(id){
   hallStartPolling();
   realtimeConnect(Number(restaurant.id));
   renderOnboarding();
+  loadReminders();
 
   applyRoleAccess();
 
