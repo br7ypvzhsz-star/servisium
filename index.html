@@ -1163,6 +1163,12 @@ h3{
 .allergen-guest-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;}
 .allergen-flag{display:block;margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.02em;}
 .allergen-flag.contains{color:#ff6b81;}.allergen-flag.adapt{color:#f0c040;}.allergen-flag.unknown{color:#e8a04c;}.allergen-flag.clear{color:#6fcf97;font-weight:600;}
+.menu-allergen-bar{margin:-6px 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);}
+.menu-allergen-bar[hidden]{display:none;}
+.menu-allergen-bar .allergen-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.menu-allergen-modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;}
+.menu-allergen-modes .section-meta{flex-basis:100%;margin:2px 0 0;}
+#menuAllergenToggle.on{border-color:#ff6b81;color:#ff6b81;}
 .order-menu-item.allergen-contains,.menu-card.allergen-contains{border-color:rgba(255,80,105,.85)!important;background:rgba(211,59,87,.12)!important;}
 .live-table.partial{border-color:rgba(230,140,70,.55);}.live-table.awaiting_payment{border-color:rgba(240,200,60,.7);}.live-table.blocked{border-color:rgba(120,120,120,.6);opacity:.6;}
 .table-card.partial{border-color:rgba(230,140,70,.4);}.table-card.awaiting_payment{border-color:rgba(240,200,60,.55);}.table-card.blocked{border-color:rgba(120,120,120,.5);opacity:.65;}
@@ -2669,7 +2675,11 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
             oninput="renderMenu()"
           >
 
+          <button type="button" id="menuAllergenToggle" class="secondary" onclick="toggleMenuAllergenBar()" title="Фільтр алергенів (ЄС-14)">⚠ Алергени</button>
+
         </div>
+
+        <div id="menuAllergenBar" class="menu-allergen-bar" hidden></div>
 
 
         <div
@@ -3485,6 +3495,10 @@ let ordersModuleCache = [];
 let orderDraft = [];
 let orderGuestAllergens = [];
 let orderAllergenHide = false;
+let menuAllergenSel = [];
+let menuAllergenMode = "highlight"; // highlight | hide | only
+let menuAllergenOpen = false;
+let menuAllergenLoaded = false;
 let ordersStaffCache = [];
 
 async function loadOrdersModuleData(){
@@ -6608,6 +6622,10 @@ function renderMenu(){
         return false;
       }
 
+      if(!menuAllergenPass(item)){
+        return false;
+      }
+
       const category =
         item.category || "Інше";
 
@@ -6729,10 +6747,11 @@ function renderMenu(){
   grid.innerHTML =
     filtered.map(item => {
       const stopped = isMenuItemStopped(item.id);
+      const allergenV = allergenVerdict(item, menuAllergenSel);
       return `
 
       <article
-        class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""} ${stopped ? "is-stopped" : ""}"
+        class="menu-card ${getMenuPhoto(item) ? "has-photo" : ""} ${stopped ? "is-stopped" : ""} ${allergenV.kind==="contains" ? "allergen-contains" : ""}"
         tabindex="0"
         data-menu-id="${Number(item.id)}"
         role="button"
@@ -6767,6 +6786,8 @@ function renderMenu(){
         </span>
 
         ${stopped ? `<div class="stop-badge">НЕДОСТУПНО</div>` : ""}
+
+        ${menuAllergenSel.length ? allergenFlagHtml(item, allergenV) : ""}
 
 
         ${
@@ -7869,6 +7890,66 @@ function menuDetailAllergensHtml(item){
   const notes=codes.filter(c=>adapt[c]?.note).map(c=>`<div class="section-meta">${escapeHtml(allergenLabel(c))}: ${escapeHtml(adapt[c].note)}</div>`).join("");
   const cc=item?.cross_contact_note?`<div class="section-meta">Перехресний контакт: ${escapeHtml(item.cross_contact_note)}</div>`:"";
   return `<div class="menu-detail-weight"><strong>Алергени:</strong> <div class="allergen-chips" style="margin-top:6px">${list}</div>${notes}${cc}</div>`;
+}
+
+/* Menu-section allergen filter (Q-010). Same verdict logic as the order
+   picker: «hide» removes only items the venue data says CONTAIN the
+   selection; unconfirmed items stay visible, marked «потрібне уточнення». */
+function loadMenuAllergenFilter(){
+  if(menuAllergenLoaded)return;
+  menuAllergenLoaded=true;
+  try{
+    const saved=JSON.parse(localStorage.getItem("servisium_menu_allergen")||"null");
+    if(saved){
+      menuAllergenSel=(Array.isArray(saved.sel)?saved.sel:[]).filter(c=>ALLERGEN_LABEL[c]);
+      if(["highlight","hide","only"].includes(saved.mode))menuAllergenMode=saved.mode;
+    }
+  }catch{}
+  renderMenuAllergenBar();
+}
+function saveMenuAllergenFilter(){
+  try{localStorage.setItem("servisium_menu_allergen",JSON.stringify({sel:menuAllergenSel,mode:menuAllergenMode}));}catch{}
+}
+function menuAllergenPass(item){
+  loadMenuAllergenFilter();
+  if(!menuAllergenSel.length||menuAllergenMode==="highlight")return true;
+  const k=allergenVerdict(item,menuAllergenSel).kind;
+  if(menuAllergenMode==="hide")return k!=="contains";
+  return k==="contains"||k==="adapt";
+}
+function toggleMenuAllergenBar(){
+  loadMenuAllergenFilter();
+  menuAllergenOpen=!menuAllergenOpen;
+  renderMenuAllergenBar();
+}
+function renderMenuAllergenBar(){
+  const bar=document.getElementById("menuAllergenBar"),btn=document.getElementById("menuAllergenToggle");
+  if(btn){
+    btn.classList.toggle("on",menuAllergenSel.length>0);
+    btn.textContent=menuAllergenSel.length?`⚠ Алергени (${menuAllergenSel.length})`:"⚠ Алергени";
+  }
+  if(!bar)return;
+  bar.hidden=!menuAllergenOpen;
+  if(!menuAllergenOpen)return;
+  const mode=(v,label,title)=>`<label class="allergen-chip ${menuAllergenMode===v?"on":""}" title="${title}"><input type="radio" name="menuAllergenMode" value="${v}" ${menuAllergenMode===v?"checked":""} onchange="setMenuAllergenMode('${v}')">${label}</label>`;
+  bar.innerHTML=`<div class="allergen-chips">${ALLERGENS.map(a=>`<label class="allergen-chip ${menuAllergenSel.includes(a.code)?"on":""}"><input type="checkbox" ${menuAllergenSel.includes(a.code)?"checked":""} onchange="toggleMenuAllergen('${a.code}',this.checked)">${escapeHtml(a.label)}</label>`).join("")}</div>
+    <div class="menu-allergen-modes">
+      ${mode("highlight","Показати всі, позначити","Усі позиції; ті, що містять вибрані алергени, — червоні")}
+      ${mode("hide","Сховати ті, що містять","Приховати позиції, які за даними закладу містять вибрані алергени")}
+      ${mode("only","Лише ті, що містять","Показати тільки позиції з вибраними алергенами")}
+      ${menuAllergenSel.length?`<button type="button" class="secondary" onclick="clearMenuAllergens()">Скинути</button>`:""}
+      <div class="section-meta">Фільтр спирається лише на дані закладу. Позиції з непідтвердженими алергенами не приховуються — вони позначені «потрібне уточнення». Це не гарантія безпеки: перед подачею уточніть на кухні.</div>
+    </div>`;
+}
+function toggleMenuAllergen(code,on){
+  menuAllergenSel=on?[...new Set([...menuAllergenSel,code])]:menuAllergenSel.filter(c=>c!==code);
+  saveMenuAllergenFilter();renderMenuAllergenBar();renderMenu();
+}
+function setMenuAllergenMode(m){
+  menuAllergenMode=m;saveMenuAllergenFilter();renderMenuAllergenBar();renderMenu();
+}
+function clearMenuAllergens(){
+  menuAllergenSel=[];menuAllergenMode="highlight";saveMenuAllergenFilter();renderMenuAllergenBar();renderMenu();
 }
 
 /* Waiter-facing verdict for a set of guest allergens. */
