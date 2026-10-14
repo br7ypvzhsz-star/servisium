@@ -3305,6 +3305,7 @@ async function findBetterExistingPhoto(
 
 const GEMINI_VISION_MODEL =
   "gemini-3.1-flash-lite";
+const GEMINI_VISION_FALLBACKS = ["gemini-3.5-flash-lite", "gemini-3.5-flash"];
 
 function getGeminiApiKey(): string {
   return clean(
@@ -3900,31 +3901,26 @@ async function callGeminiVision(
     }
   }
 
-  const response =
-    await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent`,
-      {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-goog-api-key":apiKey
-        },
-        body:JSON.stringify({
-          contents:[
-            {
-              role:"user",
-              parts
-            }
-          ],
-          generationConfig:{
-            temperature:0,
-            maxOutputTokens:4096,
-            responseMimeType:"application/json",
-            responseSchema:schema
-          }
-        })
-      }
-    );
+  /* fallback models + backoff: a busy model (429/503) must not leave the item
+     unverified — and without vision approval no photo is accepted */
+  const visionBody = JSON.stringify({
+    contents:[{ role:"user", parts }],
+    generationConfig:{ temperature:0, maxOutputTokens:4096, responseMimeType:"application/json", responseSchema:schema }
+  });
+  let response: Response | null = null;
+  outer:
+  for (const model of [GEMINI_VISION_MODEL, ...GEMINI_VISION_FALLBACKS]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await new Promise(r => setTimeout(r, 2500));
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method:"POST", headers:{ "Content-Type":"application/json", "x-goog-api-key":apiKey }, body:visionBody }
+      );
+      if (response.ok) break outer;
+      if (![429, 500, 503].includes(response.status)) break;
+    }
+  }
+  response = response as Response;
 
   const raw =
     await response.text();

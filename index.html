@@ -6742,7 +6742,7 @@ function renderMenu(){
         ${
           getMenuPhoto(item)
             ? `<img class="menu-card-photo" src="${escapeHtml(getMenuPhoto(item))}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;menu-card-photo-placeholder&quot;>♨</div>'">`
-            : `<div class="menu-card-photo-placeholder">♨</div>`
+            : (item.type==="Бар"?`<div class="menu-card-photo-placeholder" title="Фото не знайдено — додайте вручну"><small style="font-size:11px;line-height:1.3;padding:0 8px;text-align:center">Фото не знайдено — додайте вручну</small></div>`:`<div class="menu-card-photo-placeholder">♨</div>`)
         }
 
         <div class="menu-card-top">
@@ -7028,7 +7028,7 @@ function openMenuItemDetails(id){
       <div>
         ${photo
           ? `<img class="menu-detail-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(item.name || "Позиція")}" onerror="this.outerHTML='<div class=&quot;menu-detail-placeholder&quot;>♨</div>'>`
-          : `<div class="menu-detail-placeholder">♨</div>`
+          : (item.type==="Бар"?`<div class="menu-detail-placeholder" style="font-size:14px;text-align:center;padding:12px">Фото не знайдено — додайте вручну</div>`:`<div class="menu-detail-placeholder">♨</div>`)
         }
       </div>
       <div class="menu-detail-content">
