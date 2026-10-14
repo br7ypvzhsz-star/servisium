@@ -239,6 +239,52 @@ Deno.serve(async (req) => {
     });
   }
 
+  // ---- audit existing drink photos (task 2): does the photo show EXACTLY this product? Read-only. ----
+  if (action === "verify_photos") {
+    const canManage = profile.is_platform_admin || ["ADMIN", "SENIOR WAITER"].includes(String(staff?.role));
+    if (!canManage) return json({ success: false, error: "forbidden" }, 403);
+    const ids = (Array.isArray(body?.menu_item_ids) ? body.menu_item_ids : []).map(Number).filter(Number.isFinite).slice(0, 6);
+    if (!ids.length) return json({ success: false, error: "no_items" }, 400);
+    const { data: rows } = await userDb.from("menu_items").select("id,name,category,type,photo_url").eq("restaurant_id", rid).in("id", ids);
+    const VERIFY_SCHEMA = {
+      type: "object",
+      properties: {
+        verdict: { type: "string", enum: ["match", "wrong_product", "wrong_line", "pack_or_promo", "not_a_bottle", "unclear"] },
+        confidence: { type: "number", minimum: 0, maximum: 1 },
+        seen: { type: "string", description: "Brand and product name readable on the label, as seen." },
+        reason: { type: "string", description: "Ukrainian, one short sentence." },
+      },
+      required: ["verdict", "confidence", "seen", "reason"],
+    };
+    const VERIFY_SYSTEM = `Ти перевіряєш фото позиції бару. Порівняй ТЕ, ЩО ВИДНО на етикетці, з назвою позиції меню.
+match — той самий виробник/бренд І та сама лінійка/кюве (і тип: ігристе/рожеве/сухе, якщо вказано в назві; вінтаж не обов'язковий).
+wrong_line — той самий бренд, але інша лінійка/версія (напр. «Kaiken» vs «Kaiken Ultra», «XO» vs «VSOP»).
+wrong_product — інший виробник або інший продукт.
+pack_or_promo — ящик, кілька пляшок/банок, промо-наліпки на кшталт «4 CANS», келих замість пляшки, пляшка в руці.
+not_a_bottle — немає пляшки/банки продукту.
+unclear — етикетку не прочитати. Не вгадуй: якщо не можеш прочитати бренд — unclear.`;
+    const results: any[] = [];
+    await Promise.all((rows ?? []).map(async (m: any) => {
+      const url = String(m.photo_url ?? "");
+      if (!/^https:\/\//.test(url)) { results.push({ menu_item_id: m.id, verdict: "no_photo" }); return; }
+      try {
+        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 10000);
+        const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(t);
+        const ct = (r.headers.get("content-type") ?? "").split(";")[0];
+        if (!r.ok || !/^image\/(png|jpe?g|webp|gif|avif)$/.test(ct)) { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "Фото недоступне або непідтримуваний формат." }); return; }
+        const buf = new Uint8Array(await r.arrayBuffer());
+        if (buf.length > 6_000_000) { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "Фото завелике." }); return; }
+        let b64 = ""; const CH = 0x8000;
+        for (let i = 0; i < buf.length; i += CH) b64 += String.fromCharCode(...buf.subarray(i, i + CH));
+        const res = await geminiParts(VERIFY_SYSTEM, [{ text: `Позиція меню: «${clip(m.name, 160)}» (категорія: ${clip(m.category, 60)}).` }, { inline_data: { mime_type: ct, data: btoa(b64) } }], VERIFY_SCHEMA, 20000);
+        if (!res) { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "AI недоступний." }); return; }
+        results.push({ menu_item_id: m.id, name: m.name, verdict: res.data?.verdict ?? "unclear", confidence: Number(res.data?.confidence) || 0,
+          seen: clip(res.data?.seen, 120), reason: clip(res.data?.reason, 200) });
+      } catch { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "Не вдалося перевірити." }); }
+    }));
+    return json({ success: true, results });
+  }
+
   if (action === "extract_menu_document" || action === "extract_menu_url") {
     const canManage = profile.is_platform_admin || ["ADMIN", "SENIOR WAITER"].includes(String(staff?.role));
     if (!canManage) return json({ success: false, error: "forbidden" }, 403);

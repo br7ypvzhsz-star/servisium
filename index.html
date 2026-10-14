@@ -1094,6 +1094,10 @@ h3{
 .tp-close{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);}
 .receipt-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0 14px;}
 @media (max-width:640px){.tp-line{flex-direction:column;}.tp-line-actions{justify-content:flex-start;}}
+.audit-list{display:grid;gap:6px;max-height:55vh;overflow:auto;}
+.audit-row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:10px;}
+.audit-row img{width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;}
+.audit-row div{display:grid;gap:2px;}.audit-row small{opacity:.75;}
 .peak-hours{display:flex;align-items:flex-end;gap:4px;height:80px;margin:8px 0;}
 .peak-hours div{display:grid;justify-items:center;gap:2px;flex:1;max-width:28px;}
 .peak-hours i{display:block;width:100%;background:linear-gradient(180deg,#d33b57,#7a2235);border-radius:4px 4px 0 0;min-height:2px;}
@@ -2634,6 +2638,13 @@ button,select,input,textarea,[onclick]{touch-action:manipulation;}
               onclick="openCategoryManager()"
             >
               ☰ Категорії
+            </button>
+
+            <button
+              class="secondary"
+              onclick="openPhotoAudit()"
+            >
+              ⌕ Перевірка фото
             </button>
 
             <button
@@ -7074,6 +7085,63 @@ function openEditMenuItem(id){
   renderIngredientEditor();
 
   openModal("editMenuModal");
+}
+
+/* ================= DRINK PHOTO AUDIT (task 2, T025/T029/T032) =================
+   AI Vision compares each bar photo with the item name (producer + line + type).
+   Read-only until the admin decides; removing a photo leaves «Фото не знайдено —
+   додайте вручну». Kitchen items are never touched. */
+let photoAudit={running:false,stop:false,done:0,total:0,results:[]};
+const AUDIT_LABEL={match:"✓ відповідає",wrong_product:"✕ інший продукт",wrong_line:"✕ інша лінійка",pack_or_promo:"✕ упаковка / промо / в руці",not_a_bottle:"✕ немає пляшки",unclear:"? не вдалося прочитати",no_photo:"— без фото"};
+function openPhotoAudit(){
+  if(!["ADMIN","SENIOR WAITER"].includes(String(currentUserRole||"").toUpperCase())){showToast("Доступно ADMIN / SENIOR WAITER.");return;}
+  document.getElementById("photoAuditModal")?.remove();
+  const m=document.createElement("div");m.className="servisium-modal-backdrop";m.id="photoAuditModal";
+  m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">PHOTO ENGINE · AUDIT</div><h2>Перевірка фото напоїв</h2><div class="section-meta">AI Vision звіряє кожне фото бару з назвою: виробник, лінійка, тип. Нічого не змінює без твого рішення. Кухня не перевіряється й не змінюється.</div></div><button class="icon-btn" onclick="photoAudit.stop=true;document.getElementById('photoAuditModal').remove()">×</button></div><div id="photoAuditBody"></div></div>`;
+  document.body.appendChild(m);renderPhotoAudit();
+}
+function auditCandidates(){return currentMenu.filter(i=>i.type==="Бар"&&String(i.photo_url||"").startsWith("https://"));}
+function renderPhotoAudit(){
+  const box=document.getElementById("photoAuditBody");if(!box)return;
+  const a=photoAudit,bad=a.results.filter(r=>!["match","no_photo","unclear"].includes(r.verdict)),unclear=a.results.filter(r=>r.verdict==="unclear");
+  const row=r=>{const it=currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id));return `<div class="audit-row"><img src="${escapeHtml(it?.photo_url||"")}" alt="" onerror="this.style.visibility='hidden'"><div><strong>${escapeHtml(r.name||it?.name||"")}</strong><small>${AUDIT_LABEL[r.verdict]||r.verdict}${r.seen?` · на фото: ${escapeHtml(r.seen)}`:""}</small><small>${escapeHtml(r.reason||"")}</small></div>${it?.photo_url?`<button class="secondary" onclick="auditRemovePhoto(${Number(r.menu_item_id)})">Прибрати фото</button>`:`<span class="section-meta">прибрано</span>`}</div>`;};
+  box.innerHTML=`<div class="section-meta">Фото бару для перевірки: ${auditCandidates().length}. Перевірено: ${a.done}/${a.total||auditCandidates().length} · відповідають: ${a.results.filter(r=>r.verdict==="match").length} · невідповідні: ${bad.length} · не вдалося прочитати: ${unclear.length}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+      ${a.running?`<button class="secondary" onclick="photoAudit.stop=true">Зупинити</button>`:`<button class="primary" onclick="runPhotoAudit()">${a.done?"Перевірити ще раз":"Почати перевірку"}</button>`}
+      ${bad.some(r=>currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id))?.photo_url)?`<button class="danger-btn" onclick="auditRemoveAllBad()">Прибрати всі невідповідні (${bad.length})</button>`:""}
+    </div>
+    ${bad.length?`<div class="kicker">НЕВІДПОВІДНІ</div><div class="audit-list">${bad.map(row).join("")}</div>`:""}
+    ${unclear.length?`<details><summary class="section-meta">Не вдалося прочитати етикетку: ${unclear.length} — перевір вручну</summary><div class="audit-list">${unclear.map(row).join("")}</div></details>`:""}`;
+}
+async function runPhotoAudit(){
+  const list=auditCandidates();
+  photoAudit={running:true,stop:false,done:0,total:list.length,results:[]};renderPhotoAudit();
+  for(let i=0;i<list.length&&!photoAudit.stop;i+=6){
+    const batch=list.slice(i,i+6).map(x=>Number(x.id)),t0=Date.now();
+    try{const r=await callMenuAssist({action:"verify_photos",menu_item_ids:batch});photoAudit.results.push(...(r.results||[]));}
+    catch(e){
+      if(/Забагато|rate/i.test(e.message)){await new Promise(r=>setTimeout(r,20000));i-=6;continue;}
+      batch.forEach(id=>photoAudit.results.push({menu_item_id:id,verdict:"unclear",reason:e.message}));
+    }
+    photoAudit.done=Math.min(list.length,i+6);renderPhotoAudit();
+    const wait=3600-(Date.now()-t0);if(wait>0)await new Promise(r=>setTimeout(r,wait)); /* stay under 20 requests/min */
+  }
+  photoAudit.running=false;renderPhotoAudit();
+}
+async function auditRemovePhoto(id,silent){
+  const it=currentMenu.find(x=>Number(x.id)===Number(id));if(!it||it.type!=="Бар")return;
+  try{
+    await supabaseRequest(`menu_items?id=eq.${Number(id)}&restaurant_id=eq.${Number(currentRestaurant.id)}&type=eq.${encodeURIComponent("Бар")}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({photo_url:null})});
+    it.photo_url=null;setMenuPhotoLocal(id,"");
+  }catch(e){if(!silent)showToast(e.message);return false;}
+  if(!silent){renderPhotoAudit();renderMenu();}
+  return true;
+}
+async function auditRemoveAllBad(){
+  const bad=photoAudit.results.filter(r=>!["match","no_photo","unclear"].includes(r.verdict)&&currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id))?.photo_url);
+  if(!confirm(`Прибрати ${bad.length} невідповідних фото? На їх місці буде «Фото не знайдено — додайте вручну».`))return;
+  let n=0;for(const r of bad){if(await auditRemovePhoto(r.menu_item_id,true))n++;}
+  renderPhotoAudit();renderMenu();showToast(`Прибрано фото: ${n}`);
 }
 
 /* ================= PRO CHARACTERISTICS (tasks 6–16) =================
