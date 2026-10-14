@@ -132,5 +132,37 @@ begin
   total := total + 1;
   if not exists (select 1 from public.menu_items where category_ref = r.id and category <> r.name || ' SUITE') then passed := passed + 1; else fails := fails || 'category rename not propagated; '; end if;
 
+  -- ===== 9. PRO autofill from menu text (venue 4, rolled back) =====
+  perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  n := public.pro_autofill_wines(4);
+  reset role;
+  total := total + 1;
+  if n > 0 and exists (select 1 from public.menu_items where restaurant_id = 4 and pro_kind = 'wine' and pro ? 'sweetness') then passed := passed + 1;
+  else fails := fails || format('pro_autofill filled %s; ', n); end if;
+  total := total + 1;
+  if not exists (select 1 from public.menu_items where restaurant_id = 4 and pro_kind = 'wine' and pro->>'producer' ~ '[A-Za-z][А-Яа-яІіЇїЄєҐґ]') then passed := passed + 1;
+  else fails := fails || 'producer contains glued Cyrillic; '; end if;
+
+  -- ===== 10. onboarding + new functions refuse other venues =====
+  perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  j := public.onboarding_status(1);
+  total := total + 1; if (j->>'menu_items')::int > 0 then passed := passed + 1; else fails := fails || 'onboarding_status empty; '; end if;
+  reset role;
+  perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  total := total + 1; if public.onboarding_status(1) is null then passed := passed + 1; else fails := fails || 'foreign onboarding_status visible; '; end if;
+  total := total + 1; if public.hall_stats(1) is null then passed := passed + 1; else fails := fails || 'foreign hall_stats visible; '; end if;
+  total := total + 1;
+  begin perform public.pro_autofill_wines(1); fails := fails || 'foreign pro_autofill allowed; ';
+  exception when others then passed := passed + 1; end;
+  total := total + 1;
+  begin perform public.shift_stats(1, now() - interval '1 day', now()); fails := fails || 'foreign shift_stats allowed; ';
+  exception when others then passed := passed + 1; end;
+  total := total + 1; select count(*) into n from public.menu_categories where restaurant_id <> 3;
+  if n = 0 then passed := passed + 1; else fails := fails || format('foreign categories visible=%s; ', n); end if;
+  reset role;
+
   raise exception 'SUITE RESULT: %/% passed%', passed, total, case when fails = '' then '' else ' | FAIL: ' || fails end;
 end $$;
