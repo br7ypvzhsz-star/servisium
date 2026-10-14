@@ -264,7 +264,8 @@ pack_or_promo — ящик, кілька пляшок/банок, промо-н�
 not_a_bottle — немає пляшки/банки продукту.
 unclear — етикетку не прочитати. Не вгадуй: якщо не можеш прочитати бренд — unclear.`;
     const results: any[] = [];
-    await Promise.all((rows ?? []).map(async (m: any) => {
+    // sequential with retries: parallel vision calls hit the provider rate limit («AI недоступний»)
+    const verifyOne = async (m: any) => {
       const url = String(m.photo_url ?? "");
       if (!/^https:\/\//.test(url)) { results.push({ menu_item_id: m.id, verdict: "no_photo" }); return; }
       try {
@@ -276,12 +277,17 @@ unclear — етикетку не прочитати. Не вгадуй: якщ�
         if (buf.length > 6_000_000) { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "Фото завелике." }); return; }
         let b64 = ""; const CH = 0x8000;
         for (let i = 0; i < buf.length; i += CH) b64 += String.fromCharCode(...buf.subarray(i, i + CH));
-        const res = await geminiParts(VERIFY_SYSTEM, [{ text: `Позиція меню: «${clip(m.name, 160)}» (категорія: ${clip(m.category, 60)}).` }, { inline_data: { mime_type: ct, data: btoa(b64) } }], VERIFY_SCHEMA, 20000);
-        if (!res) { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "AI недоступний." }); return; }
+        let res = null;
+        for (let attempt = 0; attempt < 3 && !res; attempt++) {
+          if (attempt) await new Promise((r) => setTimeout(r, attempt * 2500));
+          res = await geminiParts(VERIFY_SYSTEM, [{ text: `Позиція меню: «${clip(m.name, 160)}» (категорія: ${clip(m.category, 60)}).` }, { inline_data: { mime_type: ct, data: btoa(b64) } }], VERIFY_SCHEMA, 20000);
+        }
+        if (!res) { results.push({ menu_item_id: m.id, name: m.name, verdict: "unclear", reason: "AI тимчасово недоступний — перевір ще раз." }); return; }
         results.push({ menu_item_id: m.id, name: m.name, verdict: res.data?.verdict ?? "unclear", confidence: Number(res.data?.confidence) || 0,
           seen: clip(res.data?.seen, 120), reason: clip(res.data?.reason, 200) });
-      } catch { results.push({ menu_item_id: m.id, verdict: "unclear", reason: "Не вдалося перевірити." }); }
-    }));
+      } catch { results.push({ menu_item_id: m.id, name: m.name, verdict: "unclear", reason: "Не вдалося перевірити." }); }
+    };
+    for (const m of rows ?? []) await verifyOne(m);
     return json({ success: true, results });
   }
 

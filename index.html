@@ -7100,12 +7100,16 @@ function openPhotoAudit(){
   m.innerHTML=`<div class="servisium-modal"><div class="modal-head"><div><div class="kicker">PHOTO ENGINE · AUDIT</div><h2>Перевірка фото напоїв</h2><div class="section-meta">AI Vision звіряє кожне фото бару з назвою: виробник, лінійка, тип. Нічого не змінює без твого рішення. Кухня не перевіряється й не змінюється.</div></div><button class="icon-btn" onclick="photoAudit.stop=true;document.getElementById('photoAuditModal').remove()">×</button></div><div id="photoAuditBody"></div></div>`;
   document.body.appendChild(m);renderPhotoAudit();
 }
-function auditCandidates(){return currentMenu.filter(i=>i.type==="Бар"&&String(i.photo_url||"").startsWith("https://"));}
+/* only photos picked by the Photo Engine (our storage): the venue's own source photos
+   (e.g. cocktails in a glass from Expz) are the venue's images and are not judged as bottles */
+let auditIncludeSource=false;
+function auditCandidates(){return currentMenu.filter(i=>i.type==="Бар"&&String(i.photo_url||"").startsWith("https://")&&(auditIncludeSource||String(i.photo_url).includes("/servisium-menu-photos/")));}
 function renderPhotoAudit(){
   const box=document.getElementById("photoAuditBody");if(!box)return;
   const a=photoAudit,bad=a.results.filter(r=>!["match","no_photo","unclear"].includes(r.verdict)),unclear=a.results.filter(r=>r.verdict==="unclear");
   const row=r=>{const it=currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id));return `<div class="audit-row"><img src="${escapeHtml(it?.photo_url||"")}" alt="" onerror="this.style.visibility='hidden'"><div><strong>${escapeHtml(r.name||it?.name||"")}</strong><small>${AUDIT_LABEL[r.verdict]||r.verdict}${r.seen?` · на фото: ${escapeHtml(r.seen)}`:""}</small><small>${escapeHtml(r.reason||"")}</small></div>${it?.photo_url?`<button class="secondary" onclick="auditRemovePhoto(${Number(r.menu_item_id)})">Прибрати фото</button>`:`<span class="section-meta">прибрано</span>`}</div>`;};
-  box.innerHTML=`<div class="section-meta">Фото бару для перевірки: ${auditCandidates().length}. Перевірено: ${a.done}/${a.total||auditCandidates().length} · відповідають: ${a.results.filter(r=>r.verdict==="match").length} · невідповідні: ${bad.length} · не вдалося прочитати: ${unclear.length}</div>
+  box.innerHTML=`<label class="allergen-chip ${auditIncludeSource?"on":""}" style="margin-bottom:6px"><input type="checkbox" ${auditIncludeSource?"checked":""} ${a.running?"disabled":""} onchange="auditIncludeSource=this.checked;renderPhotoAudit()">Також фото з джерела меню (Expz)</label>
+    <div class="section-meta">Фото бару для перевірки: ${auditCandidates().length} (за замовчуванням — лише підібрані фото-рушієм). Перевірено: ${a.done}/${a.total||auditCandidates().length} · відповідають: ${a.results.filter(r=>r.verdict==="match").length} · невідповідні: ${bad.length} · не вдалося прочитати: ${unclear.length}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
       ${a.running?`<button class="secondary" onclick="photoAudit.stop=true">Зупинити</button>`:`<button class="primary" onclick="runPhotoAudit()">${a.done?"Перевірити ще раз":"Почати перевірку"}</button>`}
       ${bad.some(r=>currentMenu.find(x=>Number(x.id)===Number(r.menu_item_id))?.photo_url)?`<button class="danger-btn" onclick="auditRemoveAllBad()">Прибрати всі невідповідні (${bad.length})</button>`:""}
