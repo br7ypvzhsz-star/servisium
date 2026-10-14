@@ -1,15 +1,15 @@
 # SERVISIUM — з чого продовжити (handoff для наступної сесії)
 
-Оновлено: 14.10.2026. Прочитай цей файл, потім `MASTER_TASKS.md` і `CHANGELOG.md`. Повторний аудит не потрібен.
+Оновлено: 14.10.2026 (узгодження D-01 — числа тестів, міграції, фото-аудит). Прочитай цей файл, потім `MASTER_TASKS.md` і `CHANGELOG.md`. Повторний аудит не потрібен.
 
 ## Де що лежить
-- Код: ця папка (`Servisium\repo`), GitHub `br7ypvzhsz-star/servisium`.
+- Код: GitHub `br7ypvzhsz-star/servisium` (на ПК власника — папка `Servisium\repo`).
   - `main` — живий сайт (GitHub Pages), випущено 14.10.2026 на перемиканні безпеки (коміт 20af2c0).
   - `hardening/security-mobile` — уся подальша робота, **ще не випущена** (чекає повного тестування й «так» власника).
-- База: Supabase `thswpihmhjychjjcybmf`. Міграції `supabase/migrations` — 01…18 застосовані до живої бази.
-- Серверні функції: `supabase/functions` — pin-login, enrich-menu-photos, analyze-hall-ai, ai-pairing, ai-menu-assist, ai-assistant (розгорнуті).
-  Розгортання: `npx.cmd -y supabase@2.20.12 functions deploy <name> --project-ref thswpihmhjychjjcybmf --no-verify-jwt --use-api` (на цьому ПК вхід у CLI вже виконано).
-- Автотести: `tests/server_suite.sql` — запустити в Supabase SQL Editor; завжди відкочується; очікується `SUITE RESULT: 33/33 passed`.
+- База: Supabase `thswpihmhjychjjcybmf`. Міграції `supabase/migrations` — 01, 02, 03 (cutover), 03a, 04, 05, 06–21 застосовані до живої бази (за `CHANGELOG.md`; відповідність файлів живій історії міграцій не звірена — див. MASTER T007).
+- Серверні функції: `supabase/functions` — pin-login, enrich-menu-photos, analyze-hall-ai, ai-pairing, ai-menu-assist, ai-assistant (розгорнуті). `import-menu` (v42) теж розгорнута, але її коду в репозиторії немає (MASTER T013).
+  Розгортання (команда для ПК власника, Windows): `npx.cmd -y supabase@2.20.12 functions deploy <name> --project-ref thswpihmhjychjjcybmf --no-verify-jwt --use-api` (на цьому ПК вхід у CLI вже виконано).
+- Автотести: `tests/server_suite.sql` — запустити в Supabase SQL Editor; завжди відкочується; очікується `SUITE RESULT: 41/41 passed` (33 у 61599d6, розширено до 41 у b7c08a0). Запуск — дія з живою базою.
 - Резервні копії даних: схеми `backup_20261013`, `backup_20261014` у базі.
 
 ## Тестові дані
@@ -25,6 +25,7 @@
 5. Заблоковано: VERTEX (потрібне фото-плану), App Store / Google Play (акаунти розробника), агент «СКРУДЖ/Мурчик» (потрібен опис).
 
 ## Потребує рішення власника (не робити без «так»)
+- Прибрати 49 невідповідних фото бару LUGOSH за результатами перевірки (105 відповідають, 49 ні, 11 не прочитано — коміти 5ebbd67…1452464).
 - Повний прогін фото-рушія на 245 позиціях бару LUGOSH (витрачає квоту Gemini).
 - Повторний імпорт LUGOSH (виправить вина з типом «Кухня», оновить ціни/описи з Expz; без дублів і видалень).
 - Видалення ≈230 дублів у закладі №2 «Тест».
