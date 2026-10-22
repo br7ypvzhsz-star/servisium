@@ -16,5 +16,12 @@
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "docs/store/screenshots/desktop-1-venue.png", "sizes": "2732x1536", "type": "image/png", "form_factor": "wide", "label": "Заклад: готовність до роботи і модулі" },
+    { "src": "docs/store/screenshots/desktop-2-menu.png", "sizes": "2732x1536", "type": "image/png", "form_factor": "wide", "label": "Меню: категорії, ціни, імпорт" },
+    { "src": "docs/store/screenshots/phone-1-login.png", "sizes": "1170x2532", "type": "image/png", "form_factor": "narrow", "label": "Вхід за персональним PIN" },
+    { "src": "docs/store/screenshots/phone-2-venue.png", "sizes": "1170x2532", "type": "image/png", "form_factor": "narrow", "label": "Заклад на телефоні" },
+    { "src": "docs/store/screenshots/phone-3-menu.png", "sizes": "1170x2532", "type": "image/png", "form_factor": "narrow", "label": "Меню на телефоні" }
   ]
 }

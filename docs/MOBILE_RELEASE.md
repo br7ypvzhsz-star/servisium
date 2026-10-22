@@ -16,3 +16,11 @@ cd mobile && npm install && npx cap add android && npx cap add ios && npm run sy
 ## Перед подачею
 - Логін PIN працює на живій базі (див. DEPLOY_RUNBOOK);
 - оплата підписки: якщо купується доступ до цифрових послуг усередині застосунку, Apple/Google вимагають свої покупки (комісія); продаж закладам поза застосунком (B2B через сайт) — окреме правило, перевірити актуальні умови перед подачею.
+
+## Пакети для магазинів (R-01, 22.10.2026)
+- Безкоштовні шляхи: Microsoft Store (реєстрація фізичної особи безкоштовна, приймає PWA) — `docs/store/MICROSOFT_STORE.md`;
+  Android без Google Play (PWA, APK з PWABuilder, Capacitor) — `docs/store/ANDROID.md`.
+- Тексти, анкети даних, шаблон нотаток для перевірки — `docs/store/LISTING.md`.
+- Політика конфіденційності — `privacy.html` (uk/en); оператор і email заповнює власник.
+- Скріншоти — `docs/store/screenshots/` (реальний інтерфейс, синтетичний демозаклад; відтворення — `docs/store/tools/`); додано в `manifest.webmanifest` → `screenshots`.
+- Google Play (25 USD) і App Store (99 USD/рік) — платні; ці кроки вище залишаються в силі.
