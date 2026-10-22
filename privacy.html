@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080809">
+<title>SERVISIUM — Політика конфіденційності / Privacy Policy</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{--bg:#070708;--surface:#101012;--line:#29292e;--text:#f5f1eb;--muted:#918d90;--gold:#d7b987;--wine:#8d1738}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:28px;line-height:1.25;margin:0 0 4px}
+h2{font-size:19px;margin:32px 0 8px;color:var(--gold)}
+p,li{color:var(--text)}
+.muted{color:var(--muted);font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0}
+a{color:var(--gold)}
+nav{display:flex;gap:12px;margin:12px 0 24px}
+nav a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;text-decoration:none}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{border-top:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.todo{background:var(--wine);color:#fff;padding:0 6px;border-radius:6px}
+hr{border:0;border-top:1px solid var(--line);margin:48px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>SERVISIUM — Політика конфіденційності</h1>
+<p class="muted">Редакція від 22.10.2026 · Застосунок «SERVISIUM — Art of Service» (сайт, PWA та мобільні/настільні версії)</p>
+<nav><a href="#uk">Українська</a><a href="#en">English</a></nav>
+
+<section id="uk">
+<div class="card">
+<p><b>Коротко.</b> SERVISIUM — робочий інструмент для персоналу ресторанів, барів і кафе (меню, зал, замовлення, кухня/бар, навчання).
+Ми не показуємо рекламу, не використовуємо рекламні чи аналітичні трекери і не продаємо дані.
+Застосунок не призначений для збору даних гостей закладу.</p>
+</div>
+
+<h2>1. Хто відповідає за дані</h2>
+<p>Оператор сервісу SERVISIUM: <span class="todo">[ім'я / назва та країна — заповнює власник]</span>.
+Контакт з питань даних: <span class="todo">[email — заповнює власник]</span>.</p>
+<p>Заклад (ресторан, бар, кафе), який користується SERVISIUM, визначає, які дані про свій персонал і замовлення він вносить.
+Щодо цих даних заклад діє як володілець (контролер), а SERVISIUM — як обробник, що зберігає й обробляє їх від імені закладу.</p>
+
+<h2>2. Які дані обробляються</h2>
+<table>
+<tr><th>Категорія</th><th>Що саме</th><th>Навіщо</th></tr>
+<tr><td>Персонал закладу</td><td>ім'я, роль (адміністратор, старший офіціант, офіціант), статус, заклад; PIN-код зберігається лише у вигляді криптографічного хеша; для адміністраторів — email і пароль входу</td><td>вхід, розмежування доступу між ролями й закладами</td></tr>
+<tr><td>Робочі дані закладу</td><td>меню, склад, алергени, ціни, фото позицій, схема залу, стоп-лист, замовлення й чеки (позиції, суми, знижки, спосіб оплати без реквізитів картки), зміни, нагадування, результати навчання, журнал дій</td><td>робота застосунку: прийом замовлень, кухня/бар, звіти, навчання</td></tr>
+<tr><td>Відомості про гостей</td><td>кількість гостей за столом, алергени, які офіціант позначив для замовлення, коментар до замовлення. Імена, телефони чи інші контакти гостей застосунок не запитує</td><td>безпечне обслуговування (попередження про алергени)</td></tr>
+<tr><td>Дані на пристрої</td><td>токен сесії, кеш схеми залу й фото меню (у сховищі браузера/застосунку)</td><td>щоб не входити щоразу й працювати швидше</td></tr>
+<tr><td>Технічні дані</td><td>IP-адреса й технічні заголовки запитів, які бачать сервери хостингу</td><td>доставка сайту й захист від зловживань</td></tr>
+</table>
+<p>Будь ласка, не вносьте в коментарі до замовлень персональні дані гостей (імена, телефони).</p>
+
+<h2>3. Дозволи пристрою</h2>
+<p>Застосунок не використовує геолокацію, контакти чи мікрофон. Вибір фото (меню, план залу) відбувається лише за вашою дією через стандартне вікно вибору файлу або камеру.
+Вібрація використовується для нагадувань. Сповіщення від сервера (push) не надсилаються.</p>
+
+<h2>4. Кому передаються дані (обробники)</h2>
+<ul>
+<li><b>Supabase</b> — база даних і вхід (сервери в ЄС, Ірландія).</li>
+<li><b>GitHub Pages</b> — розміщення сайту застосунку.</li>
+<li><b>Google Gemini API</b> — функції штучного інтелекту, лише коли ви ними користуєтесь: розпізнавання плану залу, AI-асистент і підбір напоїв, перевірка й пошук фото, імпорт меню з фото/PDF/сторінки. Передаються тексти меню, фото, план залу і ваше питання; дані персоналу не передаються.</li>
+<li><b>Пошук фото напоїв</b> (DuckDuckGo, Bing, Wikimedia Commons, Open Food Facts та інші пошукові сервіси, проксі зображень wsrv.nl, r.jina.ai) — отримують лише назви позицій меню.</li>
+<li><b>CDN jsDelivr і cdnjs</b> — завантаження програмних бібліотек; бачать лише технічні дані запиту.</li>
+<li><b>Expz / сторінки меню</b>, які ви самі вказуєте для імпорту.</li>
+</ul>
+<p>Ми не продаємо й не передаємо дані для реклами.</p>
+
+<h2>5. Захист</h2>
+<p>Доступ до даних обмежено на сервері правилами за закладом і роллю: працівник одного закладу не бачить даних іншого.
+Без входу доступ до даних закритий. PIN не зберігається у відкритому вигляді, кількість спроб входу обмежена. Ключі AI-сервісів зберігаються лише на сервері.</p>
+
+<h2>6. Строк зберігання</h2>
+<p>Дані зберігаються, доки заклад користується сервісом, або до запиту на видалення. Окремий строк зберігання архіву чеків визначає заклад; автоматичного видалення зараз немає.
+Дані на пристрої видаляються при виході з облікового запису або очищенні даних застосунку.</p>
+
+<h2>7. Ваші права</h2>
+<p>Ви можете попросити доступ до своїх даних, їх виправлення чи видалення: зверніться до адміністратора свого закладу або на контакт оператора (розділ 1).
+Ви також можете звернутися до органу із захисту персональних даних у своїй країні.</p>
+
+<h2>8. Діти</h2>
+<p>Застосунок призначений для працівників закладів і не орієнтований на дітей.</p>
+
+<h2>9. Зміни</h2>
+<p>Про зміни цієї політики ми повідомлятимемо, оновлюючи дату редакції на цій сторінці.</p>
+</section>
+
+<hr>
+
+<section id="en" lang="en">
+<h1>SERVISIUM — Privacy Policy</h1>
+<p class="muted">Version of 22 Oct 2026 · “SERVISIUM — Art of Service” app (web, PWA, mobile and desktop versions)</p>
+<div class="card">
+<p><b>In short.</b> SERVISIUM is a work tool for restaurant, bar and café staff (menu, floor plan, orders, kitchen/bar, training).
+We show no ads, use no advertising or analytics trackers, and do not sell data. The app is not designed to collect data about the venue's guests.</p>
+</div>
+
+<h2>1. Who is responsible</h2>
+<p>Service operator: <span class="todo">[name / company and country — to be filled in by the owner]</span>.
+Privacy contact: <span class="todo">[email — to be filled in by the owner]</span>.</p>
+<p>Each venue using SERVISIUM decides what data about its staff and orders it enters and acts as the data controller for that data; SERVISIUM processes it on the venue's behalf.</p>
+
+<h2>2. Data we process</h2>
+<ul>
+<li><b>Venue staff:</b> name, role, status and venue; the PIN is stored only as a cryptographic hash; administrators also have a login email and password. Used for sign-in and access control.</li>
+<li><b>Venue work data:</b> menu, ingredients, allergens, prices, item photos, floor plan, stop list, orders and receipts (items, totals, discounts, payment method — no card details), shifts, reminders, training results, activity log.</li>
+<li><b>About guests:</b> number of guests at a table, allergens marked by the waiter for an order, order notes. The app does not ask for guests' names, phone numbers or other contacts.</li>
+<li><b>On the device:</b> session token, cached floor plan and menu photos.</li>
+<li><b>Technical data:</b> IP address and request headers seen by hosting servers.</li>
+</ul>
+
+<h2>3. Device permissions</h2>
+<p>No location, contacts or microphone. Photos are picked only by your action via the standard file/camera picker. Vibration is used for reminders. No server push notifications.</p>
+
+<h2>4. Processors</h2>
+<ul>
+<li><b>Supabase</b> — database and sign-in (EU servers, Ireland).</li>
+<li><b>GitHub Pages</b> — hosting of the web app.</li>
+<li><b>Google Gemini API</b> — AI features, only when you use them (floor-plan recognition, AI assistant and drink pairing, photo search and checks, menu import from photo/PDF/web page). Menu texts, photos, floor plans and your question are sent; staff data is not.</li>
+<li><b>Drink photo search</b> (DuckDuckGo, Bing, Wikimedia Commons, Open Food Facts and other search services, image proxy wsrv.nl, r.jina.ai) — receive menu item names only.</li>
+<li><b>jsDelivr and cdnjs CDNs</b> — delivery of code libraries.</li>
+<li><b>Expz / menu pages</b> that you choose to import.</li>
+</ul>
+
+<h2>5. Security</h2>
+<p>Server-side rules restrict access by venue and role; staff of one venue cannot see another venue's data. Nothing is readable without signing in. PINs are not stored in plain text and sign-in attempts are rate-limited. AI keys are kept on the server only.</p>
+
+<h2>6. Retention</h2>
+<p>Data is kept while the venue uses the service or until a deletion request. The venue decides the retention period for its receipt archive; there is currently no automatic deletion. On-device data is removed when you sign out or clear the app's data.</p>
+
+<h2>7. Your rights</h2>
+<p>You may request access to, correction or deletion of your data through your venue's administrator or the operator contact above, and you may contact your national data protection authority.</p>
+
+<h2>8. Children</h2>
+<p>The app is intended for venue staff and is not directed at children.</p>
+
+<h2>9. Changes</h2>
+<p>Changes to this policy will be announced by updating the version date on this page.</p>
+</section>
+</main>
+</body>
+</html>
